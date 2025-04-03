@@ -180,6 +180,10 @@ class MacroGUI:
         self.stop_btn = ttk.Button(record_btn_frame, text="녹화 중지", command=self.stop_recording, state=tk.DISABLED)
         self.stop_btn.pack(fill=tk.X, padx=5, pady=5)
         
+        # 녹화 저장 버튼
+        self.save_btn = ttk.Button(record_btn_frame, text="녹화 저장", command=self.save_macro, state=tk.DISABLED)
+        self.save_btn.pack(fill=tk.X, padx=5, pady=5)
+        
         # 녹화 상태 표시
         self.record_status = ttk.Label(record_btn_frame, text="준비됨", foreground="black", anchor=tk.CENTER)
         self.record_status.pack(fill=tk.X, padx=5, pady=5)
@@ -449,6 +453,7 @@ class MacroGUI:
         # UI 업데이트
         self.record_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.NORMAL)
+        self.save_btn.config(state=tk.DISABLED)
         self.record_status.config(text="녹화 중...", foreground="red")
         self.update_status("녹화 중...")
         
@@ -483,8 +488,10 @@ class MacroGUI:
             self.editor.modified = True
             self.update_event_list()
             self.update_status(f"녹화 완료 (총 {len(events)}개 이벤트)")
+            self.save_btn.config(state=tk.NORMAL)  # 저장 버튼 활성화
         else:
             self.update_status("녹화된 이벤트 없음")
+            self.save_btn.config(state=tk.DISABLED)  # 저장 버튼 비활성화
     
     def save_macro(self):
         """새 매크로로 저장"""
