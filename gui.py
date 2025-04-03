@@ -97,23 +97,35 @@ class MacroGUI:
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # 매크로 목록 탭
-        macro_list_frame = ttk.Frame(self.notebook)
-        self.notebook.add(macro_list_frame, text="매크로 목록")
+        # 통합 매크로 탭
+        integrated_frame = ttk.Frame(self.notebook)
+        self.notebook.add(integrated_frame, text="매크로 관리")
         
-        # 매크로 목록 프레임 구성
-        list_frame = ttk.Frame(macro_list_frame)
-        list_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # 좌우 분할 프레임
+        paned_window = ttk.PanedWindow(integrated_frame, orient=tk.HORIZONTAL)
+        paned_window.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # 왼쪽 제어 및 목록 프레임
+        left_frame = ttk.Frame(paned_window)
+        paned_window.add(left_frame, weight=1)
+        
+        # 오른쪽 이벤트 리스트 프레임
+        right_event_frame = ttk.Frame(paned_window)
+        paned_window.add(right_event_frame, weight=2)
+        
+        # 왼쪽 프레임 구성 - 매크로 목록
+        macro_list_frame = ttk.LabelFrame(left_frame, text="매크로 목록")
+        macro_list_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
         # 매크로 목록 레이블
-        list_label = ttk.Label(list_frame, text="저장된 매크로 목록:")
+        list_label = ttk.Label(macro_list_frame, text="저장된 매크로:")
         list_label.pack(anchor=tk.W, padx=5, pady=5)
         
         # 매크로 목록 리스트박스
-        list_scrollbar = ttk.Scrollbar(list_frame)
+        list_scrollbar = ttk.Scrollbar(macro_list_frame)
         list_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.macro_listbox = tk.Listbox(list_frame, font=('Consolas', 10))
+        self.macro_listbox = tk.Listbox(macro_list_frame, font=('Consolas', 10))
         self.macro_listbox.pack(fill=tk.BOTH, expand=True)
         self.macro_listbox.config(yscrollcommand=list_scrollbar.set)
         list_scrollbar.config(command=self.macro_listbox.yview)
@@ -128,24 +140,8 @@ class MacroGUI:
         ttk.Button(macro_btn_frame, text="삭제", command=self.delete_macro).pack(side=tk.LEFT, padx=5)
         ttk.Button(macro_btn_frame, text="새로고침", command=self.update_macro_list).pack(side=tk.RIGHT, padx=5)
         
-        # 통합 녹화 및 편집 탭
-        edit_record_frame = ttk.Frame(self.notebook)
-        self.notebook.add(edit_record_frame, text="매크로 녹화/편집")
-        
-        # 좌우 분할 프레임
-        paned_window = ttk.PanedWindow(edit_record_frame, orient=tk.HORIZONTAL)
-        paned_window.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        # 왼쪽 제어 프레임
-        left_ctrl_frame = ttk.Frame(paned_window)
-        paned_window.add(left_ctrl_frame, weight=1)
-        
-        # 오른쪽 이벤트 리스트 프레임
-        right_event_frame = ttk.Frame(paned_window)
-        paned_window.add(right_event_frame, weight=3)
-        
-        # 왼쪽 프레임 구성 - 녹화 설정
-        record_setting_frame = ttk.LabelFrame(left_ctrl_frame, text="녹화 설정")
+        # 왼쪽 프레임 - 녹화 설정 
+        record_setting_frame = ttk.LabelFrame(left_frame, text="녹화 설정")
         record_setting_frame.pack(fill=tk.X, padx=5, pady=5)
         
         # 녹화 설정 체크박스
@@ -170,7 +166,7 @@ class MacroGUI:
                       command=self.update_record_settings).pack(anchor=tk.W, padx=5, pady=2)
         
         # 녹화 버튼 프레임
-        record_btn_frame = ttk.LabelFrame(left_ctrl_frame, text="녹화 제어")
+        record_btn_frame = ttk.LabelFrame(left_frame, text="녹화 제어")
         record_btn_frame.pack(fill=tk.X, padx=5, pady=5)
         
         # 녹화 시작/중지 버튼
@@ -185,7 +181,7 @@ class MacroGUI:
         self.record_status.pack(fill=tk.X, padx=5, pady=5)
         
         # 마우스 현재 위치 표시 프레임
-        mouse_pos_frame = ttk.LabelFrame(left_ctrl_frame, text="마우스 위치")
+        mouse_pos_frame = ttk.LabelFrame(left_frame, text="마우스 위치")
         mouse_pos_frame.pack(fill=tk.X, padx=5, pady=5)
         
         # 마우스 위치 표시 라벨
@@ -197,97 +193,74 @@ class MacroGUI:
                  command=self.update_mouse_position).pack(fill=tk.X, padx=5, pady=5)
         
         # 편집 버튼 프레임
-        edit_frame = ttk.LabelFrame(left_ctrl_frame, text="편집 도구")
+        edit_frame = ttk.LabelFrame(left_frame, text="편집 도구")
         edit_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        # 편집 버튼
-        ttk.Button(edit_frame, text="전체 선택", 
-                 command=self.select_all_events).pack(fill=tk.X, padx=5, pady=2)
-        
-        ttk.Button(edit_frame, text="선택 삭제", 
+        # 편집 버튼들
+        ttk.Button(edit_frame, text="선택 영역 삭제", 
                  command=self.delete_selected_event).pack(fill=tk.X, padx=5, pady=2)
         
         ttk.Button(edit_frame, text="딜레이 추가", 
                  command=self.add_delay_to_event).pack(fill=tk.X, padx=5, pady=2)
         
-        ttk.Button(edit_frame, text="선택 항목 복제", 
+        ttk.Button(edit_frame, text="선택 영역 복제", 
                  command=self.duplicate_selected_events).pack(fill=tk.X, padx=5, pady=2)
         
-        # 매크로 관리 프레임
-        macro_mgmt_frame = ttk.LabelFrame(left_ctrl_frame, text="매크로 관리")
-        macro_mgmt_frame.pack(fill=tk.X, padx=5, pady=5)
+        ttk.Button(edit_frame, text="전체 선택", 
+                 command=self.select_all_events).pack(fill=tk.X, padx=5, pady=2)
         
-        # 매크로 저장/실행 버튼
-        ttk.Button(macro_mgmt_frame, text="매크로 저장", 
-                 command=self.save_macro).pack(fill=tk.X, padx=5, pady=2)
-        
-        ttk.Button(macro_mgmt_frame, text="매크로 실행", 
-                 command=self.play_macro).pack(fill=tk.X, padx=5, pady=2)
-        
-        ttk.Button(macro_mgmt_frame, text="실행 중지", 
-                 command=self.stop_macro).pack(fill=tk.X, padx=5, pady=2)
+        # 매크로 저장 버튼
+        ttk.Button(left_frame, text="매크로 저장", 
+                 command=self.save_edited_macro).pack(fill=tk.X, padx=10, pady=5)
         
         # 오른쪽 프레임 구성 - 이벤트 목록
-        event_control_frame = ttk.Frame(right_event_frame)
-        event_control_frame.pack(fill=tk.X, side=tk.TOP, padx=5, pady=5)
+        event_frame = ttk.LabelFrame(right_event_frame, text="이벤트 목록")
+        event_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # 이벤트 필터링 콤보박스
-        ttk.Label(event_control_frame, text="필터:").pack(side=tk.LEFT, padx=5)
-        self.event_filter = ttk.Combobox(event_control_frame, 
-                                       values=["모든 이벤트", "키보드 이벤트", "마우스 이벤트", "이동 이벤트", "딜레이 이벤트"])
+        # 검색 및 필터 프레임
+        filter_frame = ttk.Frame(event_frame)
+        filter_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # 검색 필드
+        ttk.Label(filter_frame, text="검색:").pack(side=tk.LEFT, padx=5)
+        self.search_var = tk.StringVar()
+        ttk.Entry(filter_frame, textvariable=self.search_var).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        # 필터 드롭다운
+        ttk.Label(filter_frame, text="필터:").pack(side=tk.LEFT, padx=5)
+        self.event_filter = ttk.Combobox(filter_frame, values=["모든 이벤트", "키보드 이벤트", "마우스 이벤트", "딜레이 이벤트"])
         self.event_filter.current(0)
         self.event_filter.pack(side=tk.LEFT, padx=5)
-        self.event_filter.bind("<<ComboboxSelected>>", self.filter_events)
         
-        # 검색창
-        ttk.Label(event_control_frame, text="검색:").pack(side=tk.LEFT, padx=5)
-        self.search_var = tk.StringVar()
-        self.search_entry = ttk.Entry(event_control_frame, textvariable=self.search_var)
-        self.search_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-        self.search_var.trace("w", lambda name, index, mode: self.filter_events())
+        # 검색 및 필터 적용 버튼
+        ttk.Button(filter_frame, text="적용", command=self.filter_events).pack(side=tk.LEFT, padx=5)
         
-        # 이벤트 리스트 프레임
-        event_list_frame = ttk.LabelFrame(right_event_frame, text="이벤트 목록")
-        event_list_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # 이벤트 수 표시 라벨
+        self.event_count_label = ttk.Label(event_frame, text="총 이벤트: 0", anchor=tk.W)
+        self.event_count_label.pack(fill=tk.X, padx=5, pady=2)
         
         # 이벤트 리스트박스
-        event_scrollbar_y = ttk.Scrollbar(event_list_frame)
-        event_scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
+        event_scrollbar = ttk.Scrollbar(event_frame)
+        event_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        event_scrollbar_x = ttk.Scrollbar(event_list_frame, orient=tk.HORIZONTAL)
-        event_scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
+        self.event_listbox = tk.Listbox(event_frame, font=('Consolas', 10), selectmode=tk.EXTENDED)
+        self.event_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.event_listbox.config(yscrollcommand=event_scrollbar.set)
+        event_scrollbar.config(command=self.event_listbox.yview)
         
-        self.event_listbox = tk.Listbox(event_list_frame, font=('Consolas', 10), 
-                                      selectmode=tk.EXTENDED,
-                                      xscrollcommand=event_scrollbar_x.set,
-                                      yscrollcommand=event_scrollbar_y.set)
-        self.event_listbox.pack(fill=tk.BOTH, expand=True)
+        # 이벤트 선택 정보 라벨
+        self.selection_info_label = ttk.Label(event_frame, text="", anchor=tk.W)
+        self.selection_info_label.pack(fill=tk.X, padx=5, pady=2)
         
-        event_scrollbar_y.config(command=self.event_listbox.yview)
-        event_scrollbar_x.config(command=self.event_listbox.xview)
+        # 이벤트 선택 변경 시 호출될 함수 바인딩
+        self.event_listbox.bind('<<ListboxSelect>>', self.on_event_select)
         
-        # 우클릭 메뉴 설정
-        self.event_context_menu = tk.Menu(self.event_listbox, tearoff=0)
-        self.event_context_menu.add_command(label="삭제", command=self.delete_selected_event)
-        self.event_context_menu.add_command(label="딜레이 추가", command=self.add_delay_to_event)
-        self.event_context_menu.add_command(label="복제", command=self.duplicate_selected_events)
+        # 검색창 변경 시 필터 적용
+        self.search_var.trace_add("write", lambda name, index, mode: self.filter_events())
+        self.event_filter.bind("<<ComboboxSelected>>", self.filter_events)
         
-        self.event_listbox.bind("<Button-3>", self.show_event_context_menu)
-        
-        # 상태 표시 프레임
-        status_frame = ttk.Frame(right_event_frame)
-        status_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=5, pady=5)
-        
-        # 이벤트 수 표시
-        self.event_count_label = ttk.Label(status_frame, text="총 이벤트: 0")
-        self.event_count_label.pack(side=tk.LEFT, padx=5)
-        
-        # 선택된 이벤트 수 표시
-        self.selected_count_label = ttk.Label(status_frame, text="선택됨: 0")
-        self.selected_count_label.pack(side=tk.RIGHT, padx=5)
-        
-        # 이벤트 선택 시 업데이트
-        self.event_listbox.bind("<<ListboxSelect>>", self.update_selection_info)
+        # 이벤트 목록의 컨텍스트 메뉴
+        self.create_event_context_menu()
     
     def create_status_bar(self):
         """상태 표시줄 생성"""
@@ -449,9 +422,6 @@ class MacroGUI:
     # 매크로 녹화 관련 메소드
     def start_recording(self):
         """매크로 녹화 시작"""
-        # 노트북 탭을 녹화/편집 탭으로 전환
-        self.notebook.select(1)
-        
         # 녹화 시작
         self.recorder.start_recording()
         
@@ -496,17 +466,20 @@ class MacroGUI:
             self.update_status("녹화된 이벤트 없음")
     
     def save_macro(self):
-        """현재 매크로 저장"""
-        if not self.editor.current_events:
-            messagebox.showwarning("경고", "저장할 매크로가 없습니다.")
+        """새 매크로로 저장"""
+        if self.recorder.recording:
+            messagebox.showwarning("경고", "녹화 중에는 저장할 수 없습니다. 녹화를 중지해주세요.")
+            return
+        
+        if not self.editor.get_events():
+            messagebox.showwarning("경고", "저장할 이벤트가 없습니다.")
             return
         
         name = simpledialog.askstring("매크로 저장", "매크로 이름을 입력하세요:")
         if name:
-            if self.storage.save_macro(self.editor.current_events, name):
+            if self.editor.save_edited_macro(name):
                 self.update_macro_list()
                 self.update_status(f"매크로 '{name}' 저장 완료")
-                self.notebook.select(0)  # 매크로 목록 탭으로 전환
             else:
                 messagebox.showerror("오류", "매크로 저장에 실패했습니다.")
     
@@ -528,7 +501,21 @@ class MacroGUI:
     
     def edit_macro(self):
         """선택한 매크로 편집"""
-        self.load_macro()
+        selected = self.macro_listbox.curselection()
+        if not selected:
+            messagebox.showwarning("경고", "편집할 매크로를 선택하세요.")
+            return
+        
+        # 선택한 매크로 이름 가져오기
+        macro_name = self.macro_list[selected[0]]
+        
+        # 매크로 편집 모드로 로드
+        if self.editor.load_macro_for_editing(macro_name):
+            # 이벤트 목록 업데이트
+            self.update_event_list()
+            self.update_status(f"매크로 '{macro_name}' 편집 모드")
+        else:
+            messagebox.showerror("오류", f"매크로 '{macro_name}' 로드 실패")
     
     def delete_macro(self):
         """선택한 매크로 삭제"""
@@ -626,7 +613,6 @@ class MacroGUI:
             if self.editor.save_edited_macro(name):
                 self.update_macro_list()
                 self.update_status(f"매크로 '{name}' 저장 완료")
-                self.notebook.select(0)  # 매크로 목록 탭으로 전환
             else:
                 messagebox.showerror("오류", "매크로 저장에 실패했습니다.")
     
@@ -836,28 +822,28 @@ class MacroGUI:
     def update_selection_info(self, event=None):
         """선택된 이벤트 정보 업데이트"""
         selected = self.event_listbox.curselection()
-        self.selected_count_label.config(text=f"선택됨: {len(selected)}")
+        self.selection_info_label.config(text=f"선택됨: {len(selected)}")
+
+    def create_event_context_menu(self):
+        """이벤트 목록의 컨텍스트 메뉴 생성"""
+        self.event_context_menu = tk.Menu(self.event_listbox, tearoff=0)
+        self.event_context_menu.add_command(label="이벤트 삭제", command=self.delete_selected_event)
+        self.event_context_menu.add_command(label="딜레이 추가", command=self.add_delay_to_event)
+        self.event_context_menu.add_command(label="이벤트 복제", command=self.duplicate_selected_events)
+        self.event_context_menu.add_separator()
+        self.event_context_menu.add_command(label="전체 선택", command=self.select_all_events)
+
+        # 우클릭 이벤트에 메뉴 표시 연결
+        self.event_listbox.bind("<Button-3>", self.show_event_context_menu)
 
     def show_event_context_menu(self, event):
-        """이벤트 우클릭 메뉴 표시"""
-        # 녹화 중에는 컨텍스트 메뉴 비활성화
-        if self.recorder.recording:
-            return
-        
-        # 클릭한 위치에 항목이 있는지 확인
-        clicked_index = self.event_listbox.nearest(event.y)
-        if clicked_index >= 0:
-            # 이미 선택된 항목이 없으면 클릭한 항목 선택
-            if not self.event_listbox.curselection():
-                self.event_listbox.selection_clear(0, tk.END)
-                self.event_listbox.selection_set(clicked_index)
-            # 클릭한 항목이 선택되지 않았으면 선택
-            elif clicked_index not in self.event_listbox.curselection():
-                self.event_listbox.selection_clear(0, tk.END)
-                self.event_listbox.selection_set(clicked_index)
-            
-            # 컨텍스트 메뉴 표시
+        """우클릭 시 컨텍스트 메뉴 표시"""
+        if self.event_listbox.size() > 0:
             self.event_context_menu.post(event.x_root, event.y_root)
+
+    def on_event_select(self, event=None):
+        """이벤트 선택 시 처리"""
+        self.update_selection_info()
 
     def update_coord_settings(self):
         """좌표 설정 업데이트"""
