@@ -34,6 +34,9 @@ class MacroGUI:
         
         # 좌표 설정 변수
         self.coord_var = tk.StringVar(value="absolute")
+        
+        # 단축키 설정
+        self.setup_keyboard_shortcuts()
     
     def setup_ui(self):
         """GUI 구성"""
@@ -50,8 +53,8 @@ class MacroGUI:
         
         # 파일 메뉴
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="새 매크로 녹화", command=self.start_recording)
-        file_menu.add_command(label="매크로 저장", command=self.save_macro)
+        file_menu.add_command(label="새 매크로 녹화 (Ctrl+R)", command=self.start_recording)
+        file_menu.add_command(label="매크로 저장 (Ctrl+S)", command=self.save_macro)
         file_menu.add_command(label="매크로 불러오기", command=self.load_macro)
         file_menu.add_separator()
         file_menu.add_command(label="종료", command=self.root.quit)
@@ -59,7 +62,7 @@ class MacroGUI:
         
         # 편집 메뉴
         edit_menu = tk.Menu(menubar, tearoff=0)
-        edit_menu.add_command(label="전체 선택", command=self.select_all_events)
+        edit_menu.add_command(label="전체 선택 (Ctrl+A)", command=self.select_all_events)
         edit_menu.add_command(label="선택 삭제", command=self.delete_selected_event)
         edit_menu.add_command(label="딜레이 추가", command=self.add_delay_to_event)
         edit_menu.add_separator()
@@ -68,8 +71,8 @@ class MacroGUI:
         
         # 실행 메뉴
         play_menu = tk.Menu(menubar, tearoff=0)
-        play_menu.add_command(label="매크로 실행", command=self.play_macro)
-        play_menu.add_command(label="매크로 중지", command=self.stop_macro)
+        play_menu.add_command(label="매크로 실행 (F5)", command=self.play_macro)
+        play_menu.add_command(label="매크로 중지 (F6)", command=self.stop_macro)
         play_menu.add_separator()
         play_menu.add_command(label="단축키 설정", command=self.configure_hotkeys)
         menubar.add_cascade(label="실행", menu=play_menu)
@@ -156,11 +159,17 @@ class MacroGUI:
         macro_btn_frame = ttk.Frame(macro_list_frame)
         macro_btn_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        # 매크로 동작 버튼
-        ttk.Button(macro_btn_frame, text="실행", command=self.play_macro).pack(side=tk.LEFT, padx=5)
-        ttk.Button(macro_btn_frame, text="편집", command=self.edit_macro).pack(side=tk.LEFT, padx=5)
-        ttk.Button(macro_btn_frame, text="삭제", command=self.delete_macro).pack(side=tk.LEFT, padx=5)
-        ttk.Button(macro_btn_frame, text="새로고침", command=self.update_macro_list).pack(side=tk.RIGHT, padx=5)
+        # 매크로 동작 버튼들 (단축키 표시 추가)
+        ttk.Button(macro_btn_frame, text="실행 (F5)", 
+                  command=self.play_macro).pack(side=tk.LEFT, padx=5)
+        ttk.Button(macro_btn_frame, text="중지 (F6)", 
+                  command=self.stop_macro).pack(side=tk.LEFT, padx=5)
+        ttk.Button(macro_btn_frame, text="편집", 
+                  command=self.edit_macro).pack(side=tk.LEFT, padx=5)
+        ttk.Button(macro_btn_frame, text="삭제", 
+                  command=self.delete_macro).pack(side=tk.LEFT, padx=5)
+        ttk.Button(macro_btn_frame, text="새로고침", 
+                  command=self.update_macro_list).pack(side=tk.RIGHT, padx=5)
         
         # 왼쪽 프레임 - 녹화 설정 
         record_setting_frame = ttk.LabelFrame(left_frame, text="녹화 설정")
@@ -192,14 +201,14 @@ class MacroGUI:
         record_btn_frame.pack(fill=tk.X, padx=5, pady=5)
         
         # 녹화 시작/중지 버튼
-        self.record_btn = ttk.Button(record_btn_frame, text="녹화 시작", command=self.start_recording)
+        self.record_btn = ttk.Button(record_btn_frame, text="녹화 시작 (Ctrl+R)", command=self.start_recording)
         self.record_btn.pack(fill=tk.X, padx=5, pady=5)
         
-        self.stop_btn = ttk.Button(record_btn_frame, text="녹화 중지", command=self.stop_recording, state=tk.DISABLED)
+        self.stop_btn = ttk.Button(record_btn_frame, text="녹화 중지 (Ctrl+R)", command=self.stop_recording, state=tk.DISABLED)
         self.stop_btn.pack(fill=tk.X, padx=5, pady=5)
         
         # 녹화 저장 버튼
-        self.save_btn = ttk.Button(record_btn_frame, text="녹화 저장", command=self.save_macro, state=tk.DISABLED)
+        self.save_btn = ttk.Button(record_btn_frame, text="녹화 저장 (Ctrl+S)", command=self.save_macro, state=tk.DISABLED)
         self.save_btn.pack(fill=tk.X, padx=5, pady=5)
         
         # 녹화 상태 표시
@@ -289,10 +298,10 @@ class MacroGUI:
         exec_label = ttk.Label(edit_tool_frame, text="매크로 실행 제어", anchor=tk.CENTER)
         exec_label.pack(fill=tk.X, padx=5, pady=5)
         
-        ttk.Button(edit_tool_frame, text="매크로 실행", 
+        ttk.Button(edit_tool_frame, text="매크로 실행 (F5)", 
                  command=self.play_macro).pack(fill=tk.X, padx=5, pady=5)
                  
-        ttk.Button(edit_tool_frame, text="실행 중지", 
+        ttk.Button(edit_tool_frame, text="실행 중지 (F6)", 
                  command=self.stop_macro).pack(fill=tk.X, padx=5, pady=5)
         
         # 이벤트 선택 변경 시 호출될 함수 바인딩
@@ -463,8 +472,12 @@ class MacroGUI:
             self.update_timer = self.root.after(self.update_interval, self.update_event_list)
     
     # 매크로 녹화 관련 메소드
-    def start_recording(self):
+    def start_recording(self, event=None):
         """매크로 녹화 시작"""
+        # 녹화 이미 진행 중이면 중복 실행 방지
+        if self.recorder.recording:
+            return
+        
         # 녹화 시작
         self.recorder.start_recording()
         
@@ -484,8 +497,12 @@ class MacroGUI:
         # 바로 첫 업데이트 실행
         self.update_event_list()
     
-    def stop_recording(self):
+    def stop_recording(self, event=None):
         """매크로 녹화 중지"""
+        # 녹화 중이 아니면 실행 방지
+        if not self.recorder.recording:
+            return
+        
         events = self.recorder.stop_recording()
         
         # 타이머 중지
@@ -511,7 +528,7 @@ class MacroGUI:
             self.update_status("녹화된 이벤트 없음")
             self.save_btn.config(state=tk.DISABLED)  # 저장 버튼 비활성화
     
-    def save_macro(self):
+    def save_macro(self, event=None):
         """새 매크로로 저장"""
         if self.recorder.recording:
             messagebox.showwarning("경고", "녹화 중에는 저장할 수 없습니다. 녹화를 중지해주세요.")
@@ -638,7 +655,7 @@ class MacroGUI:
             else:
                 messagebox.showerror("오류", "딜레이 추가에 실패했습니다.")
     
-    def save_edited_macro(self):
+    def save_edited_macro(self, event=None):
         """편집된 매크로 저장"""
         if not self.editor.is_modified():
             messagebox.showinfo("알림", "변경 사항이 없습니다.")
@@ -663,13 +680,18 @@ class MacroGUI:
                 messagebox.showerror("오류", "매크로 저장에 실패했습니다.")
     
     # 매크로 실행 관련 메소드
-    def play_macro(self):
+    def play_macro(self, event=None):
         """선택한 매크로 실행"""
+        # 이미 실행 중이면 중복 실행 방지
+        if self.player.is_playing():
+            messagebox.showinfo("알림", "매크로가 이미 실행 중입니다.")
+            return
+
         # 녹화 중에는 실행 불가
         if self.recorder.recording:
             messagebox.showwarning("경고", "녹화 중에는 매크로를 실행할 수 없습니다.")
             return
-            
+        
         # 매크로 목록 탭에서 실행하는 경우
         if self.notebook.index(self.notebook.select()) == 0:
             selected = self.macro_listbox.curselection()
@@ -708,14 +730,14 @@ class MacroGUI:
         else:
             self.update_status(f"매크로 {repeat_count}회 실행 중...")
     
-    def stop_macro(self):
+    def stop_macro(self, event=None):
         """매크로 실행 중지"""
         if self.player.stop_playing():
             self.update_status("매크로 실행 중지")
         else:
             self.update_status("실행 중인 매크로 없음")
 
-    def select_all_events(self):
+    def select_all_events(self, event=None):
         """모든 이벤트 선택"""
         self.event_listbox.select_clear(0, tk.END)
         self.event_listbox.select_set(0, tk.END)
@@ -745,8 +767,22 @@ class MacroGUI:
 
     def configure_hotkeys(self):
         """단축키 설정"""
-        # 구현 필요
-        pass
+        # 단축키 목록 표시
+        self.show_hotkeys()
+
+    def show_hotkeys(self):
+        """단축키 목록 표시"""
+        hotkey_info = """
+        단축키 목록:
+        
+        F5              - 매크로 실행
+        F6              - 매크로 실행 중지
+        Ctrl+R          - 녹화 시작/중지 토글
+        Ctrl+S          - 매크로 저장
+        Ctrl+A          - 전체 선택
+        """
+        
+        messagebox.showinfo("단축키 목록", hotkey_info)
 
     def show_help(self):
         """도움말 표시"""
@@ -928,4 +964,29 @@ class MacroGUI:
             self.repeat_count.set("∞")
         else:
             self.repeat_count_entry.config(state=tk.NORMAL)
-            self.repeat_count.set("1") 
+            self.repeat_count.set("1")
+
+    def setup_keyboard_shortcuts(self):
+        """키보드 단축키 설정"""
+        # F5 키: 매크로 실행
+        self.root.bind("<F5>", lambda event: self.play_macro())
+        
+        # F6 키: 매크로 실행 중지
+        self.root.bind("<F6>", lambda event: self.stop_macro())
+        
+        # Ctrl+R: 녹화 시작/중지
+        self.root.bind("<Control-r>", self.toggle_recording)
+        
+        # Ctrl+S: 매크로 저장
+        self.root.bind("<Control-s>", lambda event: self.save_edited_macro())
+        
+        # Ctrl+A: 전체 선택
+        self.root.bind("<Control-a>", lambda event: self.select_all_events())
+
+    def toggle_recording(self, event=None):
+        """녹화 시작/중지 토글"""
+        # 현재 녹화 중이면 중지, 아니면 시작
+        if self.recorder.recording:
+            self.stop_recording()
+        else:
+            self.start_recording() 
