@@ -6,7 +6,7 @@ import threading
 class MacroPlayer:
     def __init__(self):
         self.playing = False
-        self.events = []
+        self.stop_requested = False
         self.play_thread = None
         
         # 상대 좌표 재생 시 기준점
@@ -16,110 +16,158 @@ class MacroPlayer:
     def play_macro(self, events, repeat_count=1):
         """매크로 실행"""
         if self.playing:
+            print("이미 매크로가 실행 중입니다.")
             return False
         
-        self.events = events
-        self.playing = True
+        # 매크로 실행 스레드 시작
+        self.stop_requested = False
+        self.play_thread = threading.Thread(target=self._play_events, args=(events, repeat_count))
+        self.play_thread.daemon = True
+        self.play_thread.start()
         
         # 상대 좌표 사용 시 시작 위치 저장
         pos = mouse.get_position()
         self.base_x, self.base_y = pos
         
-        # 새로운 스레드에서 매크로 실행
-        self.play_thread = threading.Thread(target=self._play_events, args=(repeat_count,))
-        self.play_thread.daemon = True
-        self.play_thread.start()
-        
         return True
     
     def stop_playing(self):
-        """매크로 재생 중지"""
-        self.playing = False
+        """매크로 실행 중지"""
+        if not self.playing:
+            return False
+        
+        self.stop_requested = True
+        # 스레드가 종료될 때까지 잠시 대기
         if self.play_thread and self.play_thread.is_alive():
-            self.play_thread.join(timeout=1)
+            self.play_thread.join(timeout=1.0)
+            
+        print("매크로 실행이 중지되었습니다.")
         return True
     
-    def _play_events(self, repeat_count):
-        """이벤트 재생"""
+    def _play_events(self, events, repeat_count):
+        """실제 이벤트 실행 (내부 메소드)"""
+        self.playing = True
+        print(f"매크로 실행 시작 (반복 횟수: {repeat_count if repeat_count > 0 else '무한'})")
+        
         try:
-            for _ in range(repeat_count):
-                if not self.playing:
-                    break
+            # 시간순으로 이벤트 정렬
+            sorted_events = sorted(events, key=lambda x: x['time'])
+            
+            # 반복 실행
+            current_repeat = 0
+            
+            while (repeat_count == 0 or current_repeat < repeat_count) and not self.stop_requested:
+                current_repeat += 1
+                print(f"반복 {current_repeat}{' / ' + str(repeat_count) if repeat_count > 0 else ''}")
                 
-                # 타임라인 상에서 각 이벤트를 정렬된 순서로 실행
-                events_sorted = sorted(self.events, key=lambda e: e['time'])
+                # 시작 시간
+                start_time = time.time()
+                last_event_time = start_time
                 
-                for i, event in enumerate(events_sorted):
-                    if not self.playing:
+                for event in sorted_events:
+                    if self.stop_requested:
                         break
                     
-                    # 첫 번째 이벤트가 아니면서 이전 이벤트와 시간 차이가 있는 경우,
-                    # 이벤트 시간 차이만큼 대기 (딜레이 이벤트가 아닌 경우)
-                    if i > 0 and event['type'] != 'delay':
-                        time_diff = event['time'] - events_sorted[i-1]['time']
-                        if time_diff > 0:
+                    # 이벤트 타입에 따라 처리
+                    event_type = event['type']
+                    
+                    # 딜레이 이벤트인 경우
+                    if event_type == 'delay':
+                        delay_time = event['delay']
+                        print(f"딜레이: {delay_time:.2f}초")
+                        time.sleep(delay_time)
+                        last_event_time = time.time()
+                        continue
+                    
+                    # 이벤트 간 시간 차이만큼 대기 (딜레이 이벤트가 아닌 경우)
+                    event_time = event['time']
+                    if event != sorted_events[0]:  # 첫 이벤트가 아닌 경우
+                        prev_event_time = sorted_events[sorted_events.index(event) - 1]['time']
+                        time_diff = event_time - prev_event_time
+                        
+                        # 이전 이벤트가 딜레이 이벤트였다면 대기하지 않음
+                        prev_event = sorted_events[sorted_events.index(event) - 1]
+                        if prev_event['type'] != 'delay' and time_diff > 0:
                             time.sleep(time_diff)
                     
-                    # 이벤트 유형에 따라 실행
-                    if event['type'] == 'keyboard':
+                    # 키보드 이벤트 처리
+                    if event_type == 'keyboard':
                         self._play_keyboard_event(event)
-                    elif event['type'] == 'mouse':
+                        
+                    # 마우스 이벤트 처리
+                    elif event_type == 'mouse':
                         self._play_mouse_event(event)
-                    elif event['type'] == 'delay':
-                        # 딜레이 이벤트는 지정된 시간만큼 대기
-                        time.sleep(event['delay'])
-                        print(f"딜레이 {event['delay']}초 실행")
+                
+                # 반복 사이에 약간의 딜레이 추가
+                if not self.stop_requested and (repeat_count == 0 or current_repeat < repeat_count):
+                    time.sleep(0.5)
+            
+            print("매크로 실행 완료")
+        except Exception as e:
+            print(f"매크로 실행 중 오류 발생: {e}")
         finally:
             self.playing = False
-            print("매크로 재생이 완료되었습니다.")
     
     def _play_keyboard_event(self, event):
         """키보드 이벤트 실행"""
-        key = event['key']
-        
-        if event['event_type'] == 'down':
-            keyboard.press(key)
-        elif event['event_type'] == 'up':
-            keyboard.release(key)
+        try:
+            key = event['key']
+            event_type = event['event_type']
+            
+            if event_type == 'down':
+                keyboard.press(key)
+                print(f"키보드 누름: {key}")
+            elif event_type == 'up':
+                keyboard.release(key)
+                print(f"키보드 떼기: {key}")
+        except Exception as e:
+            print(f"키보드 이벤트 실행 중 오류: {e}")
     
     def _play_mouse_event(self, event):
         """마우스 이벤트 실행"""
-        event_type = event['event_type']
-        
-        # 상대좌표 처리
-        if 'position' in event:
-            x, y = event['position']
+        try:
+            event_type = event['event_type']
+            position = event['position']
             
-            # 상대좌표인 경우 기준점 기준으로 조정
+            # 상대좌표 처리
             if event.get('is_relative', False):
-                x += self.base_x
-                y += self.base_y
-        
-        if event_type == 'move':
+                position = (position[0] + self.base_x, position[1] + self.base_y)
+            
             # 마우스 이동
-            if 'position' in event:
-                mouse.move(x, y)
-        elif event_type == 'down':
-            # 마우스 버튼 누르기
-            if 'button' in event:
-                mouse.move(x, y)  # 먼저 해당 위치로 이동
-                mouse.press(button=event['button'])
-        elif event_type == 'up':
-            # 마우스 버튼 떼기
-            if 'button' in event:
-                mouse.move(x, y)  # 먼저 해당 위치로 이동
-                mouse.release(button=event['button'])
-        elif event_type == 'double':
+            if event_type == 'move':
+                mouse.move(position[0], position[1])
+                print(f"마우스 이동: {position}")
+            
+            # 마우스 클릭 (누르기)
+            elif event_type == 'down':
+                button = event['button']
+                mouse.move(position[0], position[1])
+                mouse.press(button=button)
+                print(f"마우스 {button} 누름: {position}")
+                
+            # 마우스 클릭 (떼기)
+            elif event_type == 'up':
+                button = event['button']
+                mouse.move(position[0], position[1])
+                mouse.release(button=button)
+                print(f"마우스 {button} 떼기: {position}")
+                
             # 마우스 더블 클릭
-            if 'button' in event:
-                mouse.move(x, y)  # 먼저 해당 위치로 이동
-                mouse.double_click(button=event['button'])
-        elif event_type == 'scroll':
+            elif event_type == 'double':
+                button = event['button']
+                mouse.move(position[0], position[1])
+                mouse.double_click(button=button)
+                print(f"마우스 {button} 더블 클릭: {position}")
+                
             # 마우스 스크롤
-            if 'delta' in event:
-                mouse.move(x, y)  # 먼저 해당 위치로 이동
-                mouse.wheel(delta=event['delta'])
-    
+            elif event_type == 'scroll':
+                delta = event['delta']
+                mouse.move(position[0], position[1])
+                mouse.wheel(delta=delta)
+                print(f"마우스 스크롤: {delta}, 위치: {position}")
+        except Exception as e:
+            print(f"마우스 이벤트 실행 중 오류: {e}")
+            
     def is_playing(self):
-        """매크로 재생 중인지 확인"""
+        """매크로 실행 중인지 확인"""
         return self.playing 

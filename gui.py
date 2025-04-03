@@ -134,6 +134,24 @@ class MacroGUI:
         self.macro_listbox.config(yscrollcommand=list_scrollbar.set)
         list_scrollbar.config(command=self.macro_listbox.yview)
         
+        # 반복 횟수 설정 프레임
+        repeat_frame = ttk.Frame(macro_list_frame)
+        repeat_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Label(repeat_frame, text="반복 횟수:").pack(side=tk.LEFT, padx=5)
+        
+        # 반복 횟수 변수 및 기본값
+        self.repeat_count = tk.StringVar(value="1")
+        self.repeat_count_entry = ttk.Entry(repeat_frame, textvariable=self.repeat_count, width=5)
+        self.repeat_count_entry.pack(side=tk.LEFT, padx=5)
+        
+        # 무한 반복 체크박스
+        self.infinite_repeat = tk.BooleanVar(value=False)
+        infinite_check = ttk.Checkbutton(repeat_frame, text="무한 반복",
+                                        variable=self.infinite_repeat,
+                                        command=self.toggle_repeat_entry)
+        infinite_check.pack(side=tk.LEFT, padx=5)
+        
         # 매크로 동작 버튼 프레임
         macro_btn_frame = ttk.Frame(macro_list_frame)
         macro_btn_frame.pack(fill=tk.X, padx=5, pady=5)
@@ -669,10 +687,26 @@ class MacroGUI:
             messagebox.showwarning("경고", "실행할 매크로가 없습니다.")
             return
         
-        repeat_count = simpledialog.askinteger("반복 횟수", "반복 횟수를 입력하세요:", minvalue=1, maxvalue=100, initialvalue=1)
-        if repeat_count:
-            self.player.play_macro(events, repeat_count)
-            self.update_status("매크로 실행 중...")
+        # 무한 반복 체크인 경우
+        if self.infinite_repeat.get():
+            repeat_count = 0  # 0은 무한 반복 의미
+        else:
+            # 반복 횟수 가져오기
+            try:
+                repeat_count = int(self.repeat_count.get())
+                if repeat_count < 1:
+                    messagebox.showwarning("경고", "반복 횟수는 1 이상이어야 합니다.")
+                    return
+            except ValueError:
+                messagebox.showwarning("경고", "올바른 반복 횟수를 입력하세요.")
+                return
+        
+        self.player.play_macro(events, repeat_count)
+        
+        if repeat_count == 0:
+            self.update_status("매크로 무한 반복 실행 중...")
+        else:
+            self.update_status(f"매크로 {repeat_count}회 실행 중...")
     
     def stop_macro(self):
         """매크로 실행 중지"""
@@ -885,4 +919,13 @@ class MacroGUI:
         
         # 상태 메시지 업데이트
         coord_type = "상대" if self.use_relative_coords.get() else "절대"
-        self.update_status(f"좌표 모드 변경: {coord_type} 좌표") 
+        self.update_status(f"좌표 모드 변경: {coord_type} 좌표")
+
+    def toggle_repeat_entry(self):
+        """무한 반복 선택 시 반복 횟수 입력 비활성화"""
+        if self.infinite_repeat.get():
+            self.repeat_count_entry.config(state=tk.DISABLED)
+            self.repeat_count.set("∞")
+        else:
+            self.repeat_count_entry.config(state=tk.NORMAL)
+            self.repeat_count.set("1") 
