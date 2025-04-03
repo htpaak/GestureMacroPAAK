@@ -105,13 +105,17 @@ class MacroGUI:
         paned_window = ttk.PanedWindow(integrated_frame, orient=tk.HORIZONTAL)
         paned_window.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # 왼쪽 제어 및 목록 프레임
+        # 왼쪽 매크로 목록 및 녹화 제어 프레임
         left_frame = ttk.Frame(paned_window)
         paned_window.add(left_frame, weight=1)
         
-        # 오른쪽 이벤트 리스트 프레임
-        right_event_frame = ttk.Frame(paned_window)
-        paned_window.add(right_event_frame, weight=2)
+        # 중앙 이벤트 리스트 프레임
+        center_event_frame = ttk.Frame(paned_window)
+        paned_window.add(center_event_frame, weight=2)
+        
+        # 오른쪽 편집 도구 프레임
+        right_edit_frame = ttk.Frame(paned_window)
+        paned_window.add(right_edit_frame, weight=1)
         
         # 왼쪽 프레임 구성 - 매크로 목록
         macro_list_frame = ttk.LabelFrame(left_frame, text="매크로 목록")
@@ -192,29 +196,12 @@ class MacroGUI:
         ttk.Button(mouse_pos_frame, text="현재 위치 가져오기", 
                  command=self.update_mouse_position).pack(fill=tk.X, padx=5, pady=5)
         
-        # 편집 버튼 프레임
-        edit_frame = ttk.LabelFrame(left_frame, text="편집 도구")
-        edit_frame.pack(fill=tk.X, padx=5, pady=5)
-        
-        # 편집 버튼들
-        ttk.Button(edit_frame, text="선택 영역 삭제", 
-                 command=self.delete_selected_event).pack(fill=tk.X, padx=5, pady=2)
-        
-        ttk.Button(edit_frame, text="딜레이 추가", 
-                 command=self.add_delay_to_event).pack(fill=tk.X, padx=5, pady=2)
-        
-        ttk.Button(edit_frame, text="선택 영역 복제", 
-                 command=self.duplicate_selected_events).pack(fill=tk.X, padx=5, pady=2)
-        
-        ttk.Button(edit_frame, text="전체 선택", 
-                 command=self.select_all_events).pack(fill=tk.X, padx=5, pady=2)
-        
         # 매크로 저장 버튼
         ttk.Button(left_frame, text="매크로 저장", 
                  command=self.save_edited_macro).pack(fill=tk.X, padx=10, pady=5)
         
-        # 오른쪽 프레임 구성 - 이벤트 목록
-        event_frame = ttk.LabelFrame(right_event_frame, text="이벤트 목록")
+        # 중앙 프레임 구성 - 이벤트 목록
+        event_frame = ttk.LabelFrame(center_event_frame, text="이벤트 목록")
         event_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
         # 검색 및 필터 프레임
@@ -251,6 +238,40 @@ class MacroGUI:
         # 이벤트 선택 정보 라벨
         self.selection_info_label = ttk.Label(event_frame, text="", anchor=tk.W)
         self.selection_info_label.pack(fill=tk.X, padx=5, pady=2)
+        
+        # 오른쪽 프레임 구성 - 편집 도구
+        edit_tool_frame = ttk.LabelFrame(right_edit_frame, text="편집 도구")
+        edit_tool_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # 편집 도구 설명 라벨
+        edit_desc_label = ttk.Label(edit_tool_frame, text="선택한 이벤트를 편집합니다", anchor=tk.CENTER, wraplength=150)
+        edit_desc_label.pack(fill=tk.X, padx=5, pady=10)
+        
+        # 편집 버튼들
+        ttk.Button(edit_tool_frame, text="선택 영역 삭제", 
+                 command=self.delete_selected_event).pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(edit_tool_frame, text="딜레이 추가", 
+                 command=self.add_delay_to_event).pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(edit_tool_frame, text="선택 영역 복제", 
+                 command=self.duplicate_selected_events).pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(edit_tool_frame, text="전체 선택", 
+                 command=self.select_all_events).pack(fill=tk.X, padx=5, pady=5)
+        
+        # 구분선
+        ttk.Separator(edit_tool_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=5, pady=10)
+        
+        # 실행 관련 버튼
+        exec_label = ttk.Label(edit_tool_frame, text="매크로 실행 제어", anchor=tk.CENTER)
+        exec_label.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(edit_tool_frame, text="매크로 실행", 
+                 command=self.play_macro).pack(fill=tk.X, padx=5, pady=5)
+                 
+        ttk.Button(edit_tool_frame, text="실행 중지", 
+                 command=self.stop_macro).pack(fill=tk.X, padx=5, pady=5)
         
         # 이벤트 선택 변경 시 호출될 함수 바인딩
         self.event_listbox.bind('<<ListboxSelect>>', self.on_event_select)
