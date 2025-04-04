@@ -10,9 +10,39 @@ class MacroGUI:
         self.storage = storage
         
         # 윈도우 설정
-        self.root.geometry("800x600")
-        self.root.resizable(True, True)
         self.root.title("고급 매크로 프로그램")
+        
+        # 창 크기 설정 (width x height)
+        window_width = 1200
+        window_height = 800
+        
+        # 화면 크기 가져오기
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # 창 크기가 화면보다 크면 화면 크기의 80%로 조정
+        if window_width > screen_width:
+            window_width = int(screen_width * 0.8)
+        if window_height > screen_height:
+            window_height = int(screen_height * 0.8)
+        
+        # 창을 화면 중앙에 배치하기 위한 x, y 좌표 계산
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        
+        # 창 크기와 위치 설정
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        
+        # 최소 창 크기 설정 (width, height)
+        self.root.minsize(1000, 700)
+        
+        # 창 크기 조절 가능 설정
+        self.root.resizable(True, True)
+        
+        # 포커스 및 상태 설정 (normal, iconic, withdrawn, zoomed)
+        self.root.state('normal')  # 정상 상태로 시작
+        self.root.lift()  # 다른 창 위에 표시
+        self.root.focus_force()  # 강제로 포커스 지정
         
         # 매크로 목록
         self.macro_list = []
@@ -46,6 +76,9 @@ class MacroGUI:
         
         # 매크로 목록 업데이트
         self.update_macro_list()
+        
+        # UI 설정 후 창 업데이트 (레이아웃 적용)
+        self.root.update_idletasks()
     
     def create_menu(self):
         """메뉴바 생성"""
@@ -989,4 +1022,43 @@ class MacroGUI:
         if self.recorder.recording:
             self.stop_recording()
         else:
-            self.start_recording() 
+            self.start_recording()
+
+    def center_window(self):
+        """창을 화면 중앙에 배치"""
+        # 현재 창 크기 가져오기
+        window_width = self.root.winfo_width()
+        window_height = self.root.winfo_height()
+        
+        # 창이 완전히 생성되지 않았다면 지정된 크기 사용
+        if window_width <= 1:
+            # geometry에서 설정한 크기 파싱
+            geometry = self.root.geometry()
+            try:
+                # "1200x800+x+y" 형식에서 너비와 높이 추출
+                size_part = geometry.split('+')[0]
+                width_height = size_part.split('x')
+                window_width = int(width_height[0])
+                window_height = int(width_height[1])
+            except (IndexError, ValueError):
+                # 파싱 실패 시 기본값 사용
+                window_width = 1200
+                window_height = 800
+        
+        # 화면 크기 가져오기
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # 창을 화면 중앙에 배치하기 위한 x, y 좌표 계산
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        
+        # 창 위치 설정 (좌표는 양수여야 함)
+        x = max(0, x)
+        y = max(0, y)
+        
+        # 창 위치 적용
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        
+        # 창이 화면에 맞게 표시되도록 업데이트 호출
+        self.root.update_idletasks() 
