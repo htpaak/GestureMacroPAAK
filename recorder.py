@@ -11,7 +11,7 @@ class MacroRecorder:
         self.last_event_time = 0
         
         # 녹화 설정
-        self.record_mouse_move = True
+        self.record_mouse_move = False
         self.use_relative_coords = False
         self.record_keyboard = True
         
@@ -34,7 +34,8 @@ class MacroRecorder:
             if self.record_keyboard:
                 keyboard.hook(self._keyboard_callback)
                 
-            # 마우스 이벤트 후크
+            # 마우스 이벤트 후크 (모든 마우스 이벤트를 후크하고 콜백 함수에서 필터링)
+            # 이렇게 하지 않으면 녹화 중에 마우스 이동 설정을 변경할 수 없음
             mouse.hook(self._mouse_callback)
             
             # 상대좌표 사용 시 시작 위치 기록
@@ -42,7 +43,7 @@ class MacroRecorder:
                 pos = mouse.get_position()
                 self.base_x, self.base_y = pos
             
-            print("매크로 녹화가 시작되었습니다.")
+            print(f"매크로 녹화가 시작되었습니다. 마우스 이동 녹화: {'켜짐' if self.record_mouse_move else '꺼짐'}")
     
     def stop_recording(self):
         """매크로 녹화 중지"""

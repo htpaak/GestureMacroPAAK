@@ -58,7 +58,7 @@ class MacroGUI:
         self.update_interval = 100  # 0.1초마다 업데이트 (더 빠른 업데이트)
         
         # 녹화 설정
-        self.record_mouse_move = tk.BooleanVar(value=True)
+        self.record_mouse_move = tk.BooleanVar(value=False)
         self.use_relative_coords = tk.BooleanVar(value=False)
         self.record_keyboard = tk.BooleanVar(value=True)
         
@@ -311,7 +311,10 @@ class MacroGUI:
         edit_desc_label = ttk.Label(edit_tool_frame, text="선택한 이벤트를 편집합니다", anchor=tk.CENTER, wraplength=150)
         edit_desc_label.pack(fill=tk.X, padx=5, pady=10)
         
-        # 편집 버튼들
+        # 편집 버튼들 - 전체 선택 버튼을 맨 위로 이동
+        ttk.Button(edit_tool_frame, text="전체 선택 (Ctrl+A)", 
+                 command=self.select_all_events).pack(fill=tk.X, padx=5, pady=5)
+                 
         ttk.Button(edit_tool_frame, text="선택 영역 삭제", 
                  command=self.delete_selected_event).pack(fill=tk.X, padx=5, pady=5)
         
@@ -320,22 +323,6 @@ class MacroGUI:
         
         ttk.Button(edit_tool_frame, text="선택 영역 복제", 
                  command=self.duplicate_selected_events).pack(fill=tk.X, padx=5, pady=5)
-        
-        ttk.Button(edit_tool_frame, text="전체 선택", 
-                 command=self.select_all_events).pack(fill=tk.X, padx=5, pady=5)
-        
-        # 구분선
-        ttk.Separator(edit_tool_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=5, pady=10)
-        
-        # 실행 관련 버튼
-        exec_label = ttk.Label(edit_tool_frame, text="매크로 실행 제어", anchor=tk.CENTER)
-        exec_label.pack(fill=tk.X, padx=5, pady=5)
-        
-        ttk.Button(edit_tool_frame, text="매크로 실행 (F5)", 
-                 command=self.play_macro).pack(fill=tk.X, padx=5, pady=5)
-                 
-        ttk.Button(edit_tool_frame, text="실행 중지 (F6)", 
-                 command=self.stop_macro).pack(fill=tk.X, padx=5, pady=5)
         
         # 이벤트 선택 변경 시 호출될 함수 바인딩
         self.event_listbox.bind('<<ListboxSelect>>', self.on_event_select)
@@ -808,7 +795,7 @@ class MacroGUI:
         hotkey_info = """
         단축키 목록:
         
-        F5              - 매크로 실행
+        F5              - 매크로 실행 (매크로 목록에서)
         F6              - 매크로 실행 중지
         Ctrl+R          - 녹화 시작/중지 토글
         Ctrl+S          - 매크로 저장
