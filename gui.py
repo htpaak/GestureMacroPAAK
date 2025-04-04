@@ -1,5 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
+import time
+import mouse
+import keyboard
 
 class MacroGUI:
     def __init__(self, root, recorder, player, editor, storage):
@@ -237,6 +240,10 @@ class MacroGUI:
         self.record_btn = ttk.Button(record_btn_frame, text="녹화 시작 (Ctrl+R)", command=self.start_recording)
         self.record_btn.pack(fill=tk.X, padx=5, pady=5)
         
+        # 녹화 이어서 시작 버튼 추가
+        self.continue_btn = ttk.Button(record_btn_frame, text="녹화 이어서 시작 (Ctrl+E)", command=self.continue_recording)
+        self.continue_btn.pack(fill=tk.X, padx=5, pady=5)
+        
         self.stop_btn = ttk.Button(record_btn_frame, text="녹화 중지 (Ctrl+R)", command=self.stop_recording, state=tk.DISABLED)
         self.stop_btn.pack(fill=tk.X, padx=5, pady=5)
         
@@ -256,13 +263,17 @@ class MacroGUI:
         self.mouse_pos_label = ttk.Label(mouse_pos_frame, text="X: 0, Y: 0", anchor=tk.CENTER)
         self.mouse_pos_label.pack(fill=tk.X, padx=5, pady=5)
         
-        # 마우스 위치 업데이트 버튼
-        ttk.Button(mouse_pos_frame, text="현재 위치 가져오기", 
-                 command=self.update_mouse_position).pack(fill=tk.X, padx=5, pady=5)
+        # 마우스 위치 관련 버튼들
+        button_frame = ttk.Frame(mouse_pos_frame)
+        button_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        # 매크로 저장 버튼
-        ttk.Button(left_frame, text="매크로 저장", 
-                 command=self.save_edited_macro).pack(fill=tk.X, padx=10, pady=5)
+        # 마우스 위치 업데이트 버튼
+        ttk.Button(button_frame, text="현재 위치 가져오기 (F9)", 
+                 command=self.update_mouse_position).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+        
+        # 현재 위치 이벤트 추가 버튼
+        ttk.Button(button_frame, text="현재 위치 이벤트 추가 (F10)", 
+                 command=self.add_current_position).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
         
         # 중앙 프레임 구성 - 이벤트 목록
         event_frame = ttk.LabelFrame(center_event_frame, text="이벤트 목록")
@@ -503,6 +514,7 @@ class MacroGUI:
         
         # UI 업데이트
         self.record_btn.config(state=tk.DISABLED)
+        self.continue_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.NORMAL)
         self.save_btn.config(state=tk.DISABLED)
         self.record_status.config(text="녹화 중...", foreground="red")
@@ -535,6 +547,7 @@ class MacroGUI:
         
         # UI 업데이트
         self.record_btn.config(state=tk.NORMAL)
+        self.continue_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
         self.record_status.config(text="준비됨", foreground="black")
         
@@ -797,7 +810,10 @@ class MacroGUI:
         
         F5              - 매크로 실행 (매크로 목록에서)
         F6              - 매크로 실행 중지
+        F9              - 현재 마우스 위치 가져오기
+        F10             - 현재 마우스 위치 이벤트 추가
         Ctrl+R          - 녹화 시작/중지 토글
+        Ctrl+E          - 녹화 이어서 시작
         Ctrl+S          - 매크로 저장
         Ctrl+A          - 전체 선택
         """
@@ -844,7 +860,6 @@ class MacroGUI:
     def update_mouse_position(self):
         """마우스 현재 위치 업데이트"""
         try:
-            import mouse
             pos = mouse.get_position()
             self.mouse_pos_label.config(text=f"X: {pos[0]}, Y: {pos[1]}")
             
@@ -994,14 +1009,23 @@ class MacroGUI:
         # F6 키: 매크로 실행 중지
         self.root.bind("<F6>", lambda event: self.stop_macro())
         
-        # Ctrl+R: 녹화 시작/중지
+        # Ctrl+R: 녹화 시작/중지 토글
         self.root.bind("<Control-r>", self.toggle_recording)
         
+        # Ctrl+E: 녹화 이어서 시작
+        self.root.bind("<Control-e>", lambda event: self.continue_recording())
+        
         # Ctrl+S: 매크로 저장
-        self.root.bind("<Control-s>", lambda event: self.save_edited_macro())
+        self.root.bind("<Control-s>", lambda event: self.save_macro())
         
         # Ctrl+A: 전체 선택
         self.root.bind("<Control-a>", lambda event: self.select_all_events())
+        
+        # F9: 현재 마우스 위치 가져오기
+        self.root.bind("<F9>", lambda event: self.update_mouse_position())
+        
+        # F10: 현재 마우스 위치 이벤트 추가
+        self.root.bind("<F10>", lambda event: self.add_current_position())
 
     def toggle_recording(self, event=None):
         """녹화 시작/중지 토글"""
@@ -1010,6 +1034,128 @@ class MacroGUI:
             self.stop_recording()
         else:
             self.start_recording()
+
+    def continue_recording(self, event=None):
+        """녹화 이어서 시작 - 기존 이벤트를 유지하고 녹화 시작"""
+        # 이미 녹화 중이면 중복 실행 방지
+        if self.recorder.recording:
+            return
+        
+        # 에디터에 이벤트가 없으면 그냥 새로 녹화 시작
+        if not self.editor.get_events():
+            self.start_recording()
+            return
+        
+        # 현재 이벤트를 레코더에 설정
+        self.recorder.events = self.editor.get_events().copy()
+        
+        # 마지막 이벤트의 시간 찾기
+        if self.recorder.events:
+            last_time = max([event.get('time', 0) for event in self.recorder.events])
+            # 시작 시간 조정 (마치 녹화를 중지했다가 다시 시작한 것처럼)
+            self.recorder.start_time = time.time() - last_time
+        
+        # 녹화 시작
+        self.recorder.recording = True
+        
+        # 키보드 이벤트 후크
+        if self.recorder.record_keyboard:
+            keyboard.hook(self.recorder._keyboard_callback)
+        
+        # 마우스 이벤트 후크
+        mouse.hook(self.recorder._mouse_callback)
+        
+        # UI 업데이트
+        self.record_btn.config(state=tk.DISABLED)
+        self.continue_btn.config(state=tk.DISABLED)
+        self.stop_btn.config(state=tk.NORMAL)
+        self.save_btn.config(state=tk.DISABLED)
+        self.record_status.config(text="녹화 중...", foreground="red")
+        self.update_status("녹화 이어서 진행 중...")
+        
+        # 바로 첫 업데이트 실행
+        self.update_event_list()
+        
+        # 마우스 위치 실시간 업데이트 시작
+        self.update_mouse_position()
+
+    def add_current_position(self, event=None):
+        """현재 마우스 위치를 이벤트로 추가"""
+        # 마우스 현재 위치 가져오기
+        pos = mouse.get_position()
+        
+        # 녹화 중이면 이벤트 직접 추가
+        if self.recorder.recording:
+            current_time = time.time() - self.recorder.start_time
+            
+            event_data = {
+                'type': 'mouse',
+                'event_type': 'move',
+                'time': current_time,
+                'position': pos,
+                'is_relative': False
+            }
+            
+            # 상대좌표 설정이면 변환
+            if self.recorder.use_relative_coords:
+                rel_x = pos[0] - self.recorder.base_x
+                rel_y = pos[1] - self.recorder.base_y
+                event_data['position'] = (rel_x, rel_y)
+                event_data['is_relative'] = True
+            
+            self.recorder.events.append(event_data)
+            self.recorder.last_event_time = current_time
+            
+            self.update_event_list()
+            self.update_status(f"현재 마우스 위치 추가: {pos}")
+        
+        # 녹화 중이 아니면 편집모드로 추가 (에디터를 통해)
+        else:
+            if not hasattr(self.editor, 'current_events') or not self.editor.current_events:
+                messagebox.showwarning("경고", "편집할 매크로가 없습니다. 먼저 녹화하거나 매크로를 로드하세요.")
+                return
+            
+            # 현재 선택된 인덱스 가져오기 (없으면 마지막에 추가)
+            selected = self.event_listbox.curselection()
+            index = selected[0] if selected else len(self.editor.current_events)
+            
+            # 에디터에 새 이벤트 추가
+            if index < len(self.editor.current_events):
+                event_time = self.editor.current_events[index]['time']
+            else:
+                # 마지막에 추가하는 경우 가장 마지막 이벤트 시간 + 0.1초
+                last_time = 0
+                if self.editor.current_events:
+                    last_time = max([e.get('time', 0) for e in self.editor.current_events])
+                event_time = last_time + 0.1
+            
+            event_data = {
+                'type': 'mouse',
+                'event_type': 'move',
+                'time': event_time,
+                'position': pos,
+                'is_relative': False
+            }
+            
+            # 상대좌표 설정이면 변환 (현재 기준점이 없으므로 첫 이벤트 위치 기준)
+            if self.use_relative_coords.get():
+                # 기준점 찾기 (첫 마우스 이벤트의 위치)
+                base_x, base_y = 0, 0
+                for e in self.editor.current_events:
+                    if e['type'] == 'mouse' and 'position' in e:
+                        base_x, base_y = e['position']
+                        break
+                
+                rel_x = pos[0] - base_x
+                rel_y = pos[1] - base_y
+                event_data['position'] = (rel_x, rel_y)
+                event_data['is_relative'] = True
+            
+            self.editor.current_events.insert(index + 1, event_data)
+            self.editor.modified = True
+            
+            self.update_event_list()
+            self.update_status(f"위치 이벤트 추가됨: {pos}")
 
     def center_window(self):
         """창을 화면 중앙에 배치"""
