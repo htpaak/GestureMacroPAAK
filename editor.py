@@ -131,6 +131,33 @@ class MacroEditor:
     def is_modified(self):
         """매크로가 수정되었는지 확인"""
         return self.modified
+    
+    def insert_event(self, index, event):
+        """특정 인덱스에 이벤트 삽입"""
+        if 0 <= index <= len(self.current_events):
+            # 이벤트에 시간 정보가 없으면 적절한 시간 계산
+            if 'time' not in event or event['time'] == 0:
+                # 삽입 위치 앞뒤 이벤트의 시간 정보 사용
+                if index > 0 and index < len(self.current_events):
+                    # 앞뒤 이벤트 시간의 중간 값으로 설정
+                    prev_time = self.current_events[index-1]['time']
+                    next_time = self.current_events[index]['time']
+                    event['time'] = prev_time + (next_time - prev_time) / 2
+                elif index > 0:
+                    # 마지막에 추가하는 경우 마지막 이벤트 시간 + 0.1초
+                    event['time'] = self.current_events[index-1]['time'] + 0.1
+                elif len(self.current_events) > 0:
+                    # 맨 앞에 추가하는 경우 첫 이벤트 시간 - 0.1초
+                    event['time'] = self.current_events[0]['time'] - 0.1
+                else:
+                    # 첫 이벤트인 경우 0으로 설정
+                    event['time'] = 0
+                    
+            # 이벤트 삽입
+            self.current_events.insert(index, event)
+            self.modified = True
+            return True
+        return False
         
     def duplicate_events(self, indices):
         """선택된 이벤트들을 복제"""

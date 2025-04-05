@@ -3,7 +3,7 @@ from recorder import MacroRecorder
 from player import MacroPlayer
 from editor import MacroEditor
 from storage import MacroStorage
-from gui import MacroGUI
+from simple_gui import SimpleGUI
 
 def main():
     # 루트 윈도우 생성
@@ -18,8 +18,8 @@ def main():
     storage = MacroStorage()
     editor = MacroEditor(storage)
     
-    # GUI 초기화
-    gui = MacroGUI(root, recorder, player, editor, storage)
+    # GUI 초기화 - 간소화된 GUI 사용
+    gui = SimpleGUI(root, recorder, player, editor, storage)
     gui.setup_ui()
     
     # 메인 루프 시작
