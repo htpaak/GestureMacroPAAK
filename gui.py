@@ -173,6 +173,9 @@ class MacroGUI:
         self.macro_listbox.config(yscrollcommand=list_scrollbar.set)
         list_scrollbar.config(command=self.macro_listbox.yview)
         
+        # 리스트박스 스타일 설정
+        self.macro_listbox.config(selectbackground='#4a6cd4', selectforeground='white', font=('Consolas', 11))
+        
         # 반복 횟수 설정 프레임
         repeat_frame = ttk.Frame(macro_list_frame)
         repeat_frame.pack(fill=tk.X, padx=5, pady=5)
@@ -305,10 +308,13 @@ class MacroGUI:
         event_scrollbar = ttk.Scrollbar(event_frame)
         event_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.event_listbox = tk.Listbox(event_frame, font=('Consolas', 10), selectmode=tk.EXTENDED)
+        self.event_listbox = tk.Listbox(event_frame, font=('Consolas', 11), selectmode=tk.EXTENDED, height=20, activestyle='dotbox')
         self.event_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.event_listbox.config(yscrollcommand=event_scrollbar.set)
         event_scrollbar.config(command=self.event_listbox.yview)
+        
+        # 리스트박스 스타일 설정
+        self.event_listbox.config(selectbackground='#4a6cd4', selectforeground='white')
         
         # 이벤트 선택 정보 라벨
         self.selection_info_label = ttk.Label(event_frame, text="", anchor=tk.W)
@@ -390,40 +396,61 @@ class MacroGUI:
                 if event_type == 'delay':
                     # 딜레이 이벤트는 독립적으로 표시
                     delay_time = event['delay']
-                    event_details = f"딜레이: {delay_time:.2f}초"
+                    event_details = f"⏱️ 딜레이: {delay_time:.2f}초"
                     self.event_listbox.insert(tk.END, f"[{i+1}] {event_details}")
                     # 딜레이 이벤트는 배경색 설정
                     self.event_listbox.itemconfig(tk.END, {'bg': '#FFE0E0'})
                     
                 elif event_type == 'keyboard':
-                    event_details = f"키보드 {event['event_type']} - {event['key']}"
+                    key_event = event['event_type']
+                    key_symbol = "⌨️ "
+                    # 키보드 이벤트 아이콘 구분
+                    if key_event == 'down':
+                        key_symbol = "⌨️⬇ "
+                    elif key_event == 'up':
+                        key_symbol = "⌨️⬆ "
+                    
+                    event_details = f"{key_symbol}키보드 {event['event_type']} - {event['key']}"
                     self.event_listbox.insert(tk.END, f"[{i+1}] {event_details}")
                     # 키보드 이벤트는 배경색 설정
                     self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFFF'})
                     
                 elif event_type == 'mouse':
                     mouse_event_type = event['event_type']
+                    mouse_symbol = "🖱️ "
+                    
+                    # 마우스 이벤트별 아이콘 추가
                     if mouse_event_type == 'move':
+                        mouse_symbol = "🖱️➡️ "
                         pos_str = f"위치: {event['position']}"
                         # 상대 좌표인 경우 표시
                         if event.get('is_relative', False):
                             pos_str += " (상대)"
-                        event_details = f"마우스 이동 - {pos_str}"
-                    elif mouse_event_type in ['up', 'down']:
+                        event_details = f"{mouse_symbol}마우스 이동 - {pos_str}"
+                    elif mouse_event_type == 'down':
+                        mouse_symbol = "🖱️⬇ "
                         pos_str = f"위치: {event['position']}"
                         if event.get('is_relative', False):
                             pos_str += " (상대)"
-                        event_details = f"마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
+                        event_details = f"{mouse_symbol}마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
+                    elif mouse_event_type == 'up':
+                        mouse_symbol = "🖱️⬆ "
+                        pos_str = f"위치: {event['position']}"
+                        if event.get('is_relative', False):
+                            pos_str += " (상대)"
+                        event_details = f"{mouse_symbol}마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
                     elif mouse_event_type == 'double':
+                        mouse_symbol = "🖱️🔄 "
                         pos_str = f"위치: {event['position']}"
                         if event.get('is_relative', False):
                             pos_str += " (상대)"
-                        event_details = f"마우스 더블클릭 - 버튼: {event['button']} - {pos_str}"
+                        event_details = f"{mouse_symbol}마우스 더블클릭 - 버튼: {event['button']} - {pos_str}"
                     elif mouse_event_type == 'scroll':
+                        mouse_symbol = "🖱️🔄 "
                         pos_str = f"위치: {event['position']}"
                         if event.get('is_relative', False):
                             pos_str += " (상대)"
-                        event_details = f"마우스 스크롤 - 델타: {event['delta']} - {pos_str}"
+                        event_details = f"{mouse_symbol}마우스 스크롤 - 델타: {event['delta']} - {pos_str}"
                     
                     self.event_listbox.insert(tk.END, f"[{i+1}] {event_details}")
                     # 마우스 이벤트는 배경색 설정
@@ -450,38 +477,65 @@ class MacroGUI:
                 if event_type == 'delay':
                     # 딜레이 이벤트는 독립적으로 표시
                     delay_time = event['delay']
-                    event_details = f"딜레이: {delay_time:.2f}초"
+                    event_details = f"⏱️ 딜레이: {delay_time:.2f}초"
                     self.event_listbox.insert(tk.END, f"[{i+1}] {event_details}")
+                    # 딜레이 이벤트 배경색
+                    self.event_listbox.itemconfig(tk.END, {'bg': '#FFE0E0'})
                     
                 elif event_type == 'keyboard':
-                    event_details = f"키보드 {event['event_type']} - {event['key']}"
+                    key_event = event['event_type']
+                    key_symbol = "⌨️ "
+                    # 키보드 이벤트 아이콘 구분
+                    if key_event == 'down':
+                        key_symbol = "⌨️⬇ "
+                    elif key_event == 'up':
+                        key_symbol = "⌨️⬆ "
+                    
+                    event_details = f"{key_symbol}키보드 {event['event_type']} - {event['key']}"
                     self.event_listbox.insert(tk.END, f"[{i+1}] {event_details}")
+                    # 키보드 이벤트는 배경색 설정
+                    self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFFF'})
                     
                 elif event_type == 'mouse':
                     mouse_event_type = event['event_type']
+                    mouse_symbol = "🖱️ "
+                    
+                    # 마우스 이벤트별 아이콘 추가
                     if mouse_event_type == 'move':
+                        mouse_symbol = "🖱️➡️ "
                         pos_str = f"위치: {event['position']}"
                         # 상대 좌표인 경우 표시
                         if event.get('is_relative', False):
                             pos_str += " (상대)"
-                        event_details = f"마우스 이동 - {pos_str}"
-                    elif mouse_event_type in ['up', 'down']:
+                        event_details = f"{mouse_symbol}마우스 이동 - {pos_str}"
+                    elif mouse_event_type == 'down':
+                        mouse_symbol = "🖱️⬇ "
                         pos_str = f"위치: {event['position']}"
                         if event.get('is_relative', False):
                             pos_str += " (상대)"
-                        event_details = f"마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
+                        event_details = f"{mouse_symbol}마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
+                    elif mouse_event_type == 'up':
+                        mouse_symbol = "🖱️⬆ "
+                        pos_str = f"위치: {event['position']}"
+                        if event.get('is_relative', False):
+                            pos_str += " (상대)"
+                        event_details = f"{mouse_symbol}마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
                     elif mouse_event_type == 'double':
+                        mouse_symbol = "🖱️🔄 "
                         pos_str = f"위치: {event['position']}"
                         if event.get('is_relative', False):
                             pos_str += " (상대)"
-                        event_details = f"마우스 더블클릭 - 버튼: {event['button']} - {pos_str}"
+                        event_details = f"{mouse_symbol}마우스 더블클릭 - 버튼: {event['button']} - {pos_str}"
                     elif mouse_event_type == 'scroll':
+                        mouse_symbol = "🖱️🔄 "
                         pos_str = f"위치: {event['position']}"
                         if event.get('is_relative', False):
                             pos_str += " (상대)"
-                        event_details = f"마우스 스크롤 - 델타: {event['delta']} - {pos_str}"
+                        event_details = f"{mouse_symbol}마우스 스크롤 - 델타: {event['delta']} - {pos_str}"
                     
                     self.event_listbox.insert(tk.END, f"[{i+1}] {event_details}")
+                    # 마우스 이벤트는 배경색 설정
+                    self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFE0'})
         
         # 녹화 중이 아닐 때만 선택된 항목 복원
         if not self.recorder.recording:
@@ -898,32 +952,53 @@ class MacroGUI:
             if event_type == 'delay':
                 # 딜레이 이벤트는 독립적으로 표시
                 delay_time = event['delay']
-                event_details = f"딜레이: {delay_time:.2f}초"
+                event_details = f"⏱️ 딜레이: {delay_time:.2f}초"
             elif event_type == 'keyboard':
-                event_details = f"키보드 {event['event_type']} - {event['key']}"
+                key_event = event['event_type']
+                key_symbol = "⌨️ "
+                # 키보드 이벤트 아이콘 구분
+                if key_event == 'down':
+                    key_symbol = "⌨️⬇ "
+                elif key_event == 'up':
+                    key_symbol = "⌨️⬆ "
+                
+                event_details = f"{key_symbol}키보드 {event['event_type']} - {event['key']}"
             elif event_type == 'mouse':
                 mouse_event_type = event['event_type']
+                mouse_symbol = "🖱️ "
+                
+                # 마우스 이벤트별 아이콘 추가
                 if mouse_event_type == 'move':
+                    mouse_symbol = "🖱️➡️ "
                     pos_str = f"위치: {event['position']}"
                     # 상대 좌표인 경우 표시
                     if event.get('is_relative', False):
                         pos_str += " (상대)"
-                    event_details = f"마우스 이동 - {pos_str}"
-                elif mouse_event_type in ['up', 'down']:
+                    event_details = f"{mouse_symbol}마우스 이동 - {pos_str}"
+                elif mouse_event_type == 'down':
+                    mouse_symbol = "🖱️⬇ "
                     pos_str = f"위치: {event['position']}"
                     if event.get('is_relative', False):
                         pos_str += " (상대)"
-                    event_details = f"마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
+                    event_details = f"{mouse_symbol}마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
+                elif mouse_event_type == 'up':
+                    mouse_symbol = "🖱️⬆ "
+                    pos_str = f"위치: {event['position']}"
+                    if event.get('is_relative', False):
+                        pos_str += " (상대)"
+                    event_details = f"{mouse_symbol}마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
                 elif mouse_event_type == 'double':
+                    mouse_symbol = "🖱️🔄 "
                     pos_str = f"위치: {event['position']}"
                     if event.get('is_relative', False):
                         pos_str += " (상대)"
-                    event_details = f"마우스 더블클릭 - 버튼: {event['button']} - {pos_str}"
+                    event_details = f"{mouse_symbol}마우스 더블클릭 - 버튼: {event['button']} - {pos_str}"
                 elif mouse_event_type == 'scroll':
+                    mouse_symbol = "🖱️🔄 "
                     pos_str = f"위치: {event['position']}"
                     if event.get('is_relative', False):
                         pos_str += " (상대)"
-                    event_details = f"마우스 스크롤 - 델타: {event['delta']} - {pos_str}"
+                    event_details = f"{mouse_symbol}마우스 스크롤 - 델타: {event['delta']} - {pos_str}"
             
             # 필터 적용
             include = True
@@ -945,6 +1020,15 @@ class MacroGUI:
             # 필터 통과한 이벤트만 표시
             if include:
                 self.event_listbox.insert(tk.END, f"[{displayed_index}] {event_details}")
+                
+                # 이벤트 타입별 배경색 설정
+                if event_type == 'delay':
+                    self.event_listbox.itemconfig(tk.END, {'bg': '#FFE0E0'})
+                elif event_type == 'keyboard':
+                    self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFFF'})
+                elif event_type == 'mouse':
+                    self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFE0'})
+                
                 filtered_count += 1
                 displayed_index += 1
         
