@@ -54,6 +54,9 @@ class SimpleGUI:
         self.use_relative_coords = tk.BooleanVar(value=False)
         self.record_keyboard = tk.BooleanVar(value=True)
         
+        # 무한 반복 설정
+        self.infinite_repeat = tk.BooleanVar(value=False)
+        
         # 이벤트 선택 관련
         self.selected_events = []
         self.restore_selection = True  # 선택 복원 여부 제어 플래그
@@ -137,6 +140,12 @@ class SimpleGUI:
         self.repeat_count = tk.StringVar(value="1")
         self.repeat_count_entry = ttk.Entry(repeat_frame, textvariable=self.repeat_count, width=5)
         self.repeat_count_entry.pack(side=tk.LEFT, padx=5)
+        
+        # 무한 반복 체크박스 추가
+        self.infinite_checkbox = ttk.Checkbutton(repeat_frame, text="무한 반복", 
+                                                variable=self.infinite_repeat,
+                                                command=self.toggle_infinite_repeat)
+        self.infinite_checkbox.pack(side=tk.LEFT, padx=5)
         
         # 오른쪽 프레임 - 이벤트 목록
         right_frame = ttk.LabelFrame(content_frame, text="이벤트 목록", padding=10)
@@ -444,14 +453,18 @@ class SimpleGUI:
             messagebox.showwarning("경고", "실행할 이벤트가 없습니다.")
             return
         
-        # 반복 횟수 설정
-        try:
-            repeat_count = int(self.repeat_count.get())
-            if repeat_count <= 0:
+        # 무한 반복 또는 반복 횟수 설정
+        if self.infinite_repeat.get():
+            repeat_count = 0  # player.py에서 0은 무한 반복을 의미
+        else:
+            # 반복 횟수 설정
+            try:
+                repeat_count = int(self.repeat_count.get())
+                if repeat_count <= 0:
+                    repeat_count = 1
+            except ValueError:
                 repeat_count = 1
-        except ValueError:
-            repeat_count = 1
-            self.repeat_count.set("1")
+                self.repeat_count.set("1")
         
         # 매크로 실행
         self.update_status(f"매크로 '{macro_name}' 실행 중...")
@@ -789,3 +802,14 @@ class SimpleGUI:
             self.stop_recording()
         else:
             self.start_recording() 
+    
+    def toggle_infinite_repeat(self):
+        """무한 반복 토글 시 호출되는 함수"""
+        if self.infinite_repeat.get():
+            # 무한 반복이 체크되면 반복 횟수 입력란 비활성화
+            self.repeat_count_entry.config(state=tk.DISABLED)
+            self.repeat_count.set("∞")
+        else:
+            # 무한 반복이 해제되면 반복 횟수 입력란 활성화
+            self.repeat_count_entry.config(state=tk.NORMAL)
+            self.repeat_count.set("1") 
