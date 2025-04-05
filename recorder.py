@@ -69,7 +69,9 @@ class MacroRecorder:
                 'delay': elapsed
             }
             self.events.append(delay_event)
-            print(f"딜레이 감지: {elapsed:.2f}초")
+            # 초 단위를 밀리초 단위로 변환하여 출력
+            elapsed_ms = int(elapsed * 1000)
+            print(f"딜레이 감지: {elapsed_ms}ms")
         
         # 마지막 이벤트 시간 업데이트
         self.last_event_time = current_time

@@ -193,4 +193,92 @@ class MacroEditor:
             self.current_events.append(new_event)
         
         self.modified = True
+        return True
+        
+    def modify_all_delays(self, multiplier):
+        """모든 딜레이 이벤트의 딜레이 시간을 주어진 배수로 조정"""
+        if not self.current_events:
+            return False
+            
+        # 딜레이 이벤트가 있는지 확인
+        has_delay_event = False
+        for event in self.current_events:
+            if event['type'] == 'delay':
+                has_delay_event = True
+                break
+                
+        if not has_delay_event:
+            return False
+            
+        # 모든 딜레이 이벤트의 딜레이 시간 수정
+        for event in self.current_events:
+            if event['type'] == 'delay':
+                event['delay'] *= multiplier
+                
+        self.modified = True
+        return True
+        
+    def set_delay_time(self, index, new_delay_time):
+        """특정 인덱스의 딜레이 이벤트 시간을 직접 설정"""
+        if not self.current_events:
+            return False
+            
+        if index < 0 or index >= len(self.current_events):
+            return False
+            
+        event = self.current_events[index]
+        if event['type'] != 'delay':
+            return False
+            
+        # 딜레이 시간 직접 설정
+        event['delay'] = new_delay_time
+        self.modified = True
+        return True
+        
+    def set_selected_delays_time(self, indices, new_delay_time):
+        """여러 선택된 딜레이 이벤트의 시간을 직접 설정"""
+        if not self.current_events or not indices:
+            return False
+            
+        # 유효한 인덱스와 딜레이 이벤트인지 확인
+        valid_delay_indices = []
+        for idx in indices:
+            if 0 <= idx < len(self.current_events):
+                if self.current_events[idx]['type'] == 'delay':
+                    valid_delay_indices.append(idx)
+        
+        if not valid_delay_indices:
+            return False
+            
+        # 선택된 모든 딜레이 이벤트 시간 설정
+        for idx in valid_delay_indices:
+            self.current_events[idx]['delay'] = new_delay_time
+            
+        self.modified = True
+        return True
+        
+    def move_event_up(self, index):
+        """선택한 이벤트를 위로 이동"""
+        if index <= 0 or index >= len(self.current_events):
+            return False
+            
+        # 이벤트 교환
+        self.current_events[index], self.current_events[index-1] = (
+            self.current_events[index-1], self.current_events[index]
+        )
+        
+        self.modified = True
+        return True
+        
+    def move_event_down(self, index):
+        """선택한 이벤트를 아래로 이동"""
+        if index < 0 or index >= len(self.current_events) - 1:
+            return False
+            
+        # 이벤트 교환
+        self.current_events[index], self.current_events[index+1] = (
+            self.current_events[index+1], self.current_events[index]
+        )
+        
+        self.modified = True
         return True 
