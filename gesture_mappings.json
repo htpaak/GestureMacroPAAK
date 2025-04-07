@@ -2,5 +2,6 @@
   "SHIFT+\u2192\u2193\u2190\u2193\u2192": "gesture_SHIFT+\u2192\u2193\u2190\u2193\u2192.json",
   "SHIFT+\u2193\u2192": "gesture_SHIFT+_DOWN__RIGHT_.json",
   "SHIFT+\u2193\u2190\u2191": "gesture_SHIFT+_DOWN__LEFT__UP_.json",
-  "SHIFT+\u2192\u2193\u2190": "gesture_SHIFT+_RIGHT__DOWN__LEFT_.json"
+  "SHIFT+\u2192\u2193\u2190": "gesture_SHIFT+_RIGHT__DOWN__LEFT_.json",
+  "SHIFT+\u2193\u2192\u2191": "gesture_SHIFT+_DOWN__RIGHT__UP_.json"
 }

@@ -48,6 +48,10 @@ class SimpleGUI:
         # 현재 녹화 중인 제스처
         self.current_gesture = None
         
+        # 현재 선택된 제스처 (포커스 유지를 위한 변수)
+        self.selected_gesture_index = None
+        self.selected_gesture_name = None
+        
         # 실시간 업데이트 관련
         self.update_timer = None
         self.update_interval = 100  # 0.1초마다 업데이트
@@ -75,6 +79,9 @@ class SimpleGUI:
         main_frame = ttk.Frame(self.root, padding=20)  # 패딩 증가
         main_frame.pack(fill=tk.BOTH, expand=True)
         
+        # 윈도우 전체에 클릭 이벤트 바인딩 - 제스처 선택 유지
+        self.root.bind('<Button-1>', lambda e: self.root.after(10, self.ensure_gesture_selection))
+        
         # 상단 제어 프레임
         control_frame = ttk.LabelFrame(main_frame, text="제스처 매크로 제어", padding=15)  # 패딩 증가
         control_frame.pack(fill=tk.X, pady=(0, 15))  # 하단 패딩 증가
@@ -100,6 +107,12 @@ class SimpleGUI:
                                   command=self.stop_recording, state=tk.DISABLED)
         self.stop_btn.pack(side=tk.LEFT, padx=10)  # 패딩 증가
         
+        # 저장 버튼 추가
+        self.save_btn = ttk.Button(button_frame, text="저장", 
+                                  width=15,  # 버튼 너비 추가
+                                  command=self.save_macro, state=tk.NORMAL)  # 항상 활성화 상태로 변경
+        self.save_btn.pack(side=tk.LEFT, padx=10)  # 패딩 증가
+        
         # 녹화 상태 표시
         self.record_status = ttk.Label(control_frame, text="준비", foreground="black")
         self.record_status.pack(anchor=tk.W, pady=(5, 0))
@@ -120,7 +133,8 @@ class SimpleGUI:
         gesture_scrollbar = ttk.Scrollbar(gesture_frame)
         gesture_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.gesture_listbox = tk.Listbox(gesture_frame, font=('Consolas', 11), height=15)
+        self.gesture_listbox = tk.Listbox(gesture_frame, font=('Consolas', 11), height=15, 
+                                         exportselection=False)  # exportselection=False로 설정하여 포커스가 빠져도 선택 유지
         self.gesture_listbox.pack(fill=tk.BOTH, expand=True)
         self.gesture_listbox.config(yscrollcommand=gesture_scrollbar.set, 
                                    selectbackground='#4a6cd4', 
@@ -129,6 +143,8 @@ class SimpleGUI:
         
         # 제스처 선택 이벤트 바인딩 - 이벤트 목록 업데이트
         self.gesture_listbox.bind('<<ListboxSelect>>', self.on_gesture_select)
+        # 포커스 이벤트 바인딩 - 포커스가 사라져도 선택 유지
+        self.gesture_listbox.bind('<FocusOut>', self.maintain_gesture_selection)
         
         # 제스처 목록 아래 버튼 프레임
         gesture_btn_frame = ttk.Frame(gesture_frame)
@@ -294,6 +310,7 @@ class SimpleGUI:
         # 버튼 상태 변경
         self.record_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.NORMAL)
+        # self.save_btn.config(state=tk.DISABLED) 라인 제거 - 저장 버튼은 항상 활성화 상태 유지
         
         # 녹화 상태 표시
         self.record_status.config(text="녹화 중", foreground="red")
@@ -347,8 +364,10 @@ class SimpleGUI:
         # 제스처에 대한 매크로 녹화인 경우 자동 저장
         if self.current_gesture:
             self.save_gesture_macro()
+            # self.save_btn.config(state=tk.DISABLED) 라인 제거 - 저장 버튼은 항상 활성화 상태 유지
         else:
             # 일반 매크로 녹화인 경우 저장 준비
+            # self.save_btn.config(state=tk.NORMAL) 라인 제거 - 저장 버튼은 항상 활성화 상태 유지
             self.update_status("녹화 완료. 저장하려면 '저장' 버튼을 클릭하세요.")
     
     def save_gesture_macro(self):
@@ -379,28 +398,53 @@ class SimpleGUI:
         self.current_gesture = None
     
     def save_macro(self):
-        """일반 매크로 저장"""
-        if not self.recorder.events:
-            messagebox.showwarning("저장 오류", "녹화된 이벤트가 없습니다.")
+        """매크로 저장 - 선택된 제스처에 이벤트 직접 저장"""
+        # 현재 이벤트 목록 가져오기
+        events = None
+        if self.recorder.recording:
+            events = self.recorder.events
+        elif hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+            events = self.editor.get_events()
+        elif hasattr(self.editor, 'events'):
+            events = self.editor.events
+        
+        # 이벤트가 없으면 경고 표시
+        if not events:
+            messagebox.showwarning("저장 오류", "저장할 이벤트가 없습니다.")
             return
         
-        # 매크로 이름 입력 받기
-        macro_name = simpledialog.askstring("매크로 저장", "매크로 이름을 입력하세요:")
+        # 선택된 제스처 확인 - 내부 변수 사용
+        selected_gesture = self.selected_gesture_name
         
-        if not macro_name:
-            return
+        # 추가 확인: 리스트박스에서 현재 선택을 확인
+        if not selected_gesture and self.gesture_listbox and self.gesture_listbox.curselection():
+            selected_index = self.gesture_listbox.curselection()[0]
+            selected_gesture = self.gesture_listbox.get(selected_index)
+            # 내부 변수 업데이트
+            self.selected_gesture_index = selected_index
+            self.selected_gesture_name = selected_gesture
         
-        # 매크로 저장
-        if self.storage.save_macro(self.recorder.events, macro_name):
-            messagebox.showinfo("저장 완료", f"매크로 '{macro_name}'이(가) 저장되었습니다.")
-            self.update_status(f"매크로 '{macro_name}'이(가) 저장되었습니다.")
+        # 선택된 제스처가 있으면 해당 제스처에 매크로 저장
+        if selected_gesture and self.gesture_manager:
+            success = self.gesture_manager.save_macro_for_gesture(selected_gesture, events)
+            
+            if success:
+                messagebox.showinfo("저장 완료", f"제스처 '{selected_gesture}'에 매크로가 저장되었습니다.")
+                self.update_status(f"제스처 '{selected_gesture}'에 매크로가 저장되었습니다.")
+            else:
+                messagebox.showerror("저장 오류", "매크로 저장 중 오류가 발생했습니다.")
+                self.update_status("매크로 저장 중 오류가 발생했습니다.")
         else:
-            messagebox.showerror("저장 오류", "매크로 저장 중 오류가 발생했습니다.")
-            self.update_status("매크로 저장 중 오류가 발생했습니다.")
+            # 선택된 제스처가 없을 경우 경고
+            messagebox.showwarning("선택 오류", "저장할 제스처를 먼저 선택하세요.")
+            self.update_status("저장할 제스처를 먼저 선택하세요.")
     
     def update_gesture_list(self):
         """제스처 목록 업데이트"""
         print("update_gesture_list 함수 호출됨")  # 디버깅 로그
+        
+        # 업데이트 전 현재 선택 저장
+        previously_selected_gesture = self.selected_gesture_name
         
         # 리스트박스 초기화
         if self.gesture_listbox:
@@ -422,6 +466,9 @@ class SimpleGUI:
         
         if not gestures:
             print("제스처 목록이 비어있습니다")
+            # 선택 정보 초기화
+            self.selected_gesture_index = None
+            self.selected_gesture_name = None
             return
             
         print(f"제스처 목록: {gestures}")
@@ -431,6 +478,20 @@ class SimpleGUI:
             self.gesture_listbox.insert(tk.END, gesture)
             
         print(f"제스처 목록 업데이트 완료: {self.gesture_listbox.size()} 개의 제스처")
+        
+        # 이전 선택 복원
+        if previously_selected_gesture and previously_selected_gesture in gestures:
+            idx = gestures.index(previously_selected_gesture)
+            self.gesture_listbox.selection_set(idx)
+            self.selected_gesture_index = idx
+            self.selected_gesture_name = previously_selected_gesture
+            print(f"이전 선택 제스처 복원됨: {previously_selected_gesture}")  # 디버깅 로그
+        elif self.gesture_listbox.size() > 0:
+            # 이전 선택이 없으면 첫 번째 항목 선택
+            self.gesture_listbox.selection_set(0)
+            self.selected_gesture_index = 0
+            self.selected_gesture_name = gestures[0]
+            print(f"첫 번째 제스처 선택됨: {gestures[0]}")  # 디버깅 로그
     
     def delete_gesture(self):
         """제스처 매핑 삭제"""
@@ -1267,6 +1328,10 @@ class SimpleGUI:
         gesture = self.gesture_listbox.get(selected[0])
         print(f"선택된 제스처: {gesture}")  # 디버깅 로그 추가
         
+        # 선택된 제스처 정보 저장 (포커스 유지를 위함)
+        self.selected_gesture_index = selected[0]
+        self.selected_gesture_name = gesture
+        
         # 이벤트 목록 클리어
         self.event_listbox.delete(0, tk.END)
         
@@ -1443,3 +1508,34 @@ class SimpleGUI:
                     print(f"일반 이벤트 더블 클릭: {index}")  # 디버깅 로그 추가
                     # 일반 이벤트에 대한 정보 표시
                     messagebox.showinfo("이벤트 정보", f"이벤트 #{index+1}\n유형: {event_type}")
+
+    def maintain_gesture_selection(self, event):
+        """포커스가 사라져도 선택 유지"""
+        # 저장된 선택 인덱스가 있으면 복원
+        if self.selected_gesture_index is not None:
+            # 선택 복원
+            self.gesture_listbox.selection_clear(0, tk.END)
+            self.gesture_listbox.selection_set(self.selected_gesture_index)
+            print(f"제스처 선택 유지: {self.selected_gesture_name} (인덱스: {self.selected_gesture_index})")  # 디버깅 로그
+
+    def ensure_gesture_selection(self):
+        """제스처 선택 상태를 확인하고 유지"""
+        if self.gesture_listbox:
+            # 현재 리스트박스에서 선택된 항목 확인
+            current_selection = self.gesture_listbox.curselection()
+            
+            # 리스트박스에 선택이 없지만 내부 변수에 선택 정보가 있는 경우
+            if not current_selection and self.selected_gesture_index is not None:
+                # 선택 복원
+                try:
+                    if self.selected_gesture_index < self.gesture_listbox.size():
+                        self.gesture_listbox.selection_set(self.selected_gesture_index)
+                        print(f"제스처 선택 복원됨: {self.selected_gesture_name}")  # 디버깅 로그
+                except Exception as e:
+                    print(f"제스처 선택 복원 중 오류: {e}")
+            # 리스트박스에 선택이 있는데 내부 변수와 다른 경우
+            elif current_selection and current_selection[0] != self.selected_gesture_index:
+                # 내부 변수 업데이트
+                self.selected_gesture_index = current_selection[0]
+                self.selected_gesture_name = self.gesture_listbox.get(current_selection[0])
+                print(f"제스처 선택 업데이트됨: {self.selected_gesture_name}")  # 디버깅 로그
