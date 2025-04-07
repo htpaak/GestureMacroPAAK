@@ -1,0 +1,97 @@
+{
+  "name": "1.json",
+  "created_at": "2025-04-07T14:52:50.075306",
+  "events": [
+    {
+      "type": "mouse",
+      "event_type": "down",
+      "button": "left",
+      "time": 0.45146942138671875,
+      "position": [
+        1288,
+        670
+      ],
+      "is_relative": false
+    },
+    {
+      "type": "delay",
+      "time": 0.5345761051177979,
+      "delay": 0.0841066837310791
+    },
+    {
+      "type": "mouse",
+      "event_type": "up",
+      "button": "left",
+      "time": 0.5355761051177979,
+      "position": [
+        1288,
+        670
+      ],
+      "is_relative": false
+    },
+    {
+      "type": "delay",
+      "time": 1.0683657398223878,
+      "delay": 0.5337896347045898
+    },
+    {
+      "type": "mouse",
+      "event_type": "down",
+      "button": "left",
+      "time": 1.0693657398223877,
+      "position": [
+        1498,
+        812
+      ],
+      "is_relative": false
+    },
+    {
+      "type": "delay",
+      "time": 1.1589700450897218,
+      "delay": 0.09060430526733398
+    },
+    {
+      "type": "mouse",
+      "event_type": "up",
+      "button": "left",
+      "time": 1.1599700450897217,
+      "position": [
+        1498,
+        812
+      ],
+      "is_relative": false
+    },
+    {
+      "type": "delay",
+      "time": 2.0576559772491456,
+      "delay": 0.8986859321594238
+    },
+    {
+      "type": "mouse",
+      "event_type": "down",
+      "button": "left",
+      "time": 2.0586559772491455,
+      "position": [
+        1119,
+        496
+      ],
+      "is_relative": false
+    },
+    {
+      "type": "delay",
+      "time": 2.145773099899292,
+      "delay": 0.08811712265014648
+    },
+    {
+      "type": "mouse",
+      "event_type": "up",
+      "button": "left",
+      "time": 2.146773099899292,
+      "position": [
+        1119,
+        496
+      ],
+      "is_relative": false
+    }
+  ]
+}

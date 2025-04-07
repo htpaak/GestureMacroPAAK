@@ -404,8 +404,8 @@ class SimpleGUI:
             if not messagebox.askyesno("덮어쓰기 확인", f"'{macro_name}' 매크로가 이미 존재합니다. 덮어쓰시겠습니까?"):
                 return
         
-        # 매크로 저장
-        if self.storage.save_macro(macro_name, self.editor.get_events()):
+        # 매크로 저장 - 인자 순서 수정 (이벤트를 먼저, 이름을 나중에)
+        if self.storage.save_macro(self.editor.get_events(), macro_name):
             self.update_macro_list()
             self.update_status(f"매크로 '{macro_name}'이(가) 저장되었습니다.")
             self.editor.modified = False
