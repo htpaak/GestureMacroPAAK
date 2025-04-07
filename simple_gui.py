@@ -4,6 +4,7 @@ import time
 import mouse
 import keyboard
 import os
+import copy
 
 class SimpleGUI:
     def __init__(self, root, recorder, player, editor, storage, gesture_manager=None):
@@ -168,7 +169,8 @@ class SimpleGUI:
         event_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # SINGLE 대신 EXTENDED 모드 사용 (다중 선택 가능)
-        self.event_listbox = tk.Listbox(right_frame, font=('Consolas', 11), selectmode=tk.EXTENDED)
+        self.event_listbox = tk.Listbox(right_frame, font=('Consolas', 11), selectmode=tk.EXTENDED, 
+                                       activestyle='dotbox', highlightthickness=2)
         self.event_listbox.pack(fill=tk.BOTH, expand=True)
         self.event_listbox.config(yscrollcommand=event_scrollbar.set, 
                                  selectbackground='#4a6cd4', 
@@ -177,6 +179,8 @@ class SimpleGUI:
         
         # 선택 변경 이벤트 바인딩
         self.event_listbox.bind('<<ListboxSelect>>', self.on_event_select)
+        # 더블 클릭 이벤트 바인딩 추가
+        self.event_listbox.bind('<Double-1>', self.on_event_double_click)
         
         # 이벤트 목록 아래 버튼 프레임
         event_btn_frame = ttk.Frame(right_frame)
@@ -503,6 +507,7 @@ class SimpleGUI:
     # 나머지 기존 함수들 유지
     def update_event_list(self):
         """이벤트 목록 업데이트"""
+        print("update_event_list 함수 호출됨")  # 디버깅 로그 추가
         # 현재 선택된 항목 기억 (리스트박스에서 직접 선택한 경우만)
         if not self.selected_events:
             selected_indices = self.event_listbox.curselection()
@@ -527,14 +532,85 @@ class SimpleGUI:
                 # 새 이벤트가 추가될 때마다 항상 마지막 항목으로 스크롤
                 self.event_listbox.see(tk.END)
         else:
-            events = self.editor.get_events()
+            events = None
+            # editor.get_events() 메서드 확인
+            if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+                try:
+                    events = self.editor.get_events()
+                    print(f"에디터에서 이벤트 {len(events)}개 로드함")  # 디버깅 로그 추가
+                except Exception as e:
+                    print(f"get_events 호출 중 오류: {e}")  # 디버깅 로그 추가
+                    events = []
+            # events 속성 직접 접근
+            elif hasattr(self.editor, 'events'):
+                try:
+                    events = self.editor.events
+                    print(f"에디터 events 속성에서 {len(events)}개 로드함")  # 디버깅 로그 추가
+                except Exception as e:
+                    print(f"events 속성 접근 중 오류: {e}")  # 디버깅 로그 추가
+                    events = []
+            else:
+                print("에디터에서 이벤트를 가져올 수 없음")  # 디버깅 로그 추가
+                events = []
+            
+            # 선택된 제스처가 있고 events가 비어있는 경우 제스처의 매크로 로드 시도
+            if not events and hasattr(self, 'gesture_listbox'):
+                print("에디터에 이벤트가 없어 제스처의 매크로 로드 시도")  # 디버깅 로그 추가
+                selected_gesture = self.gesture_listbox.curselection()
+                if selected_gesture:
+                    gesture = self.gesture_listbox.get(selected_gesture[0])
+                    print(f"선택된 제스처: {gesture}")  # 디버깅 로그 추가
+                    
+                    # 제스처에 대한 매크로 로드 시도
+                    if self.gesture_manager and gesture in self.gesture_manager.gesture_mappings:
+                        macro_name = self.gesture_manager.gesture_mappings[gesture]
+                        full_path = os.path.join("macros", macro_name)
+                        
+                        try:
+                            # 파일이 없으면 대체 경로 시도
+                            if not os.path.exists(full_path):
+                                safe_gesture = gesture.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
+                                alternative_path = os.path.join("macros", f"gesture_{safe_gesture}.json")
+                                
+                                if os.path.exists(alternative_path):
+                                    full_path = alternative_path
+                            
+                            # 파일이 존재하면 읽기
+                            if os.path.exists(full_path):
+                                print(f"매크로 파일 로드: {full_path}")  # 디버깅 로그 추가
+                                with open(full_path, 'r') as f:
+                                    import json
+                                    macro_data = json.load(f)
+                                
+                                print(f"매크로 데이터 로드됨: {len(macro_data)}개 이벤트")  # 디버깅 로그 추가
+                                
+                                # 에디터에 이벤트 설정
+                                if hasattr(self.editor, 'load_events'):
+                                    print("editor.load_events 호출")  # 디버깅 로그 추가
+                                    self.editor.load_events(macro_data)
+                                elif hasattr(self.editor, 'events'):
+                                    print("editor.events에 직접 할당")  # 디버깅 로그 추가
+                                    import copy
+                                    self.editor.events = copy.deepcopy(macro_data)
+                                
+                                # events 변수 업데이트
+                                events = macro_data
+                            else:
+                                print(f"매크로 파일을 찾을 수 없음: {full_path}")  # 디버깅 로그 추가
+                        except Exception as e:
+                            print(f"매크로 로드 중 오류: {e}")  # 디버깅 로그 추가
+                            import traceback
+                            traceback.print_exc()
             
             if not events:
+                print("표시할 이벤트 없음")  # 디버깅 로그 추가
                 return
             
             # 이벤트 표시
             for i, event in enumerate(events):
                 self.display_event(event, i)
+            
+            print(f"{len(events)}개 이벤트 표시됨")  # 디버깅 로그 추가
         
         # 녹화 중이 아닐 때만 선택된 항목 복원 (move_event_up/down에서 호출될 때는 복원하지 않음)
         # self.restore_selection 플래그를 사용하여 선택 복원 여부 제어
@@ -546,6 +622,7 @@ class SimpleGUI:
             for idx in self.selected_events:
                 if idx < self.event_listbox.size():
                     self.event_listbox.selection_set(idx)
+                    print(f"이벤트 {idx}번 선택 복원됨")  # 디버깅 로그 추가
         
         # 녹화 중이면 주기적으로 업데이트
         if self.recorder.recording:
@@ -554,6 +631,7 @@ class SimpleGUI:
     def display_event(self, event, index):
         """개별 이벤트 표시"""
         event_type = event['type']
+        event_idx = f"[{index+1}] "
         
         # 이벤트 유형에 따라 표시 방식 다르게 처리
         if event_type == 'delay':
@@ -561,7 +639,7 @@ class SimpleGUI:
             delay_time = event['delay']
             delay_time_ms = int(delay_time * 1000)
             event_details = f"⏱️ 딜레이: {delay_time_ms}ms"
-            self.event_listbox.insert(tk.END, f"[{index+1}] {event_details}")
+            self.event_listbox.insert(tk.END, f"{event_idx}{event_details}")
             self.event_listbox.itemconfig(tk.END, {'bg': '#FFE0E0'})
             
         elif event_type == 'keyboard':
@@ -573,7 +651,7 @@ class SimpleGUI:
                 key_symbol = "⌨️⬆ "
             
             event_details = f"{key_symbol}키보드 {event['event_type']} - {event['key']}"
-            self.event_listbox.insert(tk.END, f"[{index+1}] {event_details}")
+            self.event_listbox.insert(tk.END, f"{event_idx}{event_details}")
             self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFFF'})
             
         elif event_type == 'mouse':
@@ -611,40 +689,99 @@ class SimpleGUI:
                     pos_str += " (상대)"
                 event_details = f"{mouse_symbol}마우스 스크롤 - 델타: {event['delta']} - {pos_str}"
             
-            self.event_listbox.insert(tk.END, f"[{index+1}] {event_details}")
+            self.event_listbox.insert(tk.END, f"{event_idx}{event_details}")
             self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFE0'})
-            
+        
+        # 마지막 추가된 항목에 해당 유형별 태그 설정
+        self.event_listbox.itemconfig(tk.END, {'selectbackground': '#3a5aa4', 'selectforeground': 'white'})
+    
     def delete_selected_event(self):
         """선택한 이벤트 삭제"""
+        print("delete_selected_event 함수 호출됨")  # 디버깅 로그 추가
         # 녹화 중에는 편집 불가
         if self.recorder.recording:
+            print("녹화 중 - 이벤트 삭제 불가")  # 디버깅 로그 추가
             messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
             return
             
         selected = self.event_listbox.curselection()
+        print(f"선택된 이벤트: {selected}")  # 디버깅 로그 추가
         if not selected:
             messagebox.showwarning("경고", "삭제할 이벤트를 선택하세요.")
             return
         
         # 선택한 인덱스 목록
         selected_indices = list(selected)
+        print(f"삭제할 인덱스: {selected_indices}")  # 디버깅 로그 추가
+        
+        # 인덱스 유효성 확인
+        events = []
+        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+            events = self.editor.get_events()
+        elif hasattr(self.editor, 'events'):
+            events = self.editor.events
+            
+        print(f"현재 이벤트 개수: {len(events)}")  # 디버깅 로그 추가
+            
+        # 유효하지 않은 인덱스가 있는지 확인
+        invalid_indices = [idx for idx in selected_indices if idx >= len(events)]
+        if invalid_indices:
+            print(f"유효하지 않은 인덱스: {invalid_indices}")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "선택한 이벤트 중 일부가 존재하지 않습니다.")
+            return
         
         # 여러 이벤트 삭제
-        if self.editor.delete_events(selected_indices):
+        delete_result = False
+        try:
+            # delete_events 메서드가 있으면 사용
+            if hasattr(self.editor, 'delete_events') and callable(self.editor.delete_events):
+                print("editor.delete_events 메소드 사용")  # 디버깅 로그 추가
+                delete_result = self.editor.delete_events(selected_indices)
+            # events 속성 직접 접근 (대안 방법)
+            elif hasattr(self.editor, 'events'):
+                print("events 속성 직접 접근하여 삭제")  # 디버깅 로그 추가
+                # 내림차순으로 정렬하여 인덱스 변화 방지
+                sorted_indices = sorted(selected_indices, reverse=True)
+                for idx in sorted_indices:
+                    if 0 <= idx < len(self.editor.events):
+                        del self.editor.events[idx]
+                delete_result = True
+            else:
+                print("삭제 방법 없음")  # 디버깅 로그 추가
+                messagebox.showerror("오류", "에디터가 이벤트 삭제를 지원하지 않습니다.")
+                return
+        except Exception as e:
+            print(f"삭제 중 예외 발생: {e}")  # 디버깅 로그 추가
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("오류", f"이벤트 삭제 중 오류가 발생했습니다: {e}")
+            return
+        
+        if delete_result:
+            print("이벤트 삭제 성공")  # 디버깅 로그 추가
+            # 선택 해제
+            self.clear_selection()
+            
+            # 이벤트 목록 업데이트
             self.update_event_list()
+            
             self.update_status(f"{len(selected_indices)}개 이벤트 삭제 완료")
         else:
+            print("이벤트 삭제 실패")  # 디버깅 로그 추가
             messagebox.showerror("오류", "이벤트 삭제에 실패했습니다.")
     
     def add_delay_to_event(self):
         """이벤트 사이에 딜레이 추가"""
+        print("add_delay_to_event 함수 호출됨")  # 디버깅 로그 추가
         # 녹화 중에는 편집 불가
         if self.recorder.recording:
+            print("녹화 중 - 딜레이 추가 불가")  # 디버깅 로그 추가
             messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
             return
         
         # 선택한 이벤트 인덱스
         selected = self.event_listbox.curselection()
+        print(f"선택된 이벤트: {selected}")  # 디버깅 로그 추가
         if not selected:
             messagebox.showwarning("경고", "딜레이를 추가할 위치를 선택하세요.")
             return
@@ -653,7 +790,10 @@ class SimpleGUI:
         delay_time_ms = simpledialog.askinteger("딜레이 추가", "추가할 딜레이 시간(ms):", 
                                               minvalue=10, maxvalue=60000)
         if not delay_time_ms:
+            print("딜레이 시간 입력 취소")  # 디버깅 로그 추가
             return
+            
+        print(f"추가할 딜레이: {delay_time_ms}ms")  # 디버깅 로그 추가
         
         # 밀리초를 초 단위로 변환
         delay_time = delay_time_ms / 1000
@@ -662,14 +802,63 @@ class SimpleGUI:
         delay_event = {
             'type': 'delay',
             'delay': delay_time,
-            'time': 0
+            'time': 0  # 시간은 나중에 설정됨
         }
         
         # 선택한 이벤트 아래에 추가하기 위해 인덱스 + 1 위치에 삽입
         index = selected[0] + 1
+        print(f"삽입 위치: {index}")  # 디버깅 로그 추가
+        
+        # 이벤트 개수 확인
+        events = []
+        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+            events = self.editor.get_events()
+        elif hasattr(self.editor, 'events'):
+            events = self.editor.events
+            
+        print(f"현재 이벤트 개수: {len(events)}")  # 디버깅 로그 추가
+        
+        # 인덱스 유효성 검사
+        if selected[0] >= len(events):
+            print(f"유효하지 않은 인덱스: {selected[0]}")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "선택한 위치가 유효하지 않습니다.")
+            return
         
         # 에디터에 이벤트 추가
-        if self.editor.insert_event(index, delay_event):
+        insert_result = False
+        try:
+            # insert_event 메서드가 있으면 사용
+            if hasattr(self.editor, 'insert_event') and callable(self.editor.insert_event):
+                print("editor.insert_event 메소드 사용")  # 디버깅 로그 추가
+                insert_result = self.editor.insert_event(index, delay_event)
+            # events 속성 직접 접근 (대안 방법)
+            elif hasattr(self.editor, 'events'):
+                print("events 속성 직접 접근하여 삽입")  # 디버깅 로그 추가
+                # 이전 이벤트 시간 가져오기 (있다면)
+                if index > 0 and index <= len(self.editor.events):
+                    # 시간 정보가 있다면 설정
+                    if 'time' in self.editor.events[index-1]:
+                        delay_event['time'] = self.editor.events[index-1]['time'] + 0.001
+                    
+                # 삽입
+                if index <= len(self.editor.events):
+                    self.editor.events.insert(index, delay_event)
+                    insert_result = True
+                else:
+                    print(f"삽입 위치 범위 초과: {index} (총 {len(self.editor.events)}개)")
+            else:
+                print("삽입 방법 없음")  # 디버깅 로그 추가
+                messagebox.showerror("오류", "에디터가 이벤트 삽입을 지원하지 않습니다.")
+                return
+        except Exception as e:
+            print(f"삽입 중 예외 발생: {e}")  # 디버깅 로그 추가
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("오류", f"딜레이 추가 중 오류가 발생했습니다: {e}")
+            return
+        
+        if insert_result:
+            print("딜레이 이벤트 추가 성공")  # 디버깅 로그 추가
             # 선택 해제 및 저장
             self.restore_selection = False
             self.clear_selection()
@@ -685,41 +874,21 @@ class SimpleGUI:
             
             self.update_status(f"{delay_time_ms}ms 딜레이가 추가되었습니다.")
         else:
+            print("딜레이 이벤트 추가 실패")  # 디버깅 로그 추가
             messagebox.showerror("오류", "딜레이 추가에 실패했습니다.")
-            
-    def modify_all_delays(self):
-        """모든 딜레이 이벤트의 시간 수정"""
-        # 녹화 중에는 편집 불가
-        if self.recorder.recording:
-            messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
-            return
-            
-        if not self.editor.get_events():
-            messagebox.showwarning("경고", "편집할 이벤트가 없습니다.")
-            return
-        
-        # 배수 값 입력 받기
-        multiplier = simpledialog.askfloat("딜레이 수정", "딜레이 시간 배수 (0.5=절반, 2=두배):", 
-                                          minvalue=0.1, maxvalue=10.0)
-        if not multiplier:
-            return
-        
-        # 모든 딜레이 수정
-        if self.editor.modify_all_delays(multiplier):
-            self.update_event_list()
-            self.update_status(f"딜레이 시간이 {multiplier}배로 수정되었습니다.")
-        else:
-            messagebox.showwarning("경고", "수정할 딜레이 이벤트가 없습니다.")
-            
+    
     def modify_delay_time(self):
         """선택한 딜레이 이벤트의 시간을 직접 수정"""
+        print("modify_delay_time 함수 호출됨")  # 디버깅 로그 추가
         # 녹화 중에는 편집 불가
         if self.recorder.recording:
+            print("녹화 중 - 딜레이 수정 불가")  # 디버깅 로그 추가
             messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
             return
             
         # 현재 리스트박스에서 선택된 항목 가져오기
         selected = self.event_listbox.curselection()
+        print(f"선택된 이벤트: {selected}")  # 디버깅 로그 추가
         
         # 선택된 항목이 없으면 경고
         if not selected:
@@ -735,6 +904,7 @@ class SimpleGUI:
             if idx < len(events) and events[idx]['type'] == 'delay':
                 delay_indices.append(idx)
                 
+        print(f"딜레이 이벤트 인덱스: {delay_indices}")  # 디버깅 로그 추가
         if not delay_indices:
             messagebox.showwarning("경고", "선택한 항목 중 딜레이 이벤트가 없습니다.")
             return
@@ -743,13 +913,16 @@ class SimpleGUI:
         new_delay_time_ms = simpledialog.askinteger("딜레이 시간 설정", "새 딜레이 시간(ms):", 
                                                   minvalue=10, maxvalue=60000)
         if not new_delay_time_ms:
+            print("딜레이 시간 입력 취소")  # 디버깅 로그 추가
             return
             
+        print(f"새 딜레이 시간: {new_delay_time_ms}ms")  # 디버깅 로그 추가
         # 밀리초를 초 단위로 변환
         new_delay_time = new_delay_time_ms / 1000
         
         # 선택된 딜레이 이벤트 시간 수정
         if self.editor.set_selected_delays_time(delay_indices, new_delay_time):
+            print("딜레이 시간 수정 성공")  # 디버깅 로그 추가
             # 선택 저장
             self.selected_events = list(selected)
             
@@ -759,16 +932,20 @@ class SimpleGUI:
             msg = f"선택한 딜레이 이벤트({len(delay_indices)}개)의 시간이 {new_delay_time_ms}ms로 설정되었습니다."
             self.update_status(msg)
         else:
+            print("딜레이 시간 수정 실패")  # 디버깅 로그 추가
             messagebox.showerror("오류", "딜레이 시간 수정에 실패했습니다.")
     
     def select_all_events(self):
         """모든 이벤트 선택"""
+        print("select_all_events 함수 호출됨")  # 디버깅 로그 추가
         # 녹화 중에는 선택 불가
         if self.recorder.recording:
+            print("녹화 중 - 전체 선택 불가")  # 디버깅 로그 추가
             return
             
         # 이벤트 목록 크기 가져오기
         event_count = self.event_listbox.size()
+        print(f"이벤트 개수: {event_count}")  # 디버깅 로그 추가
         if event_count == 0:
             return
         
@@ -788,27 +965,81 @@ class SimpleGUI:
             self.event_listbox.see(0)  # 첫 번째 항목으로 스크롤
         
         self._skip_selection = False
+        print(f"전체 선택 완료: {len(self.selected_events)}개")  # 디버깅 로그 추가
         
         # 메시지 박스 표시 대신 상태바만 업데이트
         self.update_status(f"모든 이벤트({event_count}개)가 선택되었습니다.")
             
     def move_event_up(self):
         """선택한 이벤트를 위로 이동"""
+        print("move_event_up 함수 호출됨")  # 디버깅 로그 추가
         # 녹화 중에는 편집 불가
         if self.recorder.recording:
+            print("녹화 중 - 이벤트 이동 불가")  # 디버깅 로그 추가
             messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
             return
             
         # 선택한 이벤트 인덱스
         selected = self.event_listbox.curselection()
+        print(f"선택된 이벤트: {selected}")  # 디버깅 로그 추가
         if not selected or len(selected) != 1:
             messagebox.showwarning("경고", "위로 이동할 이벤트를 하나만 선택하세요.")
             return
             
         current_index = selected[0]
+        print(f"현재 인덱스: {current_index}")  # 디버깅 로그 추가
+            
+        # 0번 인덱스는 더 이상 위로 이동할 수 없음
+        if current_index <= 0:
+            print("첫 번째 이벤트는 더 이상 위로 이동할 수 없음")  # 디버깅 로그 추가
+            messagebox.showwarning("경고", "첫 번째 이벤트는 더 위로 이동할 수 없습니다.")
+            return
+            
+        # 이벤트 개수 확인
+        events = []
+        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+            events = self.editor.get_events()
+        elif hasattr(self.editor, 'events'):
+            events = self.editor.events
+            
+        print(f"현재 이벤트 개수: {len(events)}")  # 디버깅 로그 추가
+        
+        # 인덱스 유효성 검사
+        if current_index >= len(events):
+            print(f"유효하지 않은 인덱스: {current_index}")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "선택한 이벤트가 유효하지 않습니다.")
+            return
             
         # 이벤트 위로 이동
-        if self.editor.move_event_up(current_index):
+        move_result = False
+        try:
+            # 메서드가 있으면 사용
+            if hasattr(self.editor, 'move_event_up') and callable(self.editor.move_event_up):
+                print("editor.move_event_up 메소드 사용")  # 디버깅 로그 추가
+                move_result = self.editor.move_event_up(current_index)
+            # events 속성 직접 접근 (대안 방법)
+            elif hasattr(self.editor, 'events'):
+                print("events 속성 직접 접근하여 이벤트 이동")  # 디버깅 로그 추가
+                # 인덱스 유효성 확인
+                if 0 < current_index < len(self.editor.events):
+                    # 이벤트 교환
+                    self.editor.events[current_index], self.editor.events[current_index-1] = (
+                        self.editor.events[current_index-1], self.editor.events[current_index]
+                    )
+                    move_result = True
+            else:
+                print("이벤트 이동 방법 없음")  # 디버깅 로그 추가
+                messagebox.showerror("오류", "에디터가 이벤트 이동을 지원하지 않습니다.")
+                return
+        except Exception as e:
+            print(f"이동 중 예외 발생: {e}")  # 디버깅 로그 추가
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("오류", f"이벤트 이동 중 오류가 발생했습니다: {e}")
+            return
+        
+        if move_result:
+            print(f"이벤트 위로 이동 성공: {current_index} -> {current_index-1}")  # 디버깅 로그 추가
             # 이벤트 목록 업데이트 시 선택 복원하지 않도록 플래그 설정
             self.restore_selection = False
             
@@ -829,25 +1060,73 @@ class SimpleGUI:
             
             self.update_status("이벤트가 위로 이동되었습니다.")
         else:
+            print("이벤트 위로 이동 실패")  # 디버깅 로그 추가
             messagebox.showwarning("경고", "이벤트를 더 위로 이동할 수 없습니다.")
             
     def move_event_down(self):
         """선택한 이벤트를 아래로 이동"""
+        print("move_event_down 함수 호출됨")  # 디버깅 로그 추가
         # 녹화 중에는 편집 불가
         if self.recorder.recording:
+            print("녹화 중 - 이벤트 이동 불가")  # 디버깅 로그 추가
             messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
             return
             
         # 선택한 이벤트 인덱스
         selected = self.event_listbox.curselection()
+        print(f"선택된 이벤트: {selected}")  # 디버깅 로그 추가
         if not selected or len(selected) != 1:
             messagebox.showwarning("경고", "아래로 이동할 이벤트를 하나만 선택하세요.")
             return
             
         current_index = selected[0]
+        print(f"현재 인덱스: {current_index}")  # 디버깅 로그 추가
             
+        # 이벤트 개수 확인
+        events = []
+        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+            events = self.editor.get_events()
+        elif hasattr(self.editor, 'events'):
+            events = self.editor.events
+            
+        print(f"현재 이벤트 개수: {len(events)}")  # 디버깅 로그 추가
+        
+        # 인덱스 유효성 검사
+        if current_index >= len(events) - 1:
+            print(f"마지막 이벤트는 더 이상 아래로 이동할 수 없음: {current_index}")  # 디버깅 로그 추가
+            messagebox.showwarning("경고", "마지막 이벤트는 더 아래로 이동할 수 없습니다.")
+            return
+        
         # 이벤트 아래로 이동
-        if self.editor.move_event_down(current_index):
+        move_result = False
+        try:
+            # 메서드가 있으면 사용
+            if hasattr(self.editor, 'move_event_down') and callable(self.editor.move_event_down):
+                print("editor.move_event_down 메소드 사용")  # 디버깅 로그 추가
+                move_result = self.editor.move_event_down(current_index)
+            # events 속성 직접 접근 (대안 방법)
+            elif hasattr(self.editor, 'events'):
+                print("events 속성 직접 접근하여 이벤트 이동")  # 디버깅 로그 추가
+                # 인덱스 유효성 확인
+                if 0 <= current_index < len(self.editor.events) - 1:
+                    # 이벤트 교환
+                    self.editor.events[current_index], self.editor.events[current_index+1] = (
+                        self.editor.events[current_index+1], self.editor.events[current_index]
+                    )
+                    move_result = True
+            else:
+                print("이벤트 이동 방법 없음")  # 디버깅 로그 추가
+                messagebox.showerror("오류", "에디터가 이벤트 이동을 지원하지 않습니다.")
+                return
+        except Exception as e:
+            print(f"이동 중 예외 발생: {e}")  # 디버깅 로그 추가
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("오류", f"이벤트 이동 중 오류가 발생했습니다: {e}")
+            return
+        
+        if move_result:
+            print(f"이벤트 아래로 이동 성공: {current_index} -> {current_index+1}")  # 디버깅 로그 추가
             # 이벤트 목록 업데이트 시 선택 복원하지 않도록 플래그 설정
             self.restore_selection = False
             
@@ -868,6 +1147,7 @@ class SimpleGUI:
             
             self.update_status("이벤트가 아래로 이동되었습니다.")
         else:
+            print("이벤트 아래로 이동 실패")  # 디버깅 로그 추가
             messagebox.showwarning("경고", "이벤트를 더 아래로 이동할 수 없습니다.")
     
     def on_event_select(self, event=None):
@@ -876,11 +1156,32 @@ class SimpleGUI:
         if hasattr(self, '_skip_selection') and self._skip_selection:
             return
             
+        # 녹화 중이면 무시
+        if self.recorder.recording:
+            return
+            
         # 리스트에서 선택된 항목들 가져오기
         selected = self.event_listbox.curselection()
-        
+        if not selected:
+            return
+            
+        print(f"이벤트 선택됨: {selected}")  # 디버깅 로그 추가
+            
         # 선택된 항목들을 self.selected_events에 저장
         self.selected_events = list(selected)
+        
+        # 상태표시줄 업데이트
+        if len(selected) == 1:
+            idx = selected[0]
+            # editor.get_events() 메서드를 사용하여 이벤트 리스트 가져오기
+            events = self.editor.get_events()
+            if events and idx < len(events):
+                event_type = events[idx]['type']
+                self.update_status(f"이벤트 #{idx+1} 선택됨 (유형: {event_type})")
+            else:
+                self.update_status(f"이벤트 #{idx+1} 선택됨")
+        else:
+            self.update_status(f"{len(selected)}개 이벤트 선택됨")
     
     def clear_selection(self):
         """이벤트 목록에서 모든 선택 해제"""
@@ -955,13 +1256,16 @@ class SimpleGUI:
 
     def on_gesture_select(self, event=None):
         """제스처 리스트박스에서 제스처 선택 시 이벤트 목록 업데이트"""
+        print("on_gesture_select 함수 호출됨")  # 디버깅 로그 추가
         # 선택된 제스처 확인
         selected = self.gesture_listbox.curselection()
         if not selected:
+            print("선택된 제스처 없음")  # 디버깅 로그 추가
             return
             
         # 제스처 이름 가져오기
         gesture = self.gesture_listbox.get(selected[0])
+        print(f"선택된 제스처: {gesture}")  # 디버깅 로그 추가
         
         # 이벤트 목록 클리어
         self.event_listbox.delete(0, tk.END)
@@ -969,6 +1273,7 @@ class SimpleGUI:
         # 해당 제스처의 매크로 로드
         if self.gesture_manager and gesture in self.gesture_manager.gesture_mappings:
             macro_name = self.gesture_manager.gesture_mappings[gesture]
+            print(f"매크로 이름: {macro_name}")  # 디버깅 로그 추가
             
             # 매크로 파일 경로 직접 구성
             full_path = os.path.join("macros", macro_name)
@@ -979,29 +1284,101 @@ class SimpleGUI:
                 if not os.path.exists(full_path):
                     safe_gesture = gesture.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
                     alternative_path = os.path.join("macros", f"gesture_{safe_gesture}.json")
+                    print(f"대체 경로 시도: {alternative_path}")  # 디버깅 로그 추가
                     
                     if os.path.exists(alternative_path):
                         full_path = alternative_path
                     else:
                         raise FileNotFoundError(f"매크로 파일을 찾을 수 없음: {full_path} 또는 {alternative_path}")
                 
+                print(f"매크로 파일 경로: {full_path}")  # 디버깅 로그 추가
                 # 파일 읽기
                 with open(full_path, 'r') as f:
                     import json
                     macro_data = json.load(f)
+                
+                print(f"로드된 매크로 데이터: {len(macro_data)}개 이벤트")  # 디버깅 로그 추가
                 
                 # 빈 매크로는 표시하지 않음
                 if len(macro_data) == 0:
                     self.update_status(f"제스처 '{gesture}'에 연결된 매크로가 비어있습니다")
                     return
                 
-                # 에디터의 이벤트 리스트에 직접 설정
-                if hasattr(self.editor, 'events'):
-                    self.editor.events = macro_data
+                # 에디터가 MacroEditor 클래스인지 확인
+                from editor import MacroEditor
                 
-                # 플레이어의 이벤트 리스트에 직접 설정
-                if hasattr(self.player, 'events'):
-                    self.player.events = macro_data
+                # 에디터에 이벤트 로드
+                if self.editor:
+                    print(f"editor 타입: {type(self.editor)}")  # 디버깅 로그 추가
+                    
+                    # editor.load_events 메서드 사용
+                    if hasattr(self.editor, 'load_events'):
+                        print("editor.load_events 메소드 사용")  # 디버깅 로그 추가
+                        if isinstance(self.editor, MacroEditor):
+                            # events 속성 직접 설정
+                            try:
+                                import copy
+                                self.editor.events = copy.deepcopy(macro_data)
+                                print(f"에디터에 {len(self.editor.events)}개 이벤트 직접 설정됨")  # 디버깅 로그 추가
+                            except Exception as e:
+                                print(f"에디터에 이벤트 직접 설정 중 오류: {e}")  # 디버깅 로그 추가
+                        else:
+                            # load_events 메서드 호출
+                            success = self.editor.load_events(macro_data)
+                            print(f"load_events 결과: {success}")  # 디버깅 로그 추가
+                    # get_events 메서드가 있으면 editor는 매크로 편집기 인스턴스
+                    elif hasattr(self.editor, 'get_events'):
+                        print("editor.get_events 메소드 발견, events 직접 설정")  # 디버깅 로그 추가
+                        try:
+                            import copy
+                            self.editor.events = copy.deepcopy(macro_data)
+                            print(f"에디터에 {len(self.editor.events)}개 이벤트 직접 설정됨")  # 디버깅 로그 추가
+                        except Exception as e:
+                            print(f"에디터에 이벤트 직접 설정 중 오류: {e}")  # 디버깅 로그 추가
+                    # events 속성만 있는 경우
+                    elif hasattr(self.editor, 'events'):
+                        print("editor.events 속성에 직접 할당")  # 디버깅 로그 추가
+                        try:
+                            import copy
+                            self.editor.events = copy.deepcopy(macro_data)
+                            print(f"에디터에 {len(self.editor.events)}개 이벤트 직접 설정됨")  # 디버깅 로그 추가
+                        except Exception as e:
+                            print(f"에디터에 이벤트 직접 설정 중 오류: {e}")  # 디버깅 로그 추가
+                    else:
+                        print("경고: editor에 이벤트를 로드할 방법이 없음")  # 디버깅 로그 추가
+                        
+                        # 새로운 events 속성 추가 시도
+                        try:
+                            import copy
+                            print("editor 객체에 events 속성 추가 시도")  # 디버깅 로그 추가
+                            self.editor.events = copy.deepcopy(macro_data)
+                            print(f"에디터에 {len(self.editor.events)}개 이벤트 속성 추가됨")  # 디버깅 로그 추가
+                        except Exception as e:
+                            print(f"에디터에 events 속성 추가 중 오류: {e}")  # 디버깅 로그 추가
+                else:
+                    print("경고: editor 인스턴스 없음")  # 디버깅 로그 추가
+                
+                # player 인스턴스 확인 후 이벤트 로드
+                if self.player:
+                    print(f"player 타입: {type(self.player)}")  # 디버깅 로그 추가
+                    
+                    # load_events 메서드 사용
+                    if hasattr(self.player, 'load_events'):
+                        print("player.load_events 메소드 사용")  # 디버깅 로그 추가
+                        try:
+                            self.player.load_events(macro_data)
+                        except Exception as e:
+                            print(f"player.load_events 호출 중 오류: {e}")  # 디버깅 로그 추가
+                    # events 속성 직접 설정
+                    elif hasattr(self.player, 'events'):
+                        print("player.events 속성에 직접 할당")  # 디버깅 로그 추가
+                        try:
+                            import copy
+                            self.player.events = copy.deepcopy(macro_data)
+                        except Exception as e:
+                            print(f"player.events 설정 중 오류: {e}")  # 디버깅 로그 추가
+                else:
+                    print("경고: player 인스턴스 없음")  # 디버깅 로그 추가
                 
                 # 이벤트 목록에 표시
                 for i, event in enumerate(macro_data):
@@ -1012,8 +1389,57 @@ class SimpleGUI:
                     self.event_listbox.see(0)
                     
                 self.update_status(f"제스처 '{gesture}'의 매크로 이벤트 표시 중 ({len(macro_data)}개)")
+                
+                # 메서드/속성 확인을 위한 디버깅 정보 출력
+                print("--- 디버깅 정보 ---")
+                print(f"editor 객체 속성: {dir(self.editor)}")
+                print(f"editor get_events: {hasattr(self.editor, 'get_events')}")
+                print(f"editor events: {hasattr(self.editor, 'events')}")
+                
+                # editor.events 확인
+                if hasattr(self.editor, 'events'):
+                    print(f"editor.events 길이: {len(self.editor.events)}")
+                
+                # editor.get_events() 확인
+                if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+                    events = self.editor.get_events()
+                    print(f"editor.get_events() 결과 길이: {len(events)}")
+                
+                print("--- 디버깅 정보 끝 ---")
             except Exception as e:
                 print(f"매크로 로드 오류: {e}")
+                import traceback
+                traceback.print_exc()  # 스택 추적 출력
                 self.update_status(f"매크로 로드 중 오류가 발생했습니다")
         else:
+            print(f"매크로를 찾을 수 없음: {gesture}")  # 디버깅 로그 추가
             self.update_status(f"제스처 '{gesture}'에 연결된 매크로를 찾을 수 없습니다")
+
+    # 더블 클릭 이벤트 핸들러 추가
+    def on_event_double_click(self, event):
+        """이벤트 항목 더블 클릭 시 처리"""
+        print("더블 클릭 이벤트 발생")  # 디버깅 로그 추가
+        # 녹화 중에는 무시
+        if self.recorder.recording:
+            return
+            
+        # 선택된 항목 가져오기
+        selected = self.event_listbox.curselection()
+        if not selected:
+            return
+            
+        # 단일 항목만 처리
+        if len(selected) == 1:
+            index = selected[0]
+            events = self.editor.get_events()
+            if events and index < len(events):
+                event_type = events[index]['type']
+                
+                if event_type == 'delay':
+                    # 딜레이 이벤트면 수정 다이얼로그 표시
+                    print(f"딜레이 이벤트 더블 클릭: {index}")  # 디버깅 로그 추가
+                    self.modify_delay_time()
+                else:
+                    print(f"일반 이벤트 더블 클릭: {index}")  # 디버깅 로그 추가
+                    # 일반 이벤트에 대한 정보 표시
+                    messagebox.showinfo("이벤트 정보", f"이벤트 #{index+1}\n유형: {event_type}")

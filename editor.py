@@ -1,47 +1,71 @@
 class MacroEditor:
     def __init__(self, storage):
         self.storage = storage
-        self.current_events = []
+        self.current_events = []  # 현재 이벤트 목록 (동일한 목록을 가리킴)
+        self.events = []  # simple_gui.py와의 호환성을 위한 속성
         self.modified = False
+        print("MacroEditor 초기화됨, storage:", storage)  # 디버깅 로그
     
     def load_macro_for_editing(self, macro_name):
         """수정을 위해 매크로 로드"""
+        print(f"load_macro_for_editing 호출: {macro_name}")  # 디버깅 로그
         events = self.storage.load_macro(macro_name)
         if events:
             self.current_events = events
+            self.events = events  # events 속성도 동일하게 설정
             self.modified = False
+            print(f"{len(events)}개 이벤트 로드됨")  # 디버깅 로그
             return True
+        print("매크로 로드 실패")  # 디버깅 로그
         return False
     
     def get_events(self):
         """현재 이벤트 목록 반환"""
+        print(f"get_events 호출됨: current_events={len(self.current_events)}개, events={len(self.events)}개")  # 디버깅 로그
+        
+        # events와 current_events를 동기화
+        if self.events and not self.current_events:
+            self.current_events = self.events
+        elif self.current_events and not self.events:
+            self.events = self.current_events
+            
         return self.current_events
     
     def delete_event(self, index):
         """특정 인덱스의 이벤트 삭제"""
+        print(f"delete_event 호출됨: {index}")  # 디버깅 로그
         if 0 <= index < len(self.current_events):
             del self.current_events[index]
+            self.events = self.current_events  # events 속성 동기화
             self.modified = True
+            print(f"이벤트 {index} 삭제됨")  # 디버깅 로그
             return True
+        print(f"이벤트 삭제 실패: 인덱스 {index}는 범위를 벗어남")  # 디버깅 로그
         return False
     
     def delete_events(self, indices):
         """여러 인덱스의 이벤트 삭제"""
+        print(f"delete_events 호출됨: {indices}")  # 디버깅 로그
         if not indices:
+            print("삭제할 인덱스가 없음")  # 디버깅 로그
             return False
             
         # 인덱스 정렬하여 높은 인덱스부터 삭제
         sorted_indices = sorted(indices, reverse=True)
+        print(f"정렬된 인덱스: {sorted_indices}")  # 디버깅 로그
         
         # 유효한 인덱스인지 확인
         if max(sorted_indices) >= len(self.current_events):
+            print(f"유효하지 않은 인덱스: 최대 {max(sorted_indices)}, 이벤트 개수: {len(self.current_events)}")  # 디버깅 로그
             return False
             
         # 높은 인덱스부터 삭제
         for idx in sorted_indices:
             if 0 <= idx < len(self.current_events):
                 del self.current_events[idx]
+                print(f"이벤트 {idx} 삭제됨")  # 디버깅 로그
         
+        self.events = self.current_events  # events 속성 동기화
         self.modified = True
         return True
     
