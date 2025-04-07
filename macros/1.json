@@ -1,95 +1,95 @@
 {
   "name": "1.json",
-  "created_at": "2025-04-07T14:52:50.075306",
+  "created_at": "2025-04-07T16:35:04.340474",
   "events": [
     {
       "type": "mouse",
       "event_type": "down",
       "button": "left",
-      "time": 0.45146942138671875,
+      "time": 0.3278689384460449,
       "position": [
-        1288,
-        670
+        2342,
+        1207
       ],
       "is_relative": false
     },
     {
       "type": "delay",
-      "time": 0.5345761051177979,
-      "delay": 0.0841066837310791
+      "time": 0.39793293380737305,
+      "delay": 0.07106399536132812
     },
     {
       "type": "mouse",
       "event_type": "up",
       "button": "left",
-      "time": 0.5355761051177979,
+      "time": 0.39893293380737305,
       "position": [
-        1288,
-        670
+        2342,
+        1207
       ],
       "is_relative": false
     },
     {
       "type": "delay",
-      "time": 1.0683657398223878,
-      "delay": 0.5337896347045898
+      "time": 0.6271783580780029,
+      "delay": 0.22924542427062988
+    },
+    {
+      "type": "mouse",
+      "event_type": "double",
+      "button": "left",
+      "time": 0.6281783580780029,
+      "position": [
+        2613,
+        1359
+      ],
+      "is_relative": false
+    },
+    {
+      "type": "delay",
+      "time": 0.7052397003173828,
+      "delay": 0.07806134223937988
+    },
+    {
+      "type": "mouse",
+      "event_type": "up",
+      "button": "left",
+      "time": 0.7062397003173828,
+      "position": [
+        2613,
+        1360
+      ],
+      "is_relative": false
+    },
+    {
+      "type": "delay",
+      "time": 2.0837036838531495,
+      "delay": 1.3784639835357666
     },
     {
       "type": "mouse",
       "event_type": "down",
       "button": "left",
-      "time": 1.0693657398223877,
+      "time": 2.0847036838531494,
       "position": [
-        1498,
-        812
+        1837,
+        895
       ],
       "is_relative": false
     },
     {
       "type": "delay",
-      "time": 1.1589700450897218,
-      "delay": 0.09060430526733398
+      "time": 2.1678308715820314,
+      "delay": 0.08412718772888184
     },
     {
       "type": "mouse",
       "event_type": "up",
       "button": "left",
-      "time": 1.1599700450897217,
+      "time": 2.1688308715820312,
       "position": [
-        1498,
-        812
-      ],
-      "is_relative": false
-    },
-    {
-      "type": "delay",
-      "time": 2.0576559772491456,
-      "delay": 0.8986859321594238
-    },
-    {
-      "type": "mouse",
-      "event_type": "down",
-      "button": "left",
-      "time": 2.0586559772491455,
-      "position": [
-        1119,
-        496
-      ],
-      "is_relative": false
-    },
-    {
-      "type": "delay",
-      "time": 2.145773099899292,
-      "delay": 0.08811712265014648
-    },
-    {
-      "type": "mouse",
-      "event_type": "up",
-      "button": "left",
-      "time": 2.146773099899292,
-      "position": [
-        1119,
-        496
+        1837,
+        895
       ],
       "is_relative": false
     }

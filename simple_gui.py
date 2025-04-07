@@ -5,15 +5,16 @@ import mouse
 import keyboard
 
 class SimpleGUI:
-    def __init__(self, root, recorder, player, editor, storage):
+    def __init__(self, root, recorder, player, editor, storage, gesture_manager=None):
         self.root = root
         self.recorder = recorder
         self.player = player
         self.editor = editor
         self.storage = storage
+        self.gesture_manager = gesture_manager  # 제스처 매니저 추가
         
         # 윈도우 설정
-        self.root.title("간단한 매크로 프로그램")
+        self.root.title("제스처 매크로 프로그램")
         
         # 창 크기 설정 (width x height)
         window_width = 800
@@ -37,13 +38,13 @@ class SimpleGUI:
         self.root.lift()
         self.root.focus_force()
         
-        # 매크로 목록
-        self.macro_list = []
-        
         # GUI 구성요소
-        self.macro_listbox = None
+        self.gesture_listbox = None
         self.event_listbox = None
         self.status_label = None
+        
+        # 현재 녹화 중인 제스처
+        self.current_gesture = None
         
         # 실시간 업데이트 관련
         self.update_timer = None
@@ -64,6 +65,13 @@ class SimpleGUI:
         # 단축키 설정
         self.setup_keyboard_shortcuts()
         
+        # 제스처 매니저 콜백 설정
+        if self.gesture_manager:
+            print("제스처 매니저 콜백 설정")  # 디버깅 로그 추가
+            self.gesture_manager.recorder = self.recorder  # 녹화기 설정
+            self.gesture_manager.set_update_gesture_list_callback(self.update_gesture_list)
+            self.gesture_manager.set_macro_record_callback(self.start_macro_for_gesture)
+        
     def setup_ui(self):
         """간소화된 GUI 구성"""
         # 메인 프레임
@@ -71,15 +79,20 @@ class SimpleGUI:
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # 상단 제어 프레임
-        control_frame = ttk.LabelFrame(main_frame, text="매크로 제어", padding=10)
+        control_frame = ttk.LabelFrame(main_frame, text="제스처 매크로 제어", padding=10)
         control_frame.pack(fill=tk.X, pady=(0, 10))
         
         # 제어 버튼 프레임
         button_frame = ttk.Frame(control_frame)
         button_frame.pack(fill=tk.X)
         
-        # 녹화 버튼
-        self.record_btn = ttk.Button(button_frame, text="녹화 시작 (Ctrl+R)", 
+        # 제스처 녹화 버튼
+        if self.gesture_manager:
+            ttk.Button(button_frame, text="제스처 녹화", 
+                     command=self.start_gesture_recording).pack(side=tk.LEFT, padx=5)
+        
+        # 매크로 녹화 버튼 (평상시는 비활성화, 제스처 녹화 후 활성화)
+        self.record_btn = ttk.Button(button_frame, text="매크로 녹화 시작 (Ctrl+R)", 
                                     command=self.start_recording)
         self.record_btn.pack(side=tk.LEFT, padx=5)
         
@@ -95,7 +108,7 @@ class SimpleGUI:
         
         # 실행 및 중지 버튼
         ttk.Button(button_frame, text="실행 (F5)", 
-                 command=self.play_macro).pack(side=tk.LEFT, padx=5)
+                 command=self.play_gesture_macro).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="중지 (F6)", 
                  command=self.stop_macro).pack(side=tk.LEFT, padx=5)
         
@@ -107,32 +120,39 @@ class SimpleGUI:
         content_frame = ttk.Frame(main_frame)
         content_frame.pack(fill=tk.BOTH, expand=True)
         
-        # 왼쪽 프레임 - 매크로 목록
-        left_frame = ttk.LabelFrame(content_frame, text="매크로 목록", padding=10)
+        # 왼쪽 프레임 - 제스처 목록
+        left_frame = ttk.Frame(content_frame)
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
         
-        # 매크로 리스트박스 및 스크롤바
-        list_scrollbar = ttk.Scrollbar(left_frame)
-        list_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # 제스처 목록 프레임
+        gesture_frame = ttk.LabelFrame(left_frame, text="제스처 목록", padding=10)
+        gesture_frame.pack(fill=tk.BOTH, expand=True)
         
-        self.macro_listbox = tk.Listbox(left_frame, font=('Consolas', 11))
-        self.macro_listbox.pack(fill=tk.BOTH, expand=True)
-        self.macro_listbox.config(yscrollcommand=list_scrollbar.set, 
-                                 selectbackground='#4a6cd4', 
-                                 selectforeground='white')
-        list_scrollbar.config(command=self.macro_listbox.yview)
+        # 제스처 리스트박스 및 스크롤바
+        gesture_scrollbar = ttk.Scrollbar(gesture_frame)
+        gesture_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # 매크로 목록 아래 버튼 프레임
-        macro_btn_frame = ttk.Frame(left_frame)
-        macro_btn_frame.pack(fill=tk.X, pady=(5, 0))
+        self.gesture_listbox = tk.Listbox(gesture_frame, font=('Consolas', 11))
+        self.gesture_listbox.pack(fill=tk.BOTH, expand=True)
+        self.gesture_listbox.config(yscrollcommand=gesture_scrollbar.set, 
+                                   selectbackground='#4a6cd4', 
+                                   selectforeground='white')
+        gesture_scrollbar.config(command=self.gesture_listbox.yview)
         
-        ttk.Button(macro_btn_frame, text="삭제", 
-                  command=self.delete_macro).pack(side=tk.LEFT, padx=5)
-        ttk.Button(macro_btn_frame, text="불러오기", 
-                  command=self.load_macro).pack(side=tk.LEFT, padx=5)
+        # 제스처 목록 아래 버튼 프레임
+        gesture_btn_frame = ttk.Frame(gesture_frame)
+        gesture_btn_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        ttk.Button(gesture_btn_frame, text="삭제", 
+                  command=self.delete_gesture).pack(side=tk.LEFT, padx=5)
+        ttk.Button(gesture_btn_frame, text="테스트", 
+                  command=self.test_gesture).pack(side=tk.LEFT, padx=5)
+        # 매크로 연결 버튼 추가
+        ttk.Button(gesture_btn_frame, text="매크로 연결", 
+                  command=self.link_macro_to_gesture).pack(side=tk.LEFT, padx=5)
         
         # 반복 횟수 설정
-        repeat_frame = ttk.Frame(left_frame)
+        repeat_frame = ttk.Frame(gesture_frame)
         repeat_frame.pack(fill=tk.X, pady=(5, 0))
         
         ttk.Label(repeat_frame, text="반복 횟수:").pack(side=tk.LEFT, padx=5)
@@ -147,9 +167,16 @@ class SimpleGUI:
                                                 command=self.toggle_infinite_repeat)
         self.infinite_checkbox.pack(side=tk.LEFT, padx=5)
         
+        # 제스처 인식 켜기/끄기 토글 스위치
+        if self.gesture_manager:
+            self.gesture_enabled = tk.BooleanVar(value=False)
+            ttk.Checkbutton(gesture_btn_frame, text="제스처 인식 활성화", 
+                          variable=self.gesture_enabled, 
+                          command=self.toggle_gesture_recognition).pack(side=tk.RIGHT, padx=5)
+            
         # 오른쪽 프레임 - 이벤트 목록
         right_frame = ttk.LabelFrame(content_frame, text="이벤트 목록", padding=10)
-        right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
         
         # 이벤트 리스트박스 및 스크롤바
         event_scrollbar = ttk.Scrollbar(right_frame)
@@ -200,8 +227,9 @@ class SimpleGUI:
         self.status_label = ttk.Label(main_frame, text="준비", relief=tk.SUNKEN, anchor=tk.W)
         self.status_label.pack(fill=tk.X, pady=(10, 0))
         
-        # 매크로 목록 업데이트
-        self.update_macro_list()
+        # 제스처 목록 업데이트
+        if self.gesture_manager:
+            self.update_gesture_list()
 
     def update_status(self, message):
         """상태 메시지 업데이트"""
@@ -215,14 +243,269 @@ class SimpleGUI:
         
         self.update_status("녹화 설정이 업데이트되었습니다.")
     
-    def update_macro_list(self):
-        """매크로 목록 업데이트"""
-        self.macro_listbox.delete(0, tk.END)
-        self.macro_list = self.storage.list_macros()
+    def start_gesture_recording(self):
+        """새 제스처 녹화 시작"""
+        if not self.gesture_manager:
+            return
+            
+        # 제스처 인식기가 활성화되어 있는지 확인
+        if not self.gesture_enabled.get():
+            if messagebox.askyesno("제스처 인식 활성화", 
+                                 "제스처 녹화를 위해 제스처 인식을 활성화해야 합니다.\n활성화하시겠습니까?"):
+                self.gesture_enabled.set(True)
+                self.toggle_gesture_recognition()
+            else:
+                return
         
-        for macro in self.macro_list:
-            self.macro_listbox.insert(tk.END, macro)
+        # 제스처 녹화 시작
+        self.gesture_manager.start_gesture_recording()
+        
+        # 상태 업데이트
+        self.update_status("제스처 녹화 중...")
     
+    def start_macro_for_gesture(self, gesture):
+        """특정 제스처에 대한 매크로 녹화 시작"""
+        print(f"start_macro_for_gesture 호출됨 - 제스처: {gesture}")  # 디버깅 로그 추가
+        
+        # 현재 제스처 저장
+        self.current_gesture = gesture
+        
+        # 매크로 녹화 시작
+        self.start_recording()
+        
+        # 상태 업데이트
+        self.update_status(f"제스처 '{gesture}'에 대한 매크로 녹화 중...")
+    
+    def start_recording(self):
+        """매크로 녹화 시작"""
+        print("매크로 녹화 시작 함수 호출됨")  # 디버깅 로그 추가
+        if self.recorder.recording:
+            print("이미 녹화 중")  # 디버깅 로그 추가
+            return
+        
+        # 녹화 시작
+        self.recorder.start_recording()
+        print("recorder.start_recording() 호출 완료")  # 디버깅 로그 추가
+        
+        # 버튼 상태 변경
+        self.record_btn.config(state=tk.DISABLED)
+        self.stop_btn.config(state=tk.NORMAL)
+        
+        # 녹화 상태 표시
+        self.record_status.config(text="녹화 중", foreground="red")
+        
+        # 이벤트 목록 초기화
+        self.event_listbox.delete(0, tk.END)
+        
+        # 이벤트 목록 실시간 업데이트 시작
+        self.start_event_list_updates()
+        
+        # 상태 업데이트 (이미 제스처 녹화 중인 경우 메시지를 변경하지 않음)
+        if not self.current_gesture:
+            self.update_status("매크로 녹화 중...")
+    
+    def start_event_list_updates(self):
+        """이벤트 목록 실시간 업데이트 시작"""
+        print("이벤트 목록 업데이트 시작")  # 디버깅 로그 추가
+        # 기존 타이머가 있으면 중지
+        if self.update_timer:
+            self.root.after_cancel(self.update_timer)
+            self.update_timer = None
+        
+        # 첫 번째 업데이트 즉시 시작
+        self.update_event_list()
+    
+    def stop_event_list_updates(self):
+        """이벤트 목록 실시간 업데이트 중지"""
+        print("이벤트 목록 업데이트 중지")  # 디버깅 로그 추가
+        if self.update_timer:
+            self.root.after_cancel(self.update_timer)
+            self.update_timer = None
+    
+    def stop_recording(self):
+        """매크로 녹화 중지"""
+        if not self.recorder.recording:
+            return
+        
+        # 녹화 중지
+        self.recorder.stop_recording()
+        
+        # 버튼 상태 변경
+        self.record_btn.config(state=tk.NORMAL)
+        self.stop_btn.config(state=tk.DISABLED)
+        
+        # 녹화 상태 표시
+        self.record_status.config(text="준비", foreground="black")
+        
+        # 이벤트 목록 실시간 업데이트 중지
+        self.stop_event_list_updates()
+        
+        # 제스처에 대한 매크로 녹화인 경우 자동 저장
+        if self.current_gesture:
+            self.save_gesture_macro()
+        else:
+            # 일반 매크로 녹화인 경우 저장 준비
+            self.update_status("녹화 완료. 저장하려면 '저장' 버튼을 클릭하세요.")
+    
+    def save_gesture_macro(self):
+        """제스처에 대한 매크로 저장"""
+        if not self.gesture_manager or not self.current_gesture:
+            return
+            
+        # 녹화된 매크로 이벤트 가져오기
+        events = self.recorder.events
+        
+        if not events:
+            messagebox.showwarning("저장 오류", "녹화된 이벤트가 없습니다.")
+            self.current_gesture = None
+            return
+        
+        # 제스처에 매크로 저장
+        success = self.gesture_manager.save_macro_for_gesture(self.current_gesture, events)
+        
+        if success:
+            messagebox.showinfo("저장 완료", 
+                              f"제스처 '{self.current_gesture}'에 대한 매크로가 저장되었습니다.")
+            self.update_status(f"제스처 '{self.current_gesture}'에 대한 매크로가 저장되었습니다.")
+        else:
+            messagebox.showerror("저장 오류", "매크로 저장 중 오류가 발생했습니다.")
+            self.update_status("매크로 저장 중 오류가 발생했습니다.")
+        
+        # 현재 제스처 초기화
+        self.current_gesture = None
+    
+    def save_macro(self):
+        """일반 매크로 저장"""
+        if not self.recorder.events:
+            messagebox.showwarning("저장 오류", "녹화된 이벤트가 없습니다.")
+            return
+        
+        # 매크로 이름 입력 받기
+        macro_name = simpledialog.askstring("매크로 저장", "매크로 이름을 입력하세요:")
+        
+        if not macro_name:
+            return
+        
+        # 매크로 저장
+        if self.storage.save_macro(self.recorder.events, macro_name):
+            messagebox.showinfo("저장 완료", f"매크로 '{macro_name}'이(가) 저장되었습니다.")
+            self.update_status(f"매크로 '{macro_name}'이(가) 저장되었습니다.")
+        else:
+            messagebox.showerror("저장 오류", "매크로 저장 중 오류가 발생했습니다.")
+            self.update_status("매크로 저장 중 오류가 발생했습니다.")
+    
+    def update_gesture_list(self):
+        """제스처 목록 업데이트"""
+        print("update_gesture_list 함수 호출됨")  # 디버깅 로그
+        
+        # 리스트박스 초기화
+        if self.gesture_listbox:
+            self.gesture_listbox.delete(0, tk.END)
+        else:
+            print("경고: gesture_listbox가 초기화되지 않았습니다")
+            return
+            
+        # 제스처 관리자 확인
+        if not self.gesture_manager:
+            print("경고: 제스처 관리자가 없습니다")
+            return
+            
+        # 제스처 매핑 출력 (디버깅 용)
+        print(f"현재 제스처 매핑: {self.gesture_manager.gesture_mappings}")
+        
+        # 제스처 목록 가져오기
+        gestures = list(self.gesture_manager.gesture_mappings.keys())
+        
+        if not gestures:
+            print("제스처 목록이 비어있습니다")
+            return
+            
+        print(f"제스처 목록: {gestures}")
+        
+        # 리스트박스에 추가
+        for gesture in gestures:
+            self.gesture_listbox.insert(tk.END, gesture)
+            
+        print(f"제스처 목록 업데이트 완료: {self.gesture_listbox.size()} 개의 제스처")
+    
+    def delete_gesture(self):
+        """제스처 매핑 삭제"""
+        if not self.gesture_manager:
+            return
+            
+        # 선택된 제스처 확인
+        selected = self.gesture_listbox.curselection()
+        if not selected:
+            messagebox.showwarning("선택 오류", "삭제할 제스처를 선택하세요.")
+            return
+            
+        # 제스처 이름 가져오기
+        gesture = self.gesture_listbox.get(selected[0])
+        
+        # 확인 후 삭제
+        if messagebox.askyesno("제스처 삭제", f"제스처 '{gesture}'를 삭제하시겠습니까?"):
+            self.gesture_manager.remove_mapping(gesture)
+            self.update_status(f"제스처 '{gesture}'가 삭제되었습니다.")
+    
+    def play_gesture_macro(self):
+        """선택된 제스처의 매크로 실행"""
+        if not self.gesture_manager:
+            return
+            
+        # 선택된 제스처 확인
+        selected = self.gesture_listbox.curselection()
+        if not selected:
+            messagebox.showwarning("선택 오류", "실행할 제스처를 선택하세요.")
+            return
+            
+        # 제스처 이름 가져오기
+        gesture = self.gesture_listbox.get(selected[0])
+        
+        # 제스처에 연결된 매크로 실행
+        repeat_count = 1  # 기본값
+        
+        # 반복 횟수 설정
+        if self.infinite_repeat.get():
+            repeat_count = -1  # 무한 반복
+        else:
+            try:
+                repeat_count = int(self.repeat_count.get())
+                if repeat_count < 1:
+                    repeat_count = 1
+            except ValueError:
+                repeat_count = 1
+        
+        # 매크로 실행
+        self.gesture_manager.execute_gesture_action(gesture)
+        self.update_status(f"제스처 '{gesture}'의 매크로를 실행 중...")
+    
+    def test_gesture(self):
+        """선택된 제스처 테스트"""
+        # play_gesture_macro와 동일 (별도 테스트 기능 개발 가능)
+        self.play_gesture_macro()
+    
+    def toggle_gesture_recognition(self):
+        """제스처 인식 켜기/끄기"""
+        if not self.gesture_manager:
+            return
+            
+        if self.gesture_enabled.get():
+            self.gesture_manager.start()
+            self.update_status("제스처 인식이 활성화되었습니다.")
+        else:
+            self.gesture_manager.stop()
+            self.update_status("제스처 인식이 비활성화되었습니다.")
+    
+    # 기존 매크로 관련 함수들 유지
+    def play_macro(self):
+        """매크로 실행"""
+        # ... 기존 코드 ...
+    
+    def stop_macro(self):
+        """매크로 실행 중지"""
+        # ... 기존 코드 ...
+    
+    # 나머지 기존 함수들 유지
     def update_event_list(self):
         """이벤트 목록 업데이트"""
         # 현재 선택된 항목 기억 (리스트박스에서 직접 선택한 경우만)
@@ -336,165 +619,6 @@ class SimpleGUI:
             self.event_listbox.insert(tk.END, f"[{index+1}] {event_details}")
             self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFE0'})
             
-    # 매크로 녹화 관련 메소드
-    def start_recording(self, event=None):
-        """매크로 녹화 시작"""
-        # 녹화 이미 진행 중이면 중복 실행 방지
-        if self.recorder.recording:
-            return
-        
-        # 녹화 시작
-        self.recorder.start_recording()
-        
-        # UI 업데이트
-        self.record_btn.config(state=tk.DISABLED)
-        self.stop_btn.config(state=tk.NORMAL)
-        self.save_btn.config(state=tk.DISABLED)
-        self.record_status.config(text="녹화 중...", foreground="red")
-        self.update_status("녹화 중...")
-        
-        # 이벤트 목록 초기화 및 실시간 업데이트 시작
-        self.event_listbox.delete(0, tk.END)
-        
-        # 바로 첫 업데이트 실행
-        self.update_event_list()
-    
-    def stop_recording(self, event=None):
-        """매크로 녹화 중지"""
-        # 녹화 중이 아니면 중복 실행 방지
-        if not self.recorder.recording:
-            return
-        
-        # 녹화 중지
-        self.recorder.stop_recording()
-        
-        # UI 업데이트
-        self.record_btn.config(state=tk.NORMAL)
-        self.stop_btn.config(state=tk.DISABLED)
-        self.save_btn.config(state=tk.NORMAL)
-        self.record_status.config(text="녹화 완료", foreground="black")
-        self.update_status("녹화가 완료되었습니다.")
-        
-        # 타이머 중지
-        if self.update_timer:
-            self.root.after_cancel(self.update_timer)
-            self.update_timer = None
-        
-        # 녹화된 이벤트를 에디터로 전송
-        self.editor.current_events = self.recorder.events.copy()
-        self.editor.modified = True
-        
-        # 이벤트 목록 업데이트
-        self.update_event_list()
-    
-    def save_macro(self, event=None):
-        """매크로 저장"""
-        # 이벤트가 없으면 저장 불가
-        if not self.editor.get_events():
-            messagebox.showwarning("경고", "저장할 이벤트가 없습니다. 먼저 매크로를 녹화하세요.")
-            return
-        
-        # 매크로 이름 입력 받기
-        macro_name = simpledialog.askstring("매크로 저장", "매크로 이름을 입력하세요:")
-        if not macro_name:
-            return
-        
-        # 이미 존재하는 이름이면 덮어쓰기 확인
-        if macro_name in self.storage.list_macros():
-            if not messagebox.askyesno("덮어쓰기 확인", f"'{macro_name}' 매크로가 이미 존재합니다. 덮어쓰시겠습니까?"):
-                return
-        
-        # 매크로 저장 - 인자 순서 수정 (이벤트를 먼저, 이름을 나중에)
-        if self.storage.save_macro(self.editor.get_events(), macro_name):
-            self.update_macro_list()
-            self.update_status(f"매크로 '{macro_name}'이(가) 저장되었습니다.")
-            self.editor.modified = False
-        else:
-            messagebox.showerror("오류", "매크로 저장에 실패했습니다.")
-    
-    def load_macro(self):
-        """매크로 불러오기"""
-        selected = self.macro_listbox.curselection()
-        if not selected:
-            messagebox.showwarning("경고", "불러올 매크로를 선택하세요.")
-            return
-        
-        macro_name = self.macro_listbox.get(selected[0])
-        
-        # 편집 중인 매크로가 있고 변경사항이 있으면 확인
-        if self.editor.modified and self.editor.get_events():
-            if not messagebox.askyesno("변경사항 확인", "현재 편집 중인 매크로의 변경사항이 있습니다. 저장하지 않고 새 매크로를 불러오시겠습니까?"):
-                return
-        
-        # 매크로 불러오기
-        if self.editor.load_macro_for_editing(macro_name):
-            self.update_event_list()
-            self.update_status(f"매크로 '{macro_name}'을(를) 불러왔습니다.")
-        else:
-            messagebox.showerror("오류", f"매크로 '{macro_name}' 불러오기에 실패했습니다.")
-    
-    def play_macro(self, event=None):
-        """매크로 실행"""
-        # 선택된 매크로 또는 현재 편집 중인 매크로 실행
-        events = None
-        macro_name = "현재 편집 중인 매크로"
-        
-        # 매크로 목록에서 선택한 경우
-        selected = self.macro_listbox.curselection()
-        if selected:
-            macro_name = self.macro_listbox.get(selected[0])
-            events = self.storage.load_macro(macro_name)
-        # 현재 편집 중인 매크로 사용
-        else:
-            events = self.editor.get_events()
-        
-        # 이벤트가 없으면 실행 불가
-        if not events:
-            messagebox.showwarning("경고", "실행할 이벤트가 없습니다.")
-            return
-        
-        # 무한 반복 또는 반복 횟수 설정
-        if self.infinite_repeat.get():
-            repeat_count = 0  # player.py에서 0은 무한 반복을 의미
-        else:
-            # 반복 횟수 설정
-            try:
-                repeat_count = int(self.repeat_count.get())
-                if repeat_count <= 0:
-                    repeat_count = 1
-            except ValueError:
-                repeat_count = 1
-                self.repeat_count.set("1")
-        
-        # 매크로 실행
-        self.update_status(f"매크로 '{macro_name}' 실행 중...")
-        self.player.play_macro(events, repeat_count=repeat_count)
-    
-    def stop_macro(self, event=None):
-        """매크로 실행 중지"""
-        self.player.stop_macro()
-        self.update_status("매크로 실행이 중지되었습니다.")
-    
-    def delete_macro(self):
-        """선택한 매크로 삭제"""
-        selected = self.macro_listbox.curselection()
-        if not selected:
-            messagebox.showwarning("경고", "삭제할 매크로를 선택하세요.")
-            return
-        
-        macro_name = self.macro_listbox.get(selected[0])
-        
-        # 삭제 확인
-        if not messagebox.askyesno("삭제 확인", f"'{macro_name}' 매크로를 삭제하시겠습니까?"):
-            return
-        
-        # 매크로 삭제
-        if self.storage.delete_macro(macro_name):
-            self.update_macro_list()
-            self.update_status(f"매크로 '{macro_name}'이(가) 삭제되었습니다.")
-        else:
-            messagebox.showerror("오류", f"매크로 '{macro_name}' 삭제에 실패했습니다.")
-    
     def delete_selected_event(self):
         """선택한 이벤트 삭제"""
         # 녹화 중에는 편집 불가
@@ -812,4 +936,33 @@ class SimpleGUI:
         else:
             # 무한 반복이 해제되면 반복 횟수 입력란 활성화
             self.repeat_count_entry.config(state=tk.NORMAL)
-            self.repeat_count.set("1") 
+            self.repeat_count.set("1")
+    
+    def link_macro_to_gesture(self):
+        """선택한 제스처에 매크로 녹화 연결"""
+        if not self.gesture_manager:
+            return
+            
+        # 선택된 제스처 확인
+        selected = self.gesture_listbox.curselection()
+        if not selected:
+            messagebox.showwarning("선택 오류", "매크로를 연결할 제스처를 선택하세요.")
+            return
+            
+        # 제스처 이름 가져오기
+        gesture = self.gesture_listbox.get(selected[0])
+        
+        # 확인 대화상자
+        if not messagebox.askyesno("매크로 녹화", 
+                                f"제스처 '{gesture}'에 새 매크로를 녹화하시겠습니까?\n"
+                                f"기존에 연결된 매크로가 있다면 덮어씌워집니다."):
+            return
+        
+        # 현재 제스처 설정 (매크로 녹화 완료 후 저장에 사용)
+        self.current_gesture = gesture
+        
+        # 매크로 녹화 시작
+        self.start_recording()
+        
+        # 상태 업데이트
+        self.update_status(f"제스처 '{gesture}'에 대한 매크로 녹화 중...") 

@@ -15,39 +15,26 @@ class MacroStorage:
         if not os.path.exists(self.storage_dir):
             os.makedirs(self.storage_dir)
     
-    def save_macro(self, events, name=None):
-        """매크로 저장"""
-        if not events:
-            return False
+    def save_macro(self, events, filename):
+        """매크로 이벤트 리스트를 파일로 저장"""
+        # 디렉토리 확인 및 생성
+        if not os.path.exists(self.storage_dir):
+            try:
+                os.makedirs(self.storage_dir)
+                print(f"매크로 디렉토리 생성: {self.storage_dir}")
+            except Exception as e:
+                print(f"매크로 디렉토리 생성 실패: {e}")
+                return False
+                
+        full_path = os.path.join(self.storage_dir, filename)
         
-        # 이름이 지정되지 않은 경우 타임스탬프 사용
-        if name is None:
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            name = f"macro_{timestamp}"
-        
-        # 파일 확장자 추가
-        if not name.endswith(".json"):
-            name += ".json"
-        
-        file_path = os.path.join(self.storage_dir, name)
-        
-        # 매크로 데이터 구성
-        macro_data = {
-            "name": name,
-            "created_at": datetime.now().isoformat(),
-            "events": events
-        }
-        
-        # JSON 파일로 저장
         try:
-            with open(file_path, 'w') as f:
-                json.dump(macro_data, f, indent=2)
-            
-            self.current_macro = macro_data
-            self.current_macro_name = name
+            with open(full_path, 'w') as f:
+                json.dump(events, f)
+            print(f"매크로 파일 저장 성공: {full_path}")
             return True
         except Exception as e:
-            print(f"매크로 저장 중 오류 발생: {e}")
+            print(f"매크로 저장 오류: {e}")
             return False
     
     def load_macro(self, name):
