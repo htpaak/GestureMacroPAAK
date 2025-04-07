@@ -75,42 +75,33 @@ class SimpleGUI:
     def setup_ui(self):
         """간소화된 GUI 구성"""
         # 메인 프레임
-        main_frame = ttk.Frame(self.root, padding=10)
+        main_frame = ttk.Frame(self.root, padding=20)  # 패딩 증가
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # 상단 제어 프레임
-        control_frame = ttk.LabelFrame(main_frame, text="제스처 매크로 제어", padding=10)
-        control_frame.pack(fill=tk.X, pady=(0, 10))
+        control_frame = ttk.LabelFrame(main_frame, text="제스처 매크로 제어", padding=15)  # 패딩 증가
+        control_frame.pack(fill=tk.X, pady=(0, 15))  # 하단 패딩 증가
         
         # 제어 버튼 프레임
         button_frame = ttk.Frame(control_frame)
-        button_frame.pack(fill=tk.X)
+        button_frame.pack(fill=tk.X, pady=10)  # 패딩 추가
         
         # 제스처 녹화 버튼
         if self.gesture_manager:
-            ttk.Button(button_frame, text="제스처 녹화", 
-                     command=self.start_gesture_recording).pack(side=tk.LEFT, padx=5)
+            ttk.Button(button_frame, text="제스처 녹화", width=15,  # 버튼 너비 추가
+                     command=self.start_gesture_recording).pack(side=tk.LEFT, padx=10)  # 패딩 증가
         
-        # 매크로 녹화 버튼 (평상시는 비활성화, 제스처 녹화 후 활성화)
-        self.record_btn = ttk.Button(button_frame, text="매크로 녹화 시작 (Ctrl+R)", 
-                                    command=self.start_recording)
-        self.record_btn.pack(side=tk.LEFT, padx=5)
+        # 매크로 녹화 버튼 - 선택된 제스처에 매크로 녹화 수행
+        self.record_btn = ttk.Button(button_frame, text="매크로 녹화 시작", 
+                                    width=20,  # 버튼 너비 추가
+                                    command=self.start_recording_for_selected_gesture)
+        self.record_btn.pack(side=tk.LEFT, padx=10)  # 패딩 증가
         
         # 녹화 중지 버튼
-        self.stop_btn = ttk.Button(button_frame, text="녹화 중지 (Ctrl+R)", 
+        self.stop_btn = ttk.Button(button_frame, text="녹화 중지", 
+                                  width=15,  # 버튼 너비 추가
                                   command=self.stop_recording, state=tk.DISABLED)
-        self.stop_btn.pack(side=tk.LEFT, padx=5)
-        
-        # 저장 버튼
-        self.save_btn = ttk.Button(button_frame, text="저장 (Ctrl+S)", 
-                                  command=self.save_macro)
-        self.save_btn.pack(side=tk.LEFT, padx=5)
-        
-        # 실행 및 중지 버튼
-        ttk.Button(button_frame, text="실행 (F5)", 
-                 command=self.play_gesture_macro).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="중지 (F6)", 
-                 command=self.stop_macro).pack(side=tk.LEFT, padx=5)
+        self.stop_btn.pack(side=tk.LEFT, padx=10)  # 패딩 증가
         
         # 녹화 상태 표시
         self.record_status = ttk.Label(control_frame, text="준비", foreground="black")
@@ -141,15 +132,10 @@ class SimpleGUI:
         
         # 제스처 목록 아래 버튼 프레임
         gesture_btn_frame = ttk.Frame(gesture_frame)
-        gesture_btn_frame.pack(fill=tk.X, pady=(5, 0))
+        gesture_btn_frame.pack(fill=tk.X, pady=(10, 0))  # 상단 패딩 증가
         
-        ttk.Button(gesture_btn_frame, text="삭제", 
+        ttk.Button(gesture_btn_frame, text="삭제", width=10,  # 버튼 너비 추가
                   command=self.delete_gesture).pack(side=tk.LEFT, padx=5)
-        ttk.Button(gesture_btn_frame, text="테스트", 
-                  command=self.test_gesture).pack(side=tk.LEFT, padx=5)
-        # 매크로 연결 버튼 추가
-        ttk.Button(gesture_btn_frame, text="매크로 연결", 
-                  command=self.link_macro_to_gesture).pack(side=tk.LEFT, padx=5)
         
         # 반복 횟수 설정
         repeat_frame = ttk.Frame(gesture_frame)
@@ -478,11 +464,6 @@ class SimpleGUI:
         # 매크로 실행
         self.gesture_manager.execute_gesture_action(gesture)
         self.update_status(f"제스처 '{gesture}'의 매크로를 실행 중...")
-    
-    def test_gesture(self):
-        """선택된 제스처 테스트"""
-        # play_gesture_macro와 동일 (별도 테스트 기능 개발 가능)
-        self.play_gesture_macro()
     
     def toggle_gesture_recognition(self):
         """제스처 인식 켜기/끄기"""
@@ -938,25 +919,16 @@ class SimpleGUI:
             self.repeat_count_entry.config(state=tk.NORMAL)
             self.repeat_count.set("1")
     
-    def link_macro_to_gesture(self):
-        """선택한 제스처에 매크로 녹화 연결"""
-        if not self.gesture_manager:
-            return
-            
+    def start_recording_for_selected_gesture(self):
+        """선택된 제스처에 대해 매크로 녹화 시작"""
         # 선택된 제스처 확인
         selected = self.gesture_listbox.curselection()
         if not selected:
-            messagebox.showwarning("선택 오류", "매크로를 연결할 제스처를 선택하세요.")
+            messagebox.showwarning("선택 오류", "매크로를 녹화할 제스처를 선택하세요.")
             return
             
         # 제스처 이름 가져오기
         gesture = self.gesture_listbox.get(selected[0])
-        
-        # 확인 대화상자
-        if not messagebox.askyesno("매크로 녹화", 
-                                f"제스처 '{gesture}'에 새 매크로를 녹화하시겠습니까?\n"
-                                f"기존에 연결된 매크로가 있다면 덮어씌워집니다."):
-            return
         
         # 현재 제스처 설정 (매크로 녹화 완료 후 저장에 사용)
         self.current_gesture = gesture
@@ -965,4 +937,4 @@ class SimpleGUI:
         self.start_recording()
         
         # 상태 업데이트
-        self.update_status(f"제스처 '{gesture}'에 대한 매크로 녹화 중...") 
+        self.update_status("제스처 녹화 중...")

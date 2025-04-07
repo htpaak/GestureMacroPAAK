@@ -226,17 +226,39 @@ class GestureManager:
             return False
             
     def load_mappings(self):
-        """제스처 매핑 로드"""
-        if not os.path.exists(self.settings_file):
-            self.gesture_mappings = {}
-            return
-            
+        """제스처-매크로 매핑 불러오기"""
         try:
-            with open(self.settings_file, 'r') as f:
-                self.gesture_mappings = json.load(f)
+            if os.path.exists(self.settings_file):
+                with open(self.settings_file, 'r') as f:
+                    self.gesture_mappings = json.load(f)
+                print(f"제스처 매핑 로드 완료: {len(self.gesture_mappings)} 개")
+                
+                # 구 형식의 제스처 이름 변환 (RDLDR → →↓←↓→)
+                self._convert_old_gesture_names()
+            else:
+                print("제스처 매핑 파일이 없음, 새로 생성됩니다.")
+                self.gesture_mappings = {}
         except Exception as e:
-            print(f"Error loading gesture mappings: {e}")
+            print(f"제스처 매핑 로드 오류: {e}")
             self.gesture_mappings = {}
+            
+    def _convert_old_gesture_names(self):
+        """구 형식의 제스처 이름을 새 형식으로 변환"""
+        replacements = {
+            'R': '→',
+            'L': '←',
+            'U': '↑',
+            'D': '↓'
+        }
+        
+        new_mappings = {}
+        for gesture, macro_name in self.gesture_mappings.items():
+            new_gesture = gesture
+            for old, new in replacements.items():
+                new_gesture = new_gesture.replace(old, new)
+            new_mappings[new_gesture] = macro_name
+            
+        self.gesture_mappings = new_mappings
     
     # 콜백 설정
     def set_update_gesture_list_callback(self, callback):

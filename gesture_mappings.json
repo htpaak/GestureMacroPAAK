@@ -1,5 +1,9 @@
 {
-  "SHIFT+1857_961": "gesture_SHIFT+1857_961_temp.json",
+  "SHIFT+1857_961": "gesture_SHIFT+1857_961.json",
   "SHIFT+1930_1045": "gesture_SHIFT+1930_1045_temp.json",
-  "SHIFT+1629_876": "gesture_SHIFT+1629_876_temp.json"
+  "SHIFT+\u27a1\ufe0f": "gesture_SHIFT+\u27a1\ufe0f_temp.json",
+  "SHIFT+\u2199\ufe0f": "gesture_SHIFT+\u2199\ufe0f_temp.json",
+  "SHIFT+\u2b07\ufe0f\u27a1\ufe0f\u2b06\ufe0f": "gesture_SHIFT+\u2b07\ufe0f\u27a1\ufe0f\u2b06\ufe0f_temp.json",
+  "SHIFT+\u27a1\ufe0f\u2b07\ufe0f\u2b05\ufe0f\u2199\ufe0f\u2b07\ufe0f": "gesture_SHIFT+\u27a1\ufe0f\u2b07\ufe0f\u2b05\ufe0f\u2199\ufe0f\u2b07\ufe0f_temp.json",
+  "SHIFT+\u2192\u2193\u2190\u2193\u2192": "gesture_SHIFT+\u2192\u2193\u2190\u2193\u2192.json"
 }
