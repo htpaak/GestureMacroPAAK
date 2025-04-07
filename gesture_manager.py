@@ -206,22 +206,43 @@ class GestureManager:
             print(f"Executing macro '{macro_name}' for gesture: {gesture}")
             
             # 매크로 로드
-            events = self.storage.load_macro(macro_name)
-            
-            # 템플릿 매크로 (빈 매크로)인 경우 실행하지 않음
-            if not events or len(events) == 0:
-                print(f"매크로가 비어 있어 실행할 수 없습니다: {macro_name}")
-                return False
-                
-            # 이벤트 목록이 유효한지 확인
-            if not isinstance(events, list):
-                print(f"매크로 데이터가 유효하지 않음: {type(events)}")
-                return False
-                
             try:
+                # 직접 매크로 파일 읽기
+                import os
+                import json
+                full_path = os.path.join("macros", macro_name)
+                
+                # 파일이 존재하는지 확인
+                if not os.path.exists(full_path):
+                    # 대체 경로 시도
+                    safe_gesture = gesture.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
+                    alternative_path = os.path.join("macros", f"gesture_{safe_gesture}.json")
+                    
+                    if os.path.exists(alternative_path):
+                        full_path = alternative_path
+                    else:
+                        print(f"매크로 파일을 찾을 수 없습니다: {macro_name}")
+                        return False
+                
+                # 파일 읽기
+                with open(full_path, 'r') as f:
+                    events = json.load(f)
+                
+                # 템플릿 매크로 (빈 매크로)인 경우 실행하지 않음
+                if not events or len(events) == 0:
+                    print(f"매크로가 비어 있어 실행할 수 없습니다: {macro_name}")
+                    return False
+                    
+                # 이벤트 목록이 유효한지 확인
+                if not isinstance(events, list):
+                    print(f"매크로 데이터가 유효하지 않음: {type(events)}")
+                    return False
+                    
                 # 매크로 플레이어로 매크로 실행
+                print(f"매크로 실행: {len(events)}개 이벤트")
                 self.macro_player.play_macro(events, 1)  # 1회 실행
                 return True
+                
             except Exception as e:
                 print(f"매크로 실행 중 오류 발생: {e}")
                 return False
