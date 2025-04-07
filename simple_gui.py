@@ -18,8 +18,8 @@ class SimpleGUI:
         self.root.title("제스처 매크로 프로그램")
         
         # 창 크기 설정 (width x height)
-        window_width = 800
-        window_height = 600
+        window_width = 1100
+        window_height = 900
         
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -33,7 +33,7 @@ class SimpleGUI:
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 최소 창 크기 설정
-        self.root.minsize(800, 600)
+        self.root.minsize(900, 750)
         
         # 포커스 설정
         self.root.lift()
