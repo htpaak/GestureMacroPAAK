@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox, simpledialog
 import time
 import mouse
 import keyboard
+import os
 
 class SimpleGUI:
     def __init__(self, root, recorder, player, editor, storage, gesture_manager=None):
@@ -65,13 +66,8 @@ class SimpleGUI:
         # 단축키 설정
         self.setup_keyboard_shortcuts()
         
-        # 제스처 매니저 콜백 설정
-        if self.gesture_manager:
-            print("제스처 매니저 콜백 설정")  # 디버깅 로그 추가
-            self.gesture_manager.recorder = self.recorder  # 녹화기 설정
-            self.gesture_manager.set_update_gesture_list_callback(self.update_gesture_list)
-            self.gesture_manager.set_macro_record_callback(self.start_macro_for_gesture)
-        
+        # 제스처 매니저 콜백 설정은 setup_ui에서 수행하므로 여기서 제거
+
     def setup_ui(self):
         """간소화된 GUI 구성"""
         # 메인 프레임
@@ -123,12 +119,15 @@ class SimpleGUI:
         gesture_scrollbar = ttk.Scrollbar(gesture_frame)
         gesture_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.gesture_listbox = tk.Listbox(gesture_frame, font=('Consolas', 11))
+        self.gesture_listbox = tk.Listbox(gesture_frame, font=('Consolas', 11), height=15)
         self.gesture_listbox.pack(fill=tk.BOTH, expand=True)
         self.gesture_listbox.config(yscrollcommand=gesture_scrollbar.set, 
                                    selectbackground='#4a6cd4', 
                                    selectforeground='white')
         gesture_scrollbar.config(command=self.gesture_listbox.yview)
+        
+        # 제스처 선택 이벤트 바인딩 - 이벤트 목록 업데이트
+        self.gesture_listbox.bind('<<ListboxSelect>>', self.on_gesture_select)
         
         # 제스처 목록 아래 버튼 프레임
         gesture_btn_frame = ttk.Frame(gesture_frame)
@@ -216,6 +215,21 @@ class SimpleGUI:
         # 제스처 목록 업데이트
         if self.gesture_manager:
             self.update_gesture_list()
+            
+        # 제스처 매니저 콜백 설정
+        if self.gesture_manager:
+            print("제스처 매니저 콜백 설정 시작")  # 디버깅 로그 추가
+            
+            # 녹화기 설정
+            self.gesture_manager.recorder = self.recorder
+            
+            # 제스처 목록 업데이트 콜백 설정
+            self.gesture_manager.set_update_gesture_list_callback(self.update_gesture_list)
+            print("제스처 목록 업데이트 콜백 설정 완료")  # 디버깅 로그 추가
+            
+            # 매크로 녹화 요청 콜백 설정
+            self.gesture_manager.set_macro_record_callback(self.start_macro_for_gesture)
+            print("매크로 녹화 요청 콜백 설정 완료")  # 디버깅 로그 추가
 
     def update_status(self, message):
         """상태 메시지 업데이트"""
@@ -938,3 +952,68 @@ class SimpleGUI:
         
         # 상태 업데이트
         self.update_status("제스처 녹화 중...")
+
+    def on_gesture_select(self, event=None):
+        """제스처 리스트박스에서 제스처 선택 시 이벤트 목록 업데이트"""
+        # 선택된 제스처 확인
+        selected = self.gesture_listbox.curselection()
+        if not selected:
+            return
+            
+        # 제스처 이름 가져오기
+        gesture = self.gesture_listbox.get(selected[0])
+        
+        # 이벤트 목록 클리어
+        self.event_listbox.delete(0, tk.END)
+        
+        # 해당 제스처의 매크로 로드
+        if self.gesture_manager and gesture in self.gesture_manager.gesture_mappings:
+            macro_name = self.gesture_manager.gesture_mappings[gesture]
+            
+            # 매크로 파일 경로 직접 구성
+            full_path = os.path.join("macros", macro_name)
+            
+            # 파일 내용 직접 읽기
+            try:
+                # 파일이 없으면 대체 경로 시도
+                if not os.path.exists(full_path):
+                    safe_gesture = gesture.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
+                    alternative_path = os.path.join("macros", f"gesture_{safe_gesture}.json")
+                    
+                    if os.path.exists(alternative_path):
+                        full_path = alternative_path
+                    else:
+                        raise FileNotFoundError(f"매크로 파일을 찾을 수 없음: {full_path} 또는 {alternative_path}")
+                
+                # 파일 읽기
+                with open(full_path, 'r') as f:
+                    import json
+                    macro_data = json.load(f)
+                
+                # 빈 매크로는 표시하지 않음
+                if len(macro_data) == 0:
+                    self.update_status(f"제스처 '{gesture}'에 연결된 매크로가 비어있습니다")
+                    return
+                
+                # 에디터의 이벤트 리스트에 직접 설정
+                if hasattr(self.editor, 'events'):
+                    self.editor.events = macro_data
+                
+                # 플레이어의 이벤트 리스트에 직접 설정
+                if hasattr(self.player, 'events'):
+                    self.player.events = macro_data
+                
+                # 이벤트 목록에 표시
+                for i, event in enumerate(macro_data):
+                    self.display_event(event, i)
+                
+                # 첫 번째 항목으로 스크롤
+                if self.event_listbox.size() > 0:
+                    self.event_listbox.see(0)
+                    
+                self.update_status(f"제스처 '{gesture}'의 매크로 이벤트 표시 중 ({len(macro_data)}개)")
+            except Exception as e:
+                print(f"매크로 로드 오류: {e}")
+                self.update_status(f"매크로 로드 중 오류가 발생했습니다")
+        else:
+            self.update_status(f"제스처 '{gesture}'에 연결된 매크로를 찾을 수 없습니다")

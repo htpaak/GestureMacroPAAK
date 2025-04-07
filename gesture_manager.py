@@ -155,8 +155,11 @@ class GestureManager:
         
     def save_macro_for_gesture(self, gesture, events):
         """제스처에 매크로 저장"""
-        # 매크로 이름 생성 (제스처 기반)
-        macro_name = f"gesture_{gesture}.json"
+        # 매크로 이름 생성 (제스처 기반) - 파일명으로 사용할 수 있게 가공
+        safe_gesture = gesture.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
+        macro_name = f"gesture_{safe_gesture}.json"
+        
+        print(f"매크로 저장: 제스처 '{gesture}' -> 파일명 '{macro_name}'")
         
         # 매크로 저장
         success = self.storage.save_macro(events, macro_name)
@@ -204,12 +207,24 @@ class GestureManager:
             
             # 매크로 로드
             events = self.storage.load_macro(macro_name)
-            if events:
+            
+            # 템플릿 매크로 (빈 매크로)인 경우 실행하지 않음
+            if not events or len(events) == 0:
+                print(f"매크로가 비어 있어 실행할 수 없습니다: {macro_name}")
+                return False
+                
+            # 이벤트 목록이 유효한지 확인
+            if not isinstance(events, list):
+                print(f"매크로 데이터가 유효하지 않음: {type(events)}")
+                return False
+                
+            try:
                 # 매크로 플레이어로 매크로 실행
                 self.macro_player.play_macro(events, 1)  # 1회 실행
                 return True
-            else:
-                print(f"Failed to load macro: {macro_name}")
+            except Exception as e:
+                print(f"매크로 실행 중 오류 발생: {e}")
+                return False
         else:
             print(f"No macro mapping for gesture: {gesture}")
             
@@ -281,7 +296,11 @@ class GestureManager:
             return False
         
         # 매크로 없이 제스처만 저장 (임시로 빈 매크로 파일 생성)
-        temp_macro_name = f"gesture_{gesture}_temp.json"
+        # 파일명으로 사용할 수 있게 가공
+        safe_gesture = gesture.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
+        temp_macro_name = f"gesture_{safe_gesture}_temp.json"
+        
+        print(f"템플릿 매크로 저장: 제스처 '{gesture}' -> 파일명 '{temp_macro_name}'")
         
         # 빈 이벤트 리스트로 임시 저장
         if self.storage.save_macro([], temp_macro_name):
@@ -301,6 +320,9 @@ class GestureManager:
                 self.on_update_gesture_list()
             else:
                 print("경고: 제스처 목록 업데이트 콜백이 설정되지 않았습니다.")  # 디버깅 로그 추가
+
+            # 제스처가 저장되었다는 메시지 표시
+            messagebox.showinfo("제스처 저장됨", f"제스처 '{gesture}'가 저장되었습니다. 매크로를 녹화하려면 '매크로 녹화 시작' 버튼을 클릭하세요.")
                 
             return True
         

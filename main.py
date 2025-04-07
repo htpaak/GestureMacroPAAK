@@ -1,4 +1,7 @@
 import tkinter as tk
+import os
+import sys
+import time
 from recorder import MacroRecorder
 from player import MacroPlayer
 from editor import MacroEditor
@@ -6,33 +9,37 @@ from storage import MacroStorage
 from simple_gui import SimpleGUI
 from gesture_manager import GestureManager
 
+def auto_enable_gesture():
+    """자동으로 제스처 인식 활성화"""
+    print("제스처 인식 자동 활성화")
+    gui.gesture_enabled.set(True)
+    gui.toggle_gesture_recognition()
+
 def main():
     # 루트 윈도우 생성
     root = tk.Tk()
     
-    # 초기화를 위해 즉시 업데이트
-    root.update_idletasks()
+    # 전역 변수 설정
+    global gui, recorder, player, editor, storage, gesture_manager
     
-    # 모듈 초기화
+    # 디버깅 정보 출력
+    print("시스템 정보:", sys.platform)
+    print("현재 디렉토리:", os.getcwd())
+    
+    # 인스턴스 생성
+    storage = MacroStorage()
     recorder = MacroRecorder()
     player = MacroPlayer()
-    storage = MacroStorage()
     editor = MacroEditor(storage)
     
-    # 제스처 관리자 초기화 (레코더 전달)
+    # 제스처 매니저 초기화
     gesture_manager = GestureManager(player, storage, recorder)
     
-    # GUI 초기화 - 간소화된 GUI 사용 (제스처 관리자 전달)
+    # GUI 초기화
     gui = SimpleGUI(root, recorder, player, editor, storage, gesture_manager)
     gui.setup_ui()
     
-    # 시작 시 제스처 인식 자동 활성화 (0.5초 후)
-    def auto_enable_gesture():
-        if hasattr(gui, 'gesture_enabled'):
-            print("제스처 인식 자동 활성화")
-            gui.gesture_enabled.set(True)
-            gui.toggle_gesture_recognition()
-    
+    # 자동으로 제스처 인식 활성화 (0.5초 후)
     root.after(500, auto_enable_gesture)
     
     # 메인 루프 시작
