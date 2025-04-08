@@ -13,13 +13,13 @@ class GestureRecognizer:
         
         # 키보드 모디파이어와 제스처를 구분하기 위한 접두사 (정수 타입으로 변경)
         self.mod_prefixes = {
-            1: "CTRL",           # CTRL_MODIFIER
+            1: "Ctrl",           # CTRL_MODIFIER
             2: "SHIFT",          # SHIFT_MODIFIER
-            4: "ALT",            # ALT_MODIFIER
-            3: "CTRL+SHIFT",     # CTRL_MODIFIER | SHIFT_MODIFIER
-            5: "CTRL+ALT",       # CTRL_MODIFIER | ALT_MODIFIER
-            6: "SHIFT+ALT",      # SHIFT_MODIFIER | ALT_MODIFIER
-            7: "CTRL+SHIFT+ALT"  # CTRL_MODIFIER | SHIFT_MODIFIER | ALT_MODIFIER
+            4: "Alt",            # ALT_MODIFIER
+            3: "Ctrl+SHIFT",     # CTRL_MODIFIER | SHIFT_MODIFIER
+            5: "Ctrl+Alt",       # CTRL_MODIFIER | ALT_MODIFIER
+            6: "SHIFT+Alt",      # SHIFT_MODIFIER | ALT_MODIFIER
+            7: "Ctrl+SHIFT+Alt"  # CTRL_MODIFIER | SHIFT_MODIFIER | ALT_MODIFIER
         }
     
     def start_recording(self, point, modifiers=0):

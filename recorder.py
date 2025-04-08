@@ -14,7 +14,7 @@ class MacroRecorder:
         self.record_mouse_move = False
         self.use_relative_coords = False
         self.record_keyboard = True
-        self.record_delay = False  # 딜레이 녹화 설정 기본값을 False로 변경
+        self.record_delay = True  # 딜레이 녹화 설정 기본값을 True로 변경
         
         # 좌표 기준점 (상대좌표 사용 시)
         self.base_x = 0

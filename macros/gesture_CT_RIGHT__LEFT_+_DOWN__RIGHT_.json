@@ -1,0 +1,125 @@
+[
+    {
+        "type": "mouse",
+        "event_type": "down",
+        "button": "left",
+        "time": 1.0271730422973633,
+        "position": [
+            2045,
+            993
+        ],
+        "is_relative": false
+    },
+    {
+        "type": "delay",
+        "time": 1.1022514572143556,
+        "delay": 0.07607841491699219
+    },
+    {
+        "type": "mouse",
+        "event_type": "up",
+        "button": "left",
+        "time": 1.1032514572143555,
+        "position": [
+            2045,
+            993
+        ],
+        "is_relative": false
+    },
+    {
+        "type": "delay",
+        "time": 1.4389254322052003,
+        "delay": 0.3366739749908447
+    },
+    {
+        "type": "mouse",
+        "event_type": "double",
+        "button": "left",
+        "time": 1.4399254322052002,
+        "position": [
+            2416,
+            1045
+        ],
+        "is_relative": false
+    },
+    {
+        "type": "delay",
+        "time": 1.521007703781128,
+        "delay": 0.08208227157592773
+    },
+    {
+        "type": "mouse",
+        "event_type": "up",
+        "button": "left",
+        "time": 1.522007703781128,
+        "position": [
+            2416,
+            1045
+        ],
+        "is_relative": false
+    },
+    {
+        "type": "delay",
+        "time": 2.3505663146972657,
+        "delay": 0.8295586109161377
+    },
+    {
+        "type": "mouse",
+        "event_type": "down",
+        "button": "left",
+        "time": 2.3515663146972656,
+        "position": [
+            1637,
+            595
+        ],
+        "is_relative": false
+    },
+    {
+        "type": "delay",
+        "time": 2.4376696815490724,
+        "delay": 0.08710336685180664
+    },
+    {
+        "type": "mouse",
+        "event_type": "up",
+        "button": "left",
+        "time": 2.4386696815490723,
+        "position": [
+            1637,
+            595
+        ],
+        "is_relative": false
+    },
+    {
+        "type": "delay",
+        "time": 4.519796775817871,
+        "delay": 2.082127094268799
+    },
+    {
+        "type": "mouse",
+        "event_type": "down",
+        "button": "left",
+        "time": 4.520796775817871,
+        "position": [
+            1611,
+            611
+        ],
+        "is_relative": false
+    },
+    {
+        "type": "delay",
+        "time": 4.627683805465698,
+        "delay": 0.10788702964782715
+    },
+    {
+        "type": "mouse",
+        "event_type": "up",
+        "button": "left",
+        "time": 4.628683805465698,
+        "position": [
+            1611,
+            611
+        ],
+        "is_relative": false
+    }
+]

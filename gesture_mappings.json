@@ -1,5 +1,9 @@
 {
     "SHIFT+→": "gesture_SHIFT+_RIGHT_.json",
     "SHIFT+←": "gesture_SHIFT+_LEFT_.json",
-    "SHIFT+↓→": "gesture_SHIFT+_DOWN__RIGHT_.json"
+    "SHIFT+↓→": "gesture_SHIFT+_DOWN__RIGHT_.json",
+    "Alt+↓→": "gesture_ALT+_DOWN__RIGHT_.json",
+    "Ctrl+→←↓→": "gesture_CT_RIGHT__LEFT_+_DOWN__RIGHT_.json",
+    "Ctrl+↓→↑←↑": "gesture_Ctrl+_DOWN__RIGHT__UP__LEFT__UP__temp.json",
+    "Alt+→↓←": "gesture_Alt+_RIGHT__DOWN__LEFT__temp.json"
 }

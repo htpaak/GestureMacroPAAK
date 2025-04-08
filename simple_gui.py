@@ -58,7 +58,7 @@ class SimpleGUI:
         
         # 녹화 설정
         self.record_mouse_move = tk.BooleanVar(value=False)
-        self.record_delay = tk.BooleanVar(value=False)  # 딜레이 녹화 설정 기본값을 False로 변경
+        self.record_delay = tk.BooleanVar(value=True)  # 딜레이 녹화 설정 기본값을 True로 변경
         self.use_relative_coords = tk.BooleanVar(value=False)
         self.record_keyboard = tk.BooleanVar(value=True)
         
@@ -240,11 +240,13 @@ class SimpleGUI:
                       variable=self.record_delay,
                       command=self.update_record_settings).pack(side=tk.LEFT, padx=5)
         
-        ttk.Checkbutton(settings_frame, text="마우스 이동 녹화", 
-                       variable=self.record_mouse_move,
-                       command=self.update_record_settings).pack(side=tk.LEFT, padx=5)
+        # 키보드 녹화와 마우스 이동 녹화 체크박스의 위치 변경
         ttk.Checkbutton(settings_frame, text="키보드 녹화", 
                        variable=self.record_keyboard,
+                       command=self.update_record_settings).pack(side=tk.LEFT, padx=5)
+                       
+        ttk.Checkbutton(settings_frame, text="마우스 이동 녹화", 
+                       variable=self.record_mouse_move,
                        command=self.update_record_settings).pack(side=tk.LEFT, padx=5)
         
         # 상태 표시줄
@@ -515,7 +517,14 @@ class SimpleGUI:
         
         # 제스처 목록 표시
         for gesture in gestures:
-            self.gesture_listbox.insert(tk.END, gesture)
+            # 오래된 모디파이어 표기를 현대화된 표기로 변환
+            display_gesture = gesture
+            # A 또는 AT -> Alt로 변환
+            display_gesture = display_gesture.replace("A-", "Alt-").replace("AT", "Alt")
+            # CT -> Ctrl로 변환
+            display_gesture = display_gesture.replace("CT", "Ctrl")
+            
+            self.gesture_listbox.insert(tk.END, display_gesture)
         
         # 이전에 선택된 제스처 다시 선택
         if selected_gesture_name in gestures:
@@ -1493,22 +1502,56 @@ class SimpleGUI:
         self.update_status("제스처 녹화 중...")
 
     def on_gesture_select(self, event=None):
-        """제스처 선택 시 이벤트 목록 업데이트"""
+        """제스처 선택 시 이벤트 처리"""
         print("on_gesture_select 함수 호출됨")  # 디버깅 로그 추가
-        current_selection = self.gesture_listbox.curselection()
-        print(f"현재 선택: {current_selection}")  # 디버깅 로그 추가
         
-        # 선택이 없는 경우 바로 리턴
-        if not current_selection:
+        # 선택 처리 스킵 플래그 확인
+        if hasattr(self, '_skip_selection') and self._skip_selection:
+            print("선택 처리 스킵됨 (_skip_selection 플래그)")  # 디버깅 로그 추가
             return
             
-        # 내부 변수에 선택된 제스처 인덱스와 이름 저장
-        # 다중 선택의 경우 첫 번째 선택된 항목만 처리
-        self.selected_gesture_index = current_selection[0]
-        self.selected_gesture_name = self.gesture_listbox.get(current_selection[0])
-        print(f"제스처 선택 업데이트됨: {self.selected_gesture_name}")  # 디버깅 로그
+        # 현재 선택된 항목
+        selected = self.gesture_listbox.curselection()
+        print(f"선택된 항목: {selected}")  # 디버깅 로그 추가
         
-        # 이벤트 목록 업데이트 - 첫 번째 선택된 제스처의 이벤트 표시
+        if not selected:
+            print("선택된 항목 없음")  # 디버깅 로그 추가
+            self.selected_gesture_index = None
+            self.selected_gesture_name = None
+            return
+            
+        # 선택된 첫 번째 항목의 인덱스와 텍스트
+        selected_index = selected[0]
+        selected_text = self.gesture_listbox.get(selected_index)
+        
+        print(f"선택된 항목: {selected_index}, 텍스트: {selected_text}")  # 디버깅 로그 추가
+        
+        # 모디파이어 변환 고려 - UI에 표시된 이름과 실제 매핑 이름 일치시키기
+        # 여기서는 매핑에서 실제 제스처 이름 찾기
+        actual_gesture_name = None
+        
+        # 매핑 목록에서 찾기 (표시 이름과 실제 이름이 다를 수 있음)
+        for gesture in self.gesture_manager.get_mappings().keys():
+            # UI에 표시될 이름 생성
+            display_name = gesture
+            display_name = display_name.replace("A-", "Alt-").replace("AT", "Alt")
+            display_name = display_name.replace("CT", "Ctrl")
+            
+            if display_name == selected_text:
+                actual_gesture_name = gesture
+                break
+        
+        # 찾지 못한 경우 UI에 표시된 이름 그대로 사용
+        if not actual_gesture_name:
+            actual_gesture_name = selected_text
+        
+        # 상태 저장
+        self.selected_gesture_index = selected_index
+        self.selected_gesture_name = actual_gesture_name
+        
+        print(f"선택된 제스처: {self.selected_gesture_name}")  # 디버깅 로그 추가
+        
+        # 선택된 제스처의 이벤트 목록 업데이트
         self.update_event_list_for_gesture(self.selected_gesture_name)
 
     def maintain_gesture_selection(self, event):
