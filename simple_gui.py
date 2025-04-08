@@ -218,6 +218,9 @@ class SimpleGUI:
         ttk.Button(event_btn_frame, text="딜레이 추가", 
                   command=self.add_delay_to_event).pack(side=tk.LEFT, padx=5)
         
+        ttk.Button(event_btn_frame, text="딜레이 삭제", 
+                  command=self.delete_delay_events).pack(side=tk.LEFT, padx=5)
+        
         ttk.Button(event_btn_frame, text="딜레이 수정", 
                   command=self.modify_delay_time).pack(side=tk.LEFT, padx=5)
         
@@ -1881,3 +1884,92 @@ class SimpleGUI:
                 print(f"제스처 이벤트 로드 중 오류: {e}")  # 디버깅 로그 추가
                 import traceback
                 traceback.print_exc()
+
+    def delete_delay_events(self):
+        """선택된 이벤트 중 딜레이 이벤트만 삭제"""
+        print("delete_delay_events 함수 호출됨")  # 디버깅 로그 추가
+        # 녹화 중에는 편집 불가
+        if self.recorder.recording:
+            print("녹화 중 - 딜레이 삭제 불가")  # 디버깅 로그 추가
+            messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
+            return
+            
+        # 선택한 이벤트 인덱스
+        selected = self.event_listbox.curselection()
+        print(f"선택된 이벤트: {selected}")  # 디버깅 로그 추가
+        if not selected:
+            messagebox.showwarning("경고", "삭제할 이벤트를 선택하세요.")
+            return
+            
+        # 이벤트 목록 가져오기
+        events = []
+        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+            events = self.editor.get_events()
+        elif hasattr(self.editor, 'events'):
+            events = self.editor.events
+        else:
+            print("이벤트를 가져올 수 없음")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "이벤트 목록을 가져올 수 없습니다.")
+            return
+            
+        # 선택된 이벤트 중 딜레이 이벤트의 인덱스만 추출
+        delay_indices = []
+        for idx in selected:
+            if idx < len(events) and events[idx]['type'] == 'delay':
+                delay_indices.append(idx)
+                
+        print(f"삭제할 딜레이 이벤트 인덱스: {delay_indices}")  # 디버깅 로그 추가
+        
+        if not delay_indices:
+            messagebox.showinfo("알림", "선택한 항목 중 딜레이 이벤트가 없습니다.")
+            return
+            
+        # 확인 메시지
+        confirm = messagebox.askyesno("딜레이 삭제 확인", 
+                                    f"선택한 항목 중 딜레이 이벤트 {len(delay_indices)}개를 삭제하시겠습니까?")
+        if not confirm:
+            return
+            
+        # 삭제 실행
+        delete_result = False
+        try:
+            # 내림차순으로 정렬하여 인덱스 변화 방지
+            sorted_indices = sorted(delay_indices, reverse=True)
+            
+            # delete_events 메서드가 있으면 사용
+            if hasattr(self.editor, 'delete_events') and callable(self.editor.delete_events):
+                print("editor.delete_events 메소드 사용")  # 디버깅 로그 추가
+                delete_result = self.editor.delete_events(sorted_indices)
+            # events 속성 직접 접근 (대안 방법)
+            elif hasattr(self.editor, 'events'):
+                print("events 속성 직접 접근하여 삭제")  # 디버깅 로그 추가
+                for idx in sorted_indices:
+                    if 0 <= idx < len(self.editor.events):
+                        del self.editor.events[idx]
+                delete_result = True
+            else:
+                print("삭제 방법 없음")  # 디버깅 로그 추가
+                messagebox.showerror("오류", "에디터가 이벤트 삭제를 지원하지 않습니다.")
+                return
+        except Exception as e:
+            print(f"딜레이 삭제 중 예외 발생: {e}")  # 디버깅 로그 추가
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("오류", f"딜레이 이벤트 삭제 중 오류가 발생했습니다: {e}")
+            return
+            
+        if delete_result:
+            print("딜레이 이벤트 삭제 성공")  # 디버깅 로그 추가
+            # 선택 해제
+            self.clear_selection()
+            
+            # 이벤트 삭제 후 자동 로드를 방지하는 플래그 설정
+            self.skip_auto_reload = True
+            
+            # 이벤트 목록 업데이트
+            self.update_event_list()
+            
+            self.update_status(f"딜레이 이벤트 {len(delay_indices)}개가 삭제되었습니다.")
+        else:
+            print("딜레이 이벤트 삭제 실패")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "딜레이 이벤트 삭제에 실패했습니다.")
