@@ -2,6 +2,7 @@ import keyboard
 import mouse
 import time
 import threading
+import random
 
 class MacroPlayer:
     def __init__(self):
@@ -73,9 +74,21 @@ class MacroPlayer:
                     
                     # 딜레이 이벤트인 경우
                     if event_type == 'delay':
-                        delay_time = event['delay']
-                        print(f"딜레이: {delay_time:.2f}초")
-                        time.sleep(delay_time)
+                        base_delay = event['delay']
+                        
+                        # 랜덤 범위가 있는 경우
+                        if 'random_range' in event:
+                            range_value = event['random_range']
+                            min_delay = max(0, base_delay - range_value)  # 음수 딜레이 방지
+                            max_delay = base_delay + range_value
+                            actual_delay = random.uniform(min_delay, max_delay)
+                            print(f"랜덤 딜레이: {base_delay:.2f}초 ±{range_value:.2f}초 → {actual_delay:.2f}초")
+                            time.sleep(actual_delay)
+                        else:
+                            # 기존 고정 딜레이 처리
+                            print(f"딜레이: {base_delay:.2f}초")
+                            time.sleep(base_delay)
+                        
                         last_event_time = time.time()
                         continue
                     

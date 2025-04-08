@@ -206,31 +206,38 @@ class SimpleGUI:
         # 더블 클릭 이벤트 바인딩 추가
         self.event_listbox.bind('<Double-1>', self.on_event_double_click)
         
-        # 이벤트 목록 아래 버튼 프레임
+        # 이벤트 목록 아래 버튼 프레임 - 새 버튼 줄 추가
         event_btn_frame = ttk.Frame(right_frame)
         event_btn_frame.pack(fill=tk.X, pady=(5, 0))
-        
+
         ttk.Button(event_btn_frame, text="전체 선택", 
                   command=self.select_all_events).pack(side=tk.LEFT, padx=5)
-        
+
         ttk.Button(event_btn_frame, text="선택 삭제", 
                   command=self.delete_selected_event).pack(side=tk.LEFT, padx=5)
-        
+
         ttk.Button(event_btn_frame, text="딜레이 추가", 
                   command=self.add_delay_to_event).pack(side=tk.LEFT, padx=5)
-        
+
         ttk.Button(event_btn_frame, text="딜레이 삭제", 
                   command=self.delete_delay_events).pack(side=tk.LEFT, padx=5)
-        
+
         ttk.Button(event_btn_frame, text="딜레이 수정", 
                   command=self.modify_delay_time).pack(side=tk.LEFT, padx=5)
-        
+
         # 이벤트 이동 버튼
         ttk.Button(event_btn_frame, text="↑", width=2,
                   command=self.move_event_up).pack(side=tk.RIGHT, padx=2)
         ttk.Button(event_btn_frame, text="↓", width=2,
                   command=self.move_event_down).pack(side=tk.RIGHT, padx=2)
-        
+
+        # 랜덤 딜레이 버튼 프레임 추가
+        random_delay_frame = ttk.Frame(right_frame)
+        random_delay_frame.pack(fill=tk.X, pady=(5, 0))
+
+        ttk.Button(random_delay_frame, text="랜덤 딜레이 추가", 
+                  command=self.add_random_delay).pack(side=tk.LEFT, padx=5)
+
         # 간단한 설정 프레임
         settings_frame = ttk.Frame(right_frame)
         settings_frame.pack(fill=tk.X, pady=(5, 0))
@@ -748,80 +755,40 @@ class SimpleGUI:
             self.update_timer = self.root.after(self.update_interval, self.update_event_list)
     
     def display_event(self, event, index):
-        """개별 이벤트 표시"""
-        event_type = event['type']
-        event_idx = f"[{index+1}] "
+        """이벤트를 리스트박스에 표시"""
+        event_type = event.get('type', 'unknown')
         
-        # 이벤트 유형에 따라 표시 방식 다르게 처리
-        if event_type == 'delay':
-            # 초 단위를 밀리초 단위로 변환하여 표시
-            delay_time = event['delay']
-            delay_time_ms = int(delay_time * 1000)
-            delay_color = '#FFE0E0'  # 기본 색상
-            
-            # 녹화 설정에 따라 딜레이 이벤트 표시 방식 결정
-            if hasattr(self, 'record_delay') and not self.record_delay.get():
-                delay_color = '#FFE0E0'  # 붉은 배경 (딜레이 녹화 꺼짐)
-                event_details = f"⏱️ 딜레이: {delay_time_ms}ms (녹화 설정: 꺼짐)"
-            else:
-                delay_color = '#FFF0E0'  # 주황색 배경 (딜레이 녹화 켜짐)
-                event_details = f"⏱️ 딜레이: {delay_time_ms}ms"
-                
-            self.event_listbox.insert(tk.END, f"{event_idx}{event_details}")
-            self.event_listbox.itemconfig(tk.END, {'bg': delay_color})
-            
-        elif event_type == 'keyboard':
-            key_event = event['event_type']
-            key_symbol = "⌨️ "
-            if key_event == 'down':
-                key_symbol = "⌨️⬇ "
-            elif key_event == 'up':
-                key_symbol = "⌨️⬆ "
-            
-            event_details = f"{key_symbol}키보드 {event['event_type']} - {event['key']}"
-            self.event_listbox.insert(tk.END, f"{event_idx}{event_details}")
-            self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFFF'})
-            
+        # 이벤트 타입에 따라 표시 방식 결정
+        if event_type == 'keyboard':
+            key = event.get('key', '')
+            event_type_str = 'down' if event.get('event_type') == 'down' else 'up'
+            display_str = f"{index+1:3d} {event.get('time', 0):.3f} K-{event_type_str.ljust(4)} {key}"
         elif event_type == 'mouse':
-            mouse_event_type = event['event_type']
-            mouse_symbol = "🖱️ "
+            button = event.get('button', '')
+            event_type_str = event.get('event_type', '')
+            pos_x, pos_y = event.get('position', (0, 0))
+            display_str = f"{index+1:3d} {event.get('time', 0):.3f} M-{event_type_str.ljust(6)} {button} ({pos_x}, {pos_y})"
+        elif event_type == 'delay':
+            delay_ms = int(event.get('delay', 0) * 1000)
             
-            if mouse_event_type == 'move':
-                mouse_symbol = "🖱️➡️ "
-                pos_str = f"위치: {event['position']}"
-                if event.get('is_relative', False):
-                    pos_str += " (상대)"
-                event_details = f"{mouse_symbol}마우스 이동 - {pos_str}"
-            elif mouse_event_type == 'down':
-                mouse_symbol = "🖱️⬇ "
-                pos_str = f"위치: {event['position']}"
-                if event.get('is_relative', False):
-                    pos_str += " (상대)"
-                event_details = f"{mouse_symbol}마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
-            elif mouse_event_type == 'up':
-                mouse_symbol = "🖱️⬆ "
-                pos_str = f"위치: {event['position']}"
-                if event.get('is_relative', False):
-                    pos_str += " (상대)"
-                event_details = f"{mouse_symbol}마우스 {mouse_event_type} - 버튼: {event['button']} - {pos_str}"
-            elif mouse_event_type == 'double':
-                mouse_symbol = "🖱️🔄 "
-                pos_str = f"위치: {event['position']}"
-                if event.get('is_relative', False):
-                    pos_str += " (상대)"
-                event_details = f"{mouse_symbol}마우스 더블클릭 - 버튼: {event['button']} - {pos_str}"
-            elif mouse_event_type == 'scroll':
-                mouse_symbol = "🖱️🔄 "
-                pos_str = f"위치: {event['position']}"
-                if event.get('is_relative', False):
-                    pos_str += " (상대)"
-                event_details = f"{mouse_symbol}마우스 스크롤 - 델타: {event['delta']} - {pos_str}"
-            
-            self.event_listbox.insert(tk.END, f"{event_idx}{event_details}")
-            self.event_listbox.itemconfig(tk.END, {'bg': '#E0FFE0'})
+            # 랜덤 범위가 설정된 경우
+            if 'random_range' in event:
+                range_ms = int(event.get('random_range', 0) * 1000)
+                display_str = f"{index+1:3d} {event.get('time', 0):.3f} D 딜레이: {delay_ms}ms ±{range_ms}ms"
+            else:
+                display_str = f"{index+1:3d} {event.get('time', 0):.3f} D 딜레이: {delay_ms}ms"
+        else:
+            display_str = f"{index+1:3d} {event.get('time', 0):.3f} ? 알 수 없는 이벤트 타입: {event_type}"
         
-        # 마지막 추가된 항목에 해당 유형별 태그 설정
-        self.event_listbox.itemconfig(tk.END, {'selectbackground': '#3a5aa4', 'selectforeground': 'white'})
+        # 리스트박스에 추가
+        self.event_listbox.insert(tk.END, display_str)
+        
+        # 특별한 이벤트에 색상 적용
+        if event_type == 'delay':
+            if 'random_range' in event:
+                self.event_listbox.itemconfig(tk.END, {'bg': '#E6F9E6'})  # 랜덤 딜레이는 연한 녹색
+            else:
+                self.event_listbox.itemconfig(tk.END, {'bg': '#E6E6FF'})  # 일반 딜레이는 연한 파란색
     
     def delete_selected_event(self):
         """선택한 이벤트 삭제"""
@@ -1991,3 +1958,83 @@ class SimpleGUI:
                     print(f"일반 이벤트 더블 클릭: {index}")  # 디버깅 로그 추가
                     # 일반 이벤트에 대한 정보 표시
                     messagebox.showinfo("이벤트 정보", f"이벤트 #{index+1}\n유형: {event_type}")
+
+    def add_random_delay(self):
+        """선택한 딜레이 이벤트에 랜덤 범위 추가"""
+        print("add_random_delay 함수 호출됨")  # 디버깅 로그 추가
+        # 녹화 중에는 편집 불가
+        if self.recorder.recording:
+            print("녹화 중 - 랜덤 딜레이 추가 불가")  # 디버깅 로그 추가
+            messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
+            return
+        
+        # 현재 리스트박스에서 선택된 항목 가져오기
+        selected = self.event_listbox.curselection()
+        print(f"선택된 이벤트: {selected}")  # 디버깅 로그 추가
+        
+        # 선택된 항목이 없으면 경고
+        if not selected:
+            messagebox.showwarning("경고", "랜덤 딜레이를 추가할 딜레이 이벤트를 선택하세요.")
+            return
+        
+        # 선택된 이벤트가 딜레이 이벤트인지 확인
+        events = self.editor.get_events()
+        delay_indices = []
+        
+        # 선택된 항목 중 딜레이 이벤트만 찾기
+        for idx in selected:
+            if idx < len(events) and events[idx]['type'] == 'delay':
+                delay_indices.append(idx)
+        
+        print(f"딜레이 이벤트 인덱스: {delay_indices}")  # 디버깅 로그 추가
+        if not delay_indices:
+            messagebox.showwarning("경고", "선택한 항목 중 딜레이 이벤트가 없습니다.")
+            return
+        
+        # 랜덤 범위 값 입력 받기 (밀리초 단위)
+        random_range_ms = simpledialog.askinteger("랜덤 딜레이 범위 설정", 
+                                                "랜덤 범위 ±(ms):", 
+                                                minvalue=10, maxvalue=10000)
+        if not random_range_ms:
+            print("랜덤 범위 입력 취소")  # 디버깅 로그 추가
+            return
+        
+        print(f"랜덤 범위: ±{random_range_ms}ms")  # 디버깅 로그 추가
+        
+        # 성공 여부
+        update_success = True
+        
+        try:
+            # 선택된 딜레이 이벤트에 랜덤 범위 추가
+            for idx in delay_indices:
+                # 기존 딜레이 값 가져오기
+                event = events[idx]
+                base_delay = event['delay']
+                
+                # 랜덤 범위 추가
+                event['random_range'] = random_range_ms / 1000  # 초 단위로 변환
+                
+                # 이벤트 업데이트
+                if hasattr(self.editor, 'events'):
+                    self.editor.events[idx] = event
+                
+                print(f"딜레이 이벤트 {idx}에 랜덤 범위 ±{random_range_ms}ms 추가됨")  # 디버깅 로그 추가
+        except Exception as e:
+            print(f"랜덤 딜레이 추가 중 오류 발생: {e}")  # 디버깅 로그 추가
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("오류", f"랜덤 딜레이 추가 중 오류가 발생했습니다: {e}")
+            update_success = False
+        
+        if update_success:
+            # 선택 저장
+            self.selected_events = list(selected)
+            
+            # 이벤트 목록 업데이트
+            self.update_event_list()
+            
+            msg = f"선택한 딜레이 이벤트({len(delay_indices)}개)에 랜덤 범위 ±{random_range_ms}ms가 추가되었습니다."
+            self.update_status(msg)
+        else:
+            print("랜덤 딜레이 추가 실패")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "랜덤 딜레이 추가에 실패했습니다.")
