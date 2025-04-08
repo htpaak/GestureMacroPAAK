@@ -96,8 +96,8 @@ class SimpleGUI:
                      command=self.start_gesture_recording).pack(side=tk.LEFT, padx=10)  # 패딩 증가
         
         # 매크로 녹화 버튼 - 선택된 제스처에 매크로 녹화 수행
-        self.record_btn = ttk.Button(button_frame, text="매크로 녹화 시작", 
-                                    width=20,  # 버튼 너비 추가
+        self.record_btn = ttk.Button(button_frame, text="매크로 녹화", 
+                                    width=15,  # 버튼 너비를 15로 변경 (제스처 녹화 버튼과 동일)
                                     command=self.start_recording_for_selected_gesture)
         self.record_btn.pack(side=tk.LEFT, padx=10)  # 패딩 증가
         
@@ -134,6 +134,7 @@ class SimpleGUI:
         gesture_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         self.gesture_listbox = tk.Listbox(gesture_frame, font=('Consolas', 11), height=15, 
+                                         selectmode=tk.SINGLE,  # 단일 선택 모드로 설정
                                          exportselection=False)  # exportselection=False로 설정하여 포커스가 빠져도 선택 유지
         self.gesture_listbox.pack(fill=tk.BOTH, expand=True)
         self.gesture_listbox.config(yscrollcommand=gesture_scrollbar.set, 
@@ -152,6 +153,12 @@ class SimpleGUI:
         
         ttk.Button(gesture_btn_frame, text="삭제", width=10,  # 버튼 너비 추가
                   command=self.delete_gesture).pack(side=tk.LEFT, padx=5)
+        
+        # 제스처 이동 버튼 추가
+        ttk.Button(gesture_btn_frame, text="↑", width=2,
+                  command=self.move_gesture_up).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(gesture_btn_frame, text="↓", width=2,
+                  command=self.move_gesture_down).pack(side=tk.RIGHT, padx=2)
         
         # 반복 횟수 설정
         repeat_frame = ttk.Frame(gesture_frame)
@@ -468,57 +475,45 @@ class SimpleGUI:
     
     def update_gesture_list(self):
         """제스처 목록 업데이트"""
-        print("update_gesture_list 함수 호출됨")  # 디버깅 로그
+        print("update_gesture_list 함수 호출됨")  # 디버깅 로그 추가
+        # 제스처 매니저가 없으면 무시
+        if not self.gesture_manager:
+            print("제스처 매니저 없음")  # 디버깅 로그 추가
+            return
         
-        # 업데이트 전 현재 선택 저장
-        previously_selected_gesture = self.selected_gesture_name
+        # 현재 선택된 제스처 저장
+        selected_gesture_name = self.selected_gesture_name
         
         # 리스트박스 초기화
-        if self.gesture_listbox:
-            self.gesture_listbox.delete(0, tk.END)
-        else:
-            print("경고: gesture_listbox가 초기화되지 않았습니다")
-            return
-            
-        # 제스처 관리자 확인
-        if not self.gesture_manager:
-            print("경고: 제스처 관리자가 없습니다")
-            return
-            
-        # 제스처 매핑 출력 (디버깅 용)
-        print(f"현재 제스처 매핑: {self.gesture_manager.gesture_mappings}")
+        self.gesture_listbox.delete(0, tk.END)
         
         # 제스처 목록 가져오기
-        gestures = list(self.gesture_manager.gesture_mappings.keys())
+        gesture_mappings = self.gesture_manager.get_mappings()
+        gestures = list(gesture_mappings.keys())
         
-        if not gestures:
-            print("제스처 목록이 비어있습니다")
-            # 선택 정보 초기화
-            self.selected_gesture_index = None
-            self.selected_gesture_name = None
-            return
-            
-        print(f"제스처 목록: {gestures}")
-        
-        # 리스트박스에 추가
+        # 제스처 목록 표시
         for gesture in gestures:
             self.gesture_listbox.insert(tk.END, gesture)
-            
-        print(f"제스처 목록 업데이트 완료: {self.gesture_listbox.size()} 개의 제스처")
         
-        # 이전 선택 복원
-        if previously_selected_gesture and previously_selected_gesture in gestures:
-            idx = gestures.index(previously_selected_gesture)
+        # 이전에 선택된 제스처 다시 선택
+        if selected_gesture_name in gestures:
+            idx = gestures.index(selected_gesture_name)
+            self.gesture_listbox.selection_clear(0, tk.END)  # 모든 선택 해제
             self.gesture_listbox.selection_set(idx)
+            self.gesture_listbox.see(idx)  # 해당 위치로 스크롤
             self.selected_gesture_index = idx
-            self.selected_gesture_name = previously_selected_gesture
-            print(f"이전 선택 제스처 복원됨: {previously_selected_gesture}")  # 디버깅 로그
-        elif self.gesture_listbox.size() > 0:
-            # 이전 선택이 없으면 첫 번째 항목 선택
-            self.gesture_listbox.selection_set(0)
-            self.selected_gesture_index = 0
-            self.selected_gesture_name = gestures[0]
-            print(f"첫 번째 제스처 선택됨: {gestures[0]}")  # 디버깅 로그
+            self.selected_gesture_name = selected_gesture_name
+            print(f"제스처 선택 복원: {selected_gesture_name}")  # 디버깅 로그 추가
+            
+            # 선택된 제스처의 이벤트 목록 업데이트
+            self.update_event_list_for_gesture(selected_gesture_name)
+        else:
+            # 선택된 제스처가 없는 경우 선택 정보 초기화
+            self.selected_gesture_index = None
+            self.selected_gesture_name = None
+            
+        # 제스처 개수 업데이트
+        print(f"제스처 목록 업데이트 완료: {len(gestures)}개")  # 디버깅 로그 추가
     
     def delete_gesture(self):
         """제스처 매핑 삭제"""
@@ -1579,3 +1574,199 @@ class SimpleGUI:
                 self.selected_gesture_index = current_selection[0]
                 self.selected_gesture_name = self.gesture_listbox.get(current_selection[0])
                 print(f"제스처 선택 업데이트됨: {self.selected_gesture_name}")  # 디버깅 로그
+
+    def move_gesture_up(self):
+        """선택한 제스처를 위로 이동"""
+        print("move_gesture_up 함수 호출됨")  # 디버깅 로그 추가
+        # 제스처 매니저가 없으면 무시
+        if not self.gesture_manager:
+            print("제스처 매니저 없음")  # 디버깅 로그 추가
+            return
+            
+        # 선택한 제스처 인덱스
+        selected = self.gesture_listbox.curselection()
+        print(f"선택된 제스처: {selected}")  # 디버깅 로그 추가
+        if not selected:
+            messagebox.showwarning("경고", "위로 이동할 제스처를 선택하세요.")
+            return
+            
+        current_index = selected[0]
+        print(f"현재 인덱스: {current_index}")  # 디버깅 로그 추가
+            
+        # 0번 인덱스는 더 이상 위로 이동할 수 없음
+        if current_index <= 0:
+            print("첫 번째 제스처는 더 이상 위로 이동할 수 없음")  # 디버깅 로그 추가
+            messagebox.showwarning("경고", "첫 번째 제스처는 더 위로 이동할 수 없습니다.")
+            return
+            
+        # 제스처 목록 가져오기
+        gestures = list(self.gesture_manager.gesture_mappings.keys())
+        
+        # 인덱스 유효성 검사
+        if current_index >= len(gestures):
+            print(f"유효하지 않은 인덱스: {current_index}")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "선택한 제스처가 유효하지 않습니다.")
+            return
+            
+        # 현재 제스처와 이전 제스처 가져오기
+        current_gesture = gestures[current_index]
+        prev_gesture = gestures[current_index - 1]
+        
+        try:
+            # 제스처 매핑에서 직접 순서 변경
+            # 원래 목록에서 제스처 제거
+            gestures.pop(current_index)
+            # 이전 위치에 삽입
+            gestures.insert(current_index - 1, current_gesture)
+            
+            # 새로운 매핑 생성
+            new_mappings = {}
+            for gesture in gestures:
+                new_mappings[gesture] = self.gesture_manager.gesture_mappings[gesture]
+            
+            # 새 매핑으로 교체
+            self.gesture_manager.gesture_mappings = new_mappings
+            
+            # 제스처 매핑 저장
+            self.gesture_manager.save_mappings()
+            
+            print(f"제스처 위치 변경됨: {current_gesture}를 위로 이동")  # 디버깅 로그 추가
+            
+            # 선택된 제스처 이름 저장
+            self.selected_gesture_name = current_gesture
+            
+            # 제스처 목록 업데이트
+            self.update_gesture_list()
+            
+            # 이동된 제스처 선택 (새 위치)
+            new_index = current_index - 1
+            self.gesture_listbox.selection_clear(0, tk.END)  # 모든 선택 해제
+            self.gesture_listbox.selection_set(new_index)  # 새 위치 선택
+            self.gesture_listbox.see(new_index)  # 해당 위치로 스크롤
+            self.selected_gesture_index = new_index
+            
+            self.update_status(f"제스처 '{current_gesture}'가 위로 이동되었습니다.")
+        except Exception as e:
+            print(f"제스처 이동 중 오류 발생: {e}")  # 디버깅 로그 추가
+            messagebox.showerror("오류", f"제스처 이동 중 오류가 발생했습니다: {e}")
+    
+    def move_gesture_down(self):
+        """선택한 제스처를 아래로 이동"""
+        print("move_gesture_down 함수 호출됨")  # 디버깅 로그 추가
+        # 제스처 매니저가 없으면 무시
+        if not self.gesture_manager:
+            print("제스처 매니저 없음")  # 디버깅 로그 추가
+            return
+            
+        # 선택한 제스처 인덱스
+        selected = self.gesture_listbox.curselection()
+        print(f"선택된 제스처: {selected}")  # 디버깅 로그 추가
+        if not selected:
+            messagebox.showwarning("경고", "아래로 이동할 제스처를 선택하세요.")
+            return
+            
+        current_index = selected[0]
+        print(f"현재 인덱스: {current_index}")  # 디버깅 로그 추가
+            
+        # 제스처 목록 가져오기
+        gestures = list(self.gesture_manager.gesture_mappings.keys())
+        
+        # 마지막 항목은 더 이상 아래로 이동할 수 없음
+        if current_index >= len(gestures) - 1:
+            print("마지막 제스처는 더 이상 아래로 이동할 수 없음")  # 디버깅 로그 추가
+            messagebox.showwarning("경고", "마지막 제스처는 더 아래로 이동할 수 없습니다.")
+            return
+            
+        # 인덱스 유효성 검사
+        if current_index >= len(gestures):
+            print(f"유효하지 않은 인덱스: {current_index}")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "선택한 제스처가 유효하지 않습니다.")
+            return
+            
+        # 현재 제스처와 다음 제스처 가져오기
+        current_gesture = gestures[current_index]
+        next_gesture = gestures[current_index + 1]
+        
+        try:
+            # 제스처 매핑에서 직접 순서 변경
+            # 원래 목록에서 제스처 제거
+            gestures.pop(current_index)
+            # 다음 위치에 삽입
+            gestures.insert(current_index + 1, current_gesture)
+            
+            # 새로운 매핑 생성
+            new_mappings = {}
+            for gesture in gestures:
+                new_mappings[gesture] = self.gesture_manager.gesture_mappings[gesture]
+            
+            # 새 매핑으로 교체
+            self.gesture_manager.gesture_mappings = new_mappings
+            
+            # 제스처 매핑 저장
+            self.gesture_manager.save_mappings()
+            
+            print(f"제스처 위치 변경됨: {current_gesture}를 아래로 이동")  # 디버깅 로그 추가
+            
+            # 선택된 제스처 이름 저장
+            self.selected_gesture_name = current_gesture
+            
+            # 제스처 목록 업데이트
+            self.update_gesture_list()
+            
+            # 이동된 제스처 선택 (새 위치)
+            new_index = current_index + 1
+            self.gesture_listbox.selection_clear(0, tk.END)  # 모든 선택 해제
+            self.gesture_listbox.selection_set(new_index)  # 새 위치 선택
+            self.gesture_listbox.see(new_index)  # 해당 위치로 스크롤
+            self.selected_gesture_index = new_index
+            
+            self.update_status(f"제스처 '{current_gesture}'가 아래로 이동되었습니다.")
+        except Exception as e:
+            print(f"제스처 이동 중 오류 발생: {e}")  # 디버깅 로그 추가
+            messagebox.showerror("오류", f"제스처 이동 중 오류가 발생했습니다: {e}")
+
+    def update_event_list_for_gesture(self, gesture_name):
+        """선택된 제스처에 대한 이벤트 목록 업데이트"""
+        print(f"update_event_list_for_gesture 함수 호출: {gesture_name}")  # 디버깅 로그 추가
+        
+        if not self.gesture_manager or not gesture_name:
+            return
+            
+        # 제스처에 대한 매크로 파일 경로 가져오기
+        if gesture_name in self.gesture_manager.gesture_mappings:
+            macro_name = self.gesture_manager.gesture_mappings[gesture_name]
+            full_path = os.path.join("macros", macro_name)
+            
+            # 파일이 존재하는지 확인
+            if not os.path.exists(full_path):
+                # 대체 경로 시도
+                safe_gesture = gesture_name.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
+                alternative_path = os.path.join("macros", f"gesture_{safe_gesture}.json")
+                
+                if os.path.exists(alternative_path):
+                    full_path = alternative_path
+                else:
+                    print(f"매크로 파일을 찾을 수 없음: {macro_name}")  # 디버깅 로그 추가
+                    return
+            
+            try:
+                # 매크로 파일 읽기
+                with open(full_path, 'r') as f:
+                    import json
+                    events = json.load(f)
+                
+                # 에디터에 이벤트 설정
+                if hasattr(self.editor, 'load_events'):
+                    self.editor.load_events(events)
+                elif hasattr(self.editor, 'events'):
+                    import copy
+                    self.editor.events = copy.deepcopy(events)
+                
+                # 이벤트 목록 업데이트
+                self.update_event_list()
+                
+                print(f"제스처 '{gesture_name}'의 이벤트 {len(events)}개 로드됨")  # 디버깅 로그 추가
+            except Exception as e:
+                print(f"제스처 이벤트 로드 중 오류: {e}")  # 디버깅 로그 추가
+                import traceback
+                traceback.print_exc()

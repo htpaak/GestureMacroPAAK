@@ -32,8 +32,8 @@ class MacroStorage:
         full_path = os.path.join(self.storage_dir, safe_filename)
         
         try:
-            with open(full_path, 'w') as f:
-                json.dump(events, f)
+            with open(full_path, 'w', encoding='utf-8') as f:
+                json.dump(events, f, ensure_ascii=False, indent=4)
             print(f"매크로 파일 저장 성공: {full_path}")
             return True
         except Exception as e:
@@ -71,12 +71,12 @@ class MacroStorage:
             return None
         
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 macro_data = json.load(f)
             
             self.current_macro = macro_data
             self.current_macro_name = safe_name
-            return macro_data["events"]
+            return macro_data
         except Exception as e:
             print(f"매크로 로드 중 오류 발생: {e}")
             return None

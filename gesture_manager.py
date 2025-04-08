@@ -224,8 +224,8 @@ class GestureManager:
                         print(f"매크로 파일을 찾을 수 없습니다: {macro_name}")
                         return False
                 
-                # 파일 읽기
-                with open(full_path, 'r') as f:
+                # 파일 읽기 - UTF-8 인코딩 사용
+                with open(full_path, 'r', encoding='utf-8') as f:
                     events = json.load(f)
                 
                 # 템플릿 매크로 (빈 매크로)인 경우 실행하지 않음
@@ -252,20 +252,22 @@ class GestureManager:
         return False
         
     def save_mappings(self):
-        """제스처 매핑 저장"""
+        """제스처-매크로 매핑 저장"""
         try:
-            with open(self.settings_file, 'w') as f:
-                json.dump(self.gesture_mappings, f, indent=2)
+            # 매핑을 정렬된 상태로 유지할 필요는 없으므로 그대로 저장
+            with open(self.settings_file, 'w', encoding='utf-8') as f:
+                json.dump(self.gesture_mappings, f, ensure_ascii=False, indent=4)
+            print(f"제스처 매핑 저장됨: {len(self.gesture_mappings)}개")
             return True
         except Exception as e:
-            print(f"Error saving gesture mappings: {e}")
+            print(f"제스처 매핑 저장 중 오류 발생: {e}")
             return False
             
     def load_mappings(self):
         """제스처-매크로 매핑 불러오기"""
         try:
             if os.path.exists(self.settings_file):
-                with open(self.settings_file, 'r') as f:
+                with open(self.settings_file, 'r', encoding='utf-8') as f:
                     self.gesture_mappings = json.load(f)
                 print(f"제스처 매핑 로드 완료: {len(self.gesture_mappings)} 개")
                 
@@ -276,6 +278,15 @@ class GestureManager:
                 self.gesture_mappings = {}
         except Exception as e:
             print(f"제스처 매핑 로드 오류: {e}")
+            # 오류가 발생하면 기존 파일을 백업하고 새로 시작
+            if os.path.exists(self.settings_file):
+                try:
+                    backup_file = f"{self.settings_file}.backup"
+                    import shutil
+                    shutil.copy2(self.settings_file, backup_file)
+                    print(f"손상된 매핑 파일을 백업했습니다: {backup_file}")
+                except Exception as backup_error:
+                    print(f"매핑 파일 백업 중 오류: {backup_error}")
             self.gesture_mappings = {}
             
     def _convert_old_gesture_names(self):
