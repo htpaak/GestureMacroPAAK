@@ -202,14 +202,17 @@ class SimpleGUI:
         event_btn_frame = ttk.Frame(right_frame)
         event_btn_frame.pack(fill=tk.X, pady=(5, 0))
         
-        ttk.Button(event_btn_frame, text="선택 삭제", 
-                  command=self.delete_selected_event).pack(side=tk.LEFT, padx=5)
-        ttk.Button(event_btn_frame, text="딜레이 추가", 
-                  command=self.add_delay_to_event).pack(side=tk.LEFT, padx=5)
-        ttk.Button(event_btn_frame, text="딜레이 수정", 
-                  command=self.modify_delay_time).pack(side=tk.LEFT, padx=5)
         ttk.Button(event_btn_frame, text="전체 선택", 
                   command=self.select_all_events).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(event_btn_frame, text="선택 삭제", 
+                  command=self.delete_selected_event).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(event_btn_frame, text="딜레이 추가", 
+                  command=self.add_delay_to_event).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(event_btn_frame, text="딜레이 수정", 
+                  command=self.modify_delay_time).pack(side=tk.LEFT, padx=5)
         
         # 이벤트 이동 버튼
         ttk.Button(event_btn_frame, text="↑", width=2,
@@ -378,18 +381,30 @@ class SimpleGUI:
         # 녹화된 매크로 이벤트 가져오기
         events = self.recorder.events
         
+        # 이벤트가 없으면 빈 배열로 초기화 (빈 이벤트 저장 허용)
         if not events:
-            messagebox.showwarning("저장 오류", "녹화된 이벤트가 없습니다.")
-            self.current_gesture = None
-            return
+            print("녹화된 이벤트가 없어 빈 배열로 초기화")  # 디버깅 로그 추가
+            events = []
+            # 사용자에게 빈 이벤트 저장 확인
+            if not messagebox.askyesno("빈 이벤트 저장", 
+                                     f"제스처 '{self.current_gesture}'에 빈 이벤트 목록을 저장하시겠습니까?"):
+                self.update_status("저장이 취소되었습니다.")
+                self.current_gesture = None
+                return
         
         # 제스처에 매크로 저장
         success = self.gesture_manager.save_macro_for_gesture(self.current_gesture, events)
         
         if success:
-            messagebox.showinfo("저장 완료", 
-                              f"제스처 '{self.current_gesture}'에 대한 매크로가 저장되었습니다.")
-            self.update_status(f"제스처 '{self.current_gesture}'에 대한 매크로가 저장되었습니다.")
+            # 이벤트 개수에 따라 메시지 다르게 표시
+            if len(events) == 0:
+                messagebox.showinfo("저장 완료", 
+                                  f"제스처 '{self.current_gesture}'에 빈 매크로가 저장되었습니다.")
+                self.update_status(f"제스처 '{self.current_gesture}'에 빈 매크로가 저장되었습니다.")
+            else:
+                messagebox.showinfo("저장 완료", 
+                                  f"제스처 '{self.current_gesture}'에 매크로({len(events)}개 이벤트)가 저장되었습니다.")
+                self.update_status(f"제스처 '{self.current_gesture}'에 매크로가 저장되었습니다.")
         else:
             messagebox.showerror("저장 오류", "매크로 저장 중 오류가 발생했습니다.")
             self.update_status("매크로 저장 중 오류가 발생했습니다.")
@@ -408,10 +423,10 @@ class SimpleGUI:
         elif hasattr(self.editor, 'events'):
             events = self.editor.events
         
-        # 이벤트가 없으면 경고 표시
+        # 이벤트가 없으면 빈 배열로 초기화 (빈 이벤트 저장 허용)
         if not events:
-            messagebox.showwarning("저장 오류", "저장할 이벤트가 없습니다.")
-            return
+            print("이벤트가 없어 빈 배열로 초기화")  # 디버깅 로그 추가
+            events = []
         
         # 선택된 제스처 확인 - 내부 변수 사용
         selected_gesture = self.selected_gesture_name
@@ -426,11 +441,23 @@ class SimpleGUI:
         
         # 선택된 제스처가 있으면 해당 제스처에 매크로 저장
         if selected_gesture and self.gesture_manager:
+            # 이벤트 배열이 비어있는지 확인
+            if len(events) == 0:
+                # 사용자에게 빈 이벤트 저장 확인
+                if not messagebox.askyesno("빈 이벤트 저장", f"제스처 '{selected_gesture}'에 빈 이벤트 목록을 저장하시겠습니까?"):
+                    self.update_status("저장이 취소되었습니다.")
+                    return
+            
             success = self.gesture_manager.save_macro_for_gesture(selected_gesture, events)
             
             if success:
-                messagebox.showinfo("저장 완료", f"제스처 '{selected_gesture}'에 매크로가 저장되었습니다.")
-                self.update_status(f"제스처 '{selected_gesture}'에 매크로가 저장되었습니다.")
+                # 이벤트 개수에 따라 메시지 다르게 표시
+                if len(events) == 0:
+                    messagebox.showinfo("저장 완료", f"제스처 '{selected_gesture}'에 빈 매크로가 저장되었습니다.")
+                    self.update_status(f"제스처 '{selected_gesture}'에 빈 매크로가 저장되었습니다.")
+                else:
+                    messagebox.showinfo("저장 완료", f"제스처 '{selected_gesture}'에 매크로({len(events)}개 이벤트)가 저장되었습니다.")
+                    self.update_status(f"제스처 '{selected_gesture}'에 매크로가 저장되었습니다.")
             else:
                 messagebox.showerror("저장 오류", "매크로 저장 중 오류가 발생했습니다.")
                 self.update_status("매크로 저장 중 오류가 발생했습니다.")
@@ -615,7 +642,8 @@ class SimpleGUI:
                 events = []
             
             # 선택된 제스처가 있고 events가 비어있는 경우 제스처의 매크로 로드 시도
-            if not events and hasattr(self, 'gesture_listbox'):
+            # 'skip_auto_reload' 플래그가 True면 자동 로드를 건너뛴다
+            if not events and hasattr(self, 'gesture_listbox') and not getattr(self, 'skip_auto_reload', False):
                 print("에디터에 이벤트가 없어 제스처의 매크로 로드 시도")  # 디버깅 로그 추가
                 selected_gesture = self.gesture_listbox.curselection()
                 if selected_gesture:
@@ -672,6 +700,10 @@ class SimpleGUI:
                 self.display_event(event, i)
             
             print(f"{len(events)}개 이벤트 표시됨")  # 디버깅 로그 추가
+        
+        # 'skip_auto_reload' 플래그를 사용 후 리셋
+        if hasattr(self, 'skip_auto_reload'):
+            self.skip_auto_reload = False
         
         # 녹화 중이 아닐 때만 선택된 항목 복원 (move_event_up/down에서 호출될 때는 복원하지 않음)
         # self.restore_selection 플래그를 사용하여 선택 복원 여부 제어
@@ -765,14 +797,19 @@ class SimpleGUI:
             messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
             return
             
-        selected = self.event_listbox.curselection()
-        print(f"선택된 이벤트: {selected}")  # 디버깅 로그 추가
-        if not selected:
-            messagebox.showwarning("경고", "삭제할 이벤트를 선택하세요.")
-            return
+        # 선택된 이벤트 확인 - 내부 변수 사용
+        if not self.selected_events:
+            # 리스트박스에서 직접 선택 확인
+            selected = self.event_listbox.curselection()
+            if not selected:
+                messagebox.showwarning("경고", "삭제할 이벤트를 선택하세요.")
+                return
+            self.selected_events = list(selected)
+            
+        print(f"삭제할 이벤트: {self.selected_events}")  # 디버깅 로그 추가
         
         # 선택한 인덱스 목록
-        selected_indices = list(selected)
+        selected_indices = self.selected_events
         print(f"삭제할 인덱스: {selected_indices}")  # 디버깅 로그 추가
         
         # 인덱스 유효성 확인
@@ -822,6 +859,9 @@ class SimpleGUI:
             print("이벤트 삭제 성공")  # 디버깅 로그 추가
             # 선택 해제
             self.clear_selection()
+            
+            # 이벤트 삭제 후 자동 로드를 방지하는 플래그 설정
+            self.skip_auto_reload = True
             
             # 이벤트 목록 업데이트
             self.update_event_list()
