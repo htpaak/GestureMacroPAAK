@@ -807,14 +807,22 @@ class SimpleGUI:
         # 녹화 중이 아닐 때만 선택된 항목 복원 (move_event_up/down에서 호출될 때는 복원하지 않음)
         # self.restore_selection 플래그를 사용하여 선택 복원 여부 제어
         if not self.recorder.recording and self.selected_events and getattr(self, 'restore_selection', True):
-            # 먼저 모든 선택 해제
-            self.event_listbox.selection_clear(0, tk.END)
+            # 선택하기 전 영역 확인 - 범위를 벗어나면 선택 안함
+            max_index = self.event_listbox.size() - 1
+            valid_selections = [idx for idx in self.selected_events if idx <= max_index]
             
-            # 저장된 항목만 선택
-            for idx in self.selected_events:
-                if idx < self.event_listbox.size():
-                    self.event_listbox.selection_set(idx)
-                    print(f"이벤트 {idx}번 선택 복원됨")  # 디버깅 로그 추가
+            if valid_selections:
+                # 먼저 모든 선택 해제
+                self.event_listbox.selection_clear(0, tk.END)
+                
+                # 저장된 항목만 선택
+                for idx in valid_selections:
+                    if idx < self.event_listbox.size():
+                        self.event_listbox.selection_set(idx)
+                        print(f"이벤트 {idx}번 선택 복원됨")  # 디버깅 로그 추가
+            else:
+                # 모든 선택 항목이 범위를 벗어나면 선택 목록 초기화
+                self.selected_events = []
         
         # 녹화 중이면 주기적으로 업데이트
         if self.recorder.recording:
@@ -891,18 +899,31 @@ class SimpleGUI:
         
         # 인덱스 유효성 확인
         events = []
-        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
-            events = self.editor.get_events()
-        elif hasattr(self.editor, 'events'):
-            events = self.editor.events
+        try:
+            if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+                events = self.editor.get_events()
+            elif hasattr(self.editor, 'events'):
+                events = self.editor.events
+        except Exception as e:
+            print(f"이벤트 목록 가져오기 오류: {e}")
+            events = []
             
         print(f"현재 이벤트 개수: {len(events)}")  # 디버깅 로그 추가
             
-        # 유효하지 않은 인덱스가 있는지 확인
-        invalid_indices = [idx for idx in selected_indices if idx >= len(events)]
-        if invalid_indices:
-            print(f"유효하지 않은 인덱스: {invalid_indices}")  # 디버깅 로그 추가
-            messagebox.showerror("오류", "선택한 이벤트 중 일부가 존재하지 않습니다.")
+        # 유효하지 않은 인덱스 필터링 (삭제 대신)
+        valid_indices = []
+        for idx in selected_indices:
+            if 0 <= idx < len(events):
+                valid_indices.append(idx)
+            else:
+                print(f"유효하지 않은 인덱스 무시: {idx}")  # 디버깅 로그 추가
+        
+        if not valid_indices:
+            print("유효한 인덱스가 없음")  # 디버깅 로그 추가
+            messagebox.showwarning("경고", "선택한 이벤트 중 유효한 항목이 없습니다.")
+            # 선택 초기화
+            self.selected_events = []
+            self.clear_selection()
             return
         
         # 여러 이벤트 삭제
@@ -911,14 +932,15 @@ class SimpleGUI:
             # delete_events 메서드가 있으면 사용
             if hasattr(self.editor, 'delete_events') and callable(self.editor.delete_events):
                 print("editor.delete_events 메소드 사용")  # 디버깅 로그 추가
-                delete_result = self.editor.delete_events(selected_indices)
+                delete_result = self.editor.delete_events(valid_indices)
             # events 속성 직접 접근 (대안 방법)
             elif hasattr(self.editor, 'events'):
                 print("events 속성 직접 접근하여 삭제")  # 디버깅 로그 추가
                 # 내림차순으로 정렬하여 인덱스 변화 방지
-                sorted_indices = sorted(selected_indices, reverse=True)
+                sorted_indices = sorted(valid_indices, reverse=True)
                 for idx in sorted_indices:
                     if 0 <= idx < len(self.editor.events):
+                        print(f"이벤트 {idx} 삭제됨")  # 디버깅 로그 추가
                         del self.editor.events[idx]
                 delete_result = True
             else:
@@ -943,7 +965,7 @@ class SimpleGUI:
             # 이벤트 목록 업데이트
             self.update_event_list()
             
-            self.update_status(f"{len(selected_indices)}개 이벤트 삭제 완료")
+            self.update_status(f"{len(valid_indices)}개 이벤트 삭제 완료")
         else:
             print("이벤트 삭제 실패")  # 디버깅 로그 추가
             messagebox.showerror("오류", "이벤트 삭제에 실패했습니다.")
@@ -966,10 +988,14 @@ class SimpleGUI:
         
         # 이벤트 목록 가져오기
         events = []
-        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
-            events = self.editor.get_events()
-        elif hasattr(self.editor, 'events'):
-            events = self.editor.events
+        try:
+            if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+                events = self.editor.get_events()
+            elif hasattr(self.editor, 'events'):
+                events = self.editor.events
+        except Exception as e:
+            print(f"이벤트 목록 가져오기 오류: {e}")
+            events = []
             
         print(f"현재 이벤트 개수: {len(events)}")  # 디버깅 로그 추가
         
@@ -1000,16 +1026,16 @@ class SimpleGUI:
             print("전체 선택 감지됨 - 모든 이벤트 사이에 딜레이 추가")  # 디버깅 로그 추가
             return self.add_delay_between_all_events(delay_time, delay_time_ms)
         
-        # 일반적인 단일 위치에 딜레이 추가 처리
-        # 선택한 이벤트 아래에 추가하기 위해 인덱스 + 1 위치에 삽입
-        index = selected[0] + 1
-        print(f"삽입 위치: {index}")  # 디버깅 로그 추가
-        
         # 인덱스 유효성 검사
         if selected[0] >= len(events):
             print(f"유효하지 않은 인덱스: {selected[0]}")  # 디버깅 로그 추가
             messagebox.showerror("오류", "선택한 위치가 유효하지 않습니다.")
             return
+        
+        # 일반적인 단일 위치에 딜레이 추가 처리
+        # 선택한 이벤트 아래에 추가하기 위해 인덱스 + 1 위치에 삽입
+        index = selected[0] + 1
+        print(f"삽입 위치: {index}")  # 디버깅 로그 추가
         
         # 딜레이 이벤트 생성
         delay_event = {
