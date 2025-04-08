@@ -591,23 +591,25 @@ class SimpleGUI:
         print(f"제스처 목록 업데이트 완료: {len(gestures)}개")  # 디버깅 로그 추가
     
     def delete_gesture(self):
-        """제스처 매핑 삭제"""
-        if not self.gesture_manager:
-            return
-            
-        # 선택된 제스처 확인
-        selected = self.gesture_listbox.curselection()
-        if not selected:
-            messagebox.showwarning("선택 오류", "삭제할 제스처를 선택하세요.")
-            return
-            
-        # 제스처 이름 가져오기
-        gesture = self.gesture_listbox.get(selected[0])
+        """선택된 제스처 삭제"""
+        # 선택된 모든 항목의 인덱스 가져오기 (역순으로 정렬)
+        selected_indices = list(self.gesture_listbox.curselection())
+        selected_indices.sort(reverse=True)  # 역순으로 정렬하여 삭제 시 인덱스 변화 방지
         
-        # 확인 후 삭제
-        if messagebox.askyesno("제스처 삭제", f"제스처 '{gesture}'를 삭제하시겠습니까?"):
-            self.gesture_manager.remove_mapping(gesture)
-            self.update_status(f"제스처 '{gesture}'가 삭제되었습니다.")
+        if not selected_indices:
+            messagebox.showwarning("경고", "삭제할 제스처를 선택해주세요.")
+            return
+            
+        # 선택된 모든 제스처 삭제
+        for index in selected_indices:
+            gesture_name = self.gesture_listbox.get(index)
+            if gesture_name in self.gesture_manager.gesture_mappings:
+                self.gesture_manager.remove_mapping(gesture_name)
+                self.gesture_listbox.delete(index)
+        
+        # 이벤트 목록 초기화
+        self.event_listbox.delete(0, tk.END)
+        self.selected_gesture = None
     
     def play_gesture_macro(self):
         """선택된 제스처의 매크로 실행"""
@@ -2187,3 +2189,24 @@ class SimpleGUI:
         # 버튼 상태 업데이트
         self.gesture_start_btn.config(state=tk.NORMAL)
         self.gesture_stop_btn.config(state=tk.DISABLED)
+
+    def delete_selected_gesture(self):
+        """선택된 제스처 삭제"""
+        # 선택된 모든 항목의 인덱스 가져오기 (역순으로 정렬)
+        selected_indices = list(self.gesture_listbox.curselection())
+        selected_indices.sort(reverse=True)  # 역순으로 정렬하여 삭제 시 인덱스 변화 방지
+        
+        if not selected_indices:
+            messagebox.showwarning("경고", "삭제할 제스처를 선택해주세요.")
+            return
+            
+        # 선택된 모든 제스처 삭제
+        for index in selected_indices:
+            gesture_name = self.gesture_listbox.get(index)
+            if gesture_name in self.gesture_manager.gesture_mappings:
+                self.gesture_manager.remove_mapping(gesture_name)
+                self.gesture_listbox.delete(index)
+        
+        # 이벤트 목록 초기화
+        self.event_listbox.delete(0, tk.END)
+        self.selected_gesture = None
