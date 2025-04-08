@@ -235,6 +235,9 @@ class SimpleGUI:
         random_delay_frame = ttk.Frame(right_frame)
         random_delay_frame.pack(fill=tk.X, pady=(5, 0))
 
+        ttk.Button(random_delay_frame, text="랜덤 좌표 추가", 
+                  command=self.add_random_position).pack(side=tk.LEFT, padx=5)
+
         ttk.Button(random_delay_frame, text="랜덤 딜레이 추가", 
                   command=self.add_random_delay).pack(side=tk.LEFT, padx=5)
 
@@ -767,7 +770,13 @@ class SimpleGUI:
             button = event.get('button', '')
             event_type_str = event.get('event_type', '')
             pos_x, pos_y = event.get('position', (0, 0))
-            display_str = f"{index+1:3d} {event.get('time', 0):.3f} M-{event_type_str.ljust(6)} {button} ({pos_x}, {pos_y})"
+            
+            # 랜덤 좌표 범위가 설정된 경우
+            if 'position_range' in event:
+                range_px = event.get('position_range', 0)
+                display_str = f"{index+1:3d} {event.get('time', 0):.3f} M-{event_type_str.ljust(6)} {button} ({pos_x}, {pos_y}) ±{range_px}px"
+            else:
+                display_str = f"{index+1:3d} {event.get('time', 0):.3f} M-{event_type_str.ljust(6)} {button} ({pos_x}, {pos_y})"
         elif event_type == 'delay':
             delay_ms = int(event.get('delay', 0) * 1000)
             
@@ -789,6 +798,9 @@ class SimpleGUI:
                 self.event_listbox.itemconfig(tk.END, {'bg': '#E6F9E6'})  # 랜덤 딜레이는 연한 녹색
             else:
                 self.event_listbox.itemconfig(tk.END, {'bg': '#E6E6FF'})  # 일반 딜레이는 연한 파란색
+        elif event_type == 'mouse':
+            if 'position_range' in event:
+                self.event_listbox.itemconfig(tk.END, {'bg': '#F9E6E6'})  # 랜덤 좌표는 연한 빨간색
     
     def delete_selected_event(self):
         """선택한 이벤트 삭제"""
@@ -2038,3 +2050,82 @@ class SimpleGUI:
         else:
             print("랜덤 딜레이 추가 실패")  # 디버깅 로그 추가
             messagebox.showerror("오류", "랜덤 딜레이 추가에 실패했습니다.")
+
+    def add_random_position(self):
+        """선택한 마우스 이벤트에 랜덤 좌표 범위 추가"""
+        print("add_random_position 함수 호출됨")  # 디버깅 로그 추가
+        # 녹화 중에는 편집 불가
+        if self.recorder.recording:
+            print("녹화 중 - 랜덤 좌표 추가 불가")  # 디버깅 로그 추가
+            messagebox.showwarning("경고", "녹화 중에는 이벤트를 편집할 수 없습니다.")
+            return
+        
+        # 현재 리스트박스에서 선택된 항목 가져오기
+        selected = self.event_listbox.curselection()
+        print(f"선택된 이벤트: {selected}")  # 디버깅 로그 추가
+        
+        # 선택된 항목이 없으면 경고
+        if not selected:
+            messagebox.showwarning("경고", "랜덤 좌표를 추가할 마우스 이벤트를 선택하세요.")
+            return
+        
+        # 선택된 이벤트가 마우스 이벤트인지 확인
+        events = self.editor.get_events()
+        mouse_indices = []
+        
+        # 선택된 항목 중 마우스 이벤트만 찾기
+        for idx in selected:
+            if idx < len(events) and events[idx]['type'] == 'mouse':
+                mouse_indices.append(idx)
+        
+        print(f"마우스 이벤트 인덱스: {mouse_indices}")  # 디버깅 로그 추가
+        if not mouse_indices:
+            messagebox.showwarning("경고", "선택한 항목 중 마우스 이벤트가 없습니다.")
+            return
+        
+        # 랜덤 범위 값 입력 받기 (픽셀 단위)
+        random_range_px = simpledialog.askinteger("랜덤 좌표 범위 설정", 
+                                                "랜덤 범위 ±(px):", 
+                                                minvalue=1, maxvalue=100)
+        if not random_range_px:
+            print("랜덤 범위 입력 취소")  # 디버깅 로그 추가
+            return
+        
+        print(f"랜덤 범위: ±{random_range_px}px")  # 디버깅 로그 추가
+        
+        # 성공 여부
+        update_success = True
+        
+        try:
+            # 선택된 마우스 이벤트에 랜덤 범위 추가
+            for idx in mouse_indices:
+                # 기존 마우스 이벤트 가져오기
+                event = events[idx]
+                
+                # 랜덤 범위 추가
+                event['position_range'] = random_range_px
+                
+                # 이벤트 업데이트
+                if hasattr(self.editor, 'events'):
+                    self.editor.events[idx] = event
+                
+                print(f"마우스 이벤트 {idx}에 랜덤 좌표 범위 ±{random_range_px}px 추가됨")  # 디버깅 로그 추가
+        except Exception as e:
+            print(f"랜덤 좌표 추가 중 오류 발생: {e}")  # 디버깅 로그 추가
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("오류", f"랜덤 좌표 추가 중 오류가 발생했습니다: {e}")
+            update_success = False
+        
+        if update_success:
+            # 선택 저장
+            self.selected_events = list(selected)
+            
+            # 이벤트 목록 업데이트
+            self.update_event_list()
+            
+            msg = f"선택한 마우스 이벤트({len(mouse_indices)}개)에 랜덤 좌표 범위 ±{random_range_px}px가 추가되었습니다."
+            self.update_status(msg)
+        else:
+            print("랜덤 좌표 추가 실패")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "랜덤 좌표 추가에 실패했습니다.")

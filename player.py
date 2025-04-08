@@ -142,6 +142,20 @@ class MacroPlayer:
             event_type = event['event_type']
             position = event['position']
             
+            # 랜덤 좌표 범위가 있는 경우
+            if 'position_range' in event:
+                # 기존 좌표
+                original_x, original_y = position
+                range_px = event['position_range']
+                
+                # 범위 내에서 무작위 좌표 생성
+                random_x = random.randint(original_x - range_px, original_x + range_px)
+                random_y = random.randint(original_y - range_px, original_y + range_px)
+                
+                # 무작위 좌표로 변경
+                position = (random_x, random_y)
+                print(f"랜덤 좌표: ({original_x}, {original_y}) ±{range_px}px → ({random_x}, {random_y})")
+            
             # 상대좌표 처리
             if event.get('is_relative', False):
                 position = (position[0] + self.base_x, position[1] + self.base_y)
@@ -180,6 +194,8 @@ class MacroPlayer:
                 print(f"마우스 스크롤: {delta}, 위치: {position}")
         except Exception as e:
             print(f"마우스 이벤트 실행 중 오류: {e}")
+            import traceback
+            traceback.print_exc()
             
     def is_playing(self):
         """매크로 실행 중인지 확인"""
