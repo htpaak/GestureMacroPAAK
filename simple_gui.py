@@ -65,7 +65,8 @@ class SimpleGUI:
         # 녹화 설정
         self.record_mouse_move = tk.BooleanVar(value=False)
         self.record_delay = tk.BooleanVar(value=True)  # 딜레이 녹화 설정 기본값을 True로 변경
-        self.use_relative_coords = tk.BooleanVar(value=False)
+        self.use_relative_coords = tk.BooleanVar(value=False)  # 상대좌표 (기본값 False)
+        self.use_absolute_coords = tk.BooleanVar(value=True)  # 절대좌표 변수 추가 (기본값 True)
         self.record_keyboard = tk.BooleanVar(value=True)
         
         # 무한 반복 설정
@@ -273,6 +274,10 @@ class SimpleGUI:
         settings_frame = ttk.Frame(right_frame)
         settings_frame.pack(fill=tk.X, pady=(5, 0))
         
+        # 명시적으로 변수 재설정 (초기화 문제 해결)
+        self.use_absolute_coords.set(True)
+        self.use_relative_coords.set(False)
+        
         # 딜레이 녹화 체크박스를 마우스 이동 녹화 체크박스 왼쪽에 추가
         ttk.Checkbutton(settings_frame, text="딜레이 녹화", 
                       variable=self.record_delay,
@@ -286,6 +291,15 @@ class SimpleGUI:
         ttk.Checkbutton(settings_frame, text="마우스 이동 녹화", 
                        variable=self.record_mouse_move,
                        command=self.update_record_settings).pack(side=tk.LEFT, padx=5)
+        
+        # 절대좌표와 상대좌표 체크박스 추가
+        ttk.Checkbutton(settings_frame, text="절대좌표 녹화", 
+                       variable=self.use_absolute_coords,
+                       command=lambda: self.toggle_absolute_coords()).pack(side=tk.LEFT, padx=5)
+                       
+        ttk.Checkbutton(settings_frame, text="상대좌표 녹화", 
+                       variable=self.use_relative_coords,
+                       command=lambda: self.toggle_relative_coords()).pack(side=tk.LEFT, padx=5)
         
         # 상태 표시줄
         self.status_label = ttk.Label(main_frame, text="준비", relief=tk.SUNKEN, anchor=tk.W)
@@ -310,6 +324,10 @@ class SimpleGUI:
             self.gesture_manager.set_macro_record_callback(self.start_macro_for_gesture)
             print("매크로 녹화 요청 콜백 설정 완료")  # 디버깅 로그 추가
 
+        # 초기 설정 업데이트 - 레코더의 설정 초기화
+        print("초기 레코더 설정 업데이트")  # 디버깅 로그 추가
+        self.update_record_settings()
+
     def setup_styles(self):
         """버튼 스타일 설정"""
         style = ttk.Style()
@@ -322,6 +340,16 @@ class SimpleGUI:
     
     def update_record_settings(self):
         """녹화 설정 업데이트"""
+        print(f"update_record_settings 호출됨: 절대좌표={self.use_absolute_coords.get()}, 상대좌표={self.use_relative_coords.get()}")  # 디버깅 로그 추가
+        
+        # 좌표 타입 충돌 해결
+        if self.use_absolute_coords.get() and self.use_relative_coords.get():
+            print("좌표 타입 충돌 감지 - 절대좌표 우선 사용")
+            self.use_relative_coords.set(False)
+        elif not self.use_absolute_coords.get() and not self.use_relative_coords.get():
+            print("좌표 타입 미설정 감지 - 절대좌표 기본값으로 설정")
+            self.use_absolute_coords.set(True)
+        
         self.recorder.record_mouse_movement = self.record_mouse_move.get()
         self.recorder.use_relative_coords = self.use_relative_coords.get()
         self.recorder.record_keyboard = self.record_keyboard.get()
@@ -332,7 +360,8 @@ class SimpleGUI:
         if self.record_delay.get():
             settings.append("딜레이")
         if self.record_mouse_move.get():
-            settings.append("마우스 이동")
+            coords_type = "상대좌표" if self.use_relative_coords.get() else "절대좌표"
+            settings.append(f"마우스 이동 ({coords_type})")
         if self.record_keyboard.get():
             settings.append("키보드")
             
@@ -2210,3 +2239,39 @@ class SimpleGUI:
         # 이벤트 목록 초기화
         self.event_listbox.delete(0, tk.END)
         self.selected_gesture = None
+
+    def toggle_absolute_coords(self):
+        """절대좌표 체크박스 토글 시 호출"""
+        print(f"toggle_absolute_coords 호출됨: 절대좌표={self.use_absolute_coords.get()}")
+        if self.use_absolute_coords.get():
+            # 절대좌표가 선택되면 상대좌표 해제
+            self.use_relative_coords.set(False)
+        else:
+            # 절대좌표가 해제되면 상대좌표 선택
+            self.use_relative_coords.set(True)
+        
+        # 레코더 설정 업데이트
+        self.recorder.use_relative_coords = self.use_relative_coords.get()
+        
+        # 상태 메시지 업데이트
+        coords_type = "상대좌표" if self.use_relative_coords.get() else "절대좌표"
+        print(f"최종 좌표 타입 설정: {coords_type}")
+        self.update_status(f"좌표 타입이 {coords_type}로 설정되었습니다.")
+
+    def toggle_relative_coords(self):
+        """상대좌표 체크박스 토글 시 호출"""
+        print(f"toggle_relative_coords 호출됨: 상대좌표={self.use_relative_coords.get()}")
+        if self.use_relative_coords.get():
+            # 상대좌표가 선택되면 절대좌표 해제
+            self.use_absolute_coords.set(False)
+        else:
+            # 상대좌표가 해제되면 절대좌표 선택
+            self.use_absolute_coords.set(True)
+        
+        # 레코더 설정 업데이트
+        self.recorder.use_relative_coords = self.use_relative_coords.get()
+        
+        # 상태 메시지 업데이트
+        coords_type = "상대좌표" if self.use_relative_coords.get() else "절대좌표"
+        print(f"최종 좌표 타입 설정: {coords_type}")
+        self.update_status(f"좌표 타입이 {coords_type}로 설정되었습니다.")
