@@ -161,6 +161,21 @@ class GestureManager:
         
         print(f"매크로 저장: 제스처 '{gesture}' -> 파일명 '{macro_name}'")
         
+        # 기존 매핑 확인 및 임시 파일 처리
+        if gesture in self.gesture_mappings:
+            old_macro_name = self.gesture_mappings[gesture]
+            print(f"기존 매핑 발견: {gesture} -> {old_macro_name}")
+            
+            # 임시 파일인 경우 삭제
+            if "_temp.json" in old_macro_name:
+                old_path = os.path.join("macros", old_macro_name)
+                if os.path.exists(old_path):
+                    try:
+                        os.remove(old_path)
+                        print(f"임시 파일 삭제됨: {old_path}")
+                    except Exception as e:
+                        print(f"임시 파일 삭제 실패: {e}")
+        
         # 매크로 저장
         success = self.storage.save_macro(events, macro_name)
         
@@ -204,6 +219,11 @@ class GestureManager:
         if gesture in self.gesture_mappings:
             macro_name = self.gesture_mappings[gesture]
             print(f"Executing macro '{macro_name}' for gesture: {gesture}")
+            
+            # 임시 매크로인지 미리 확인
+            if "_temp.json" in macro_name:
+                print(f"임시 매크로는 실행할 수 없습니다: {macro_name}")
+                return False
             
             # 매크로 로드
             try:
@@ -273,6 +293,9 @@ class GestureManager:
                 
                 # 구 형식의 제스처 이름 변환 (RDLDR → →↓←↓→)
                 self._convert_old_gesture_names()
+                
+                # 매핑 검증 및 정리
+                self._validate_and_clean_mappings()
             else:
                 print("제스처 매핑 파일이 없음, 새로 생성됩니다.")
                 self.gesture_mappings = {}
@@ -288,6 +311,31 @@ class GestureManager:
                 except Exception as backup_error:
                     print(f"매핑 파일 백업 중 오류: {backup_error}")
             self.gesture_mappings = {}
+            
+    def _validate_and_clean_mappings(self):
+        """매핑 검증 및 정리 - 파일이 존재하지 않는 매핑 제거"""
+        invalid_gestures = []
+        for gesture, macro_name in self.gesture_mappings.items():
+            # 매크로 파일 경로 확인
+            full_path = os.path.join("macros", macro_name)
+            if not os.path.exists(full_path):
+                # 대체 경로 시도
+                safe_gesture = gesture.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
+                alternative_path = os.path.join("macros", f"gesture_{safe_gesture}.json")
+                
+                if not os.path.exists(alternative_path):
+                    print(f"매크로 파일이 존재하지 않는 매핑 발견: {gesture} -> {macro_name}")
+                    invalid_gestures.append(gesture)
+                
+        # 유효하지 않은 매핑 제거
+        for gesture in invalid_gestures:
+            print(f"유효하지 않은 매핑 제거: {gesture}")
+            del self.gesture_mappings[gesture]
+            
+        # 변경된 경우 저장
+        if invalid_gestures:
+            print(f"{len(invalid_gestures)}개의 유효하지 않은 매핑 제거됨")
+            self.save_mappings()
             
     def _convert_old_gesture_names(self):
         """구 형식의 제스처 이름을 새 형식으로 변환"""

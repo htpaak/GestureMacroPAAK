@@ -19,8 +19,8 @@ class SimpleGUI:
         self.root.title("제스처 매크로 프로그램")
         
         # 창 크기 설정 (width x height)
-        window_width = 1100
-        window_height = 900
+        window_width = 1600
+        window_height = 1200
         
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -34,7 +34,7 @@ class SimpleGUI:
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 최소 창 크기 설정
-        self.root.minsize(900, 750)
+        self.root.minsize(1000, 800)
         
         # 포커스 설정
         self.root.lift()
@@ -134,7 +134,7 @@ class SimpleGUI:
         gesture_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         self.gesture_listbox = tk.Listbox(gesture_frame, font=('Consolas', 11), height=15, 
-                                         selectmode=tk.SINGLE,  # 단일 선택 모드로 설정
+                                         selectmode=tk.EXTENDED,  # 다중 선택 모드로 변경
                                          exportselection=False)  # exportselection=False로 설정하여 포커스가 빠져도 선택 유지
         self.gesture_listbox.pack(fill=tk.BOTH, expand=True)
         self.gesture_listbox.config(yscrollcommand=gesture_scrollbar.set, 
@@ -1465,229 +1465,78 @@ class SimpleGUI:
         self.update_status("제스처 녹화 중...")
 
     def on_gesture_select(self, event=None):
-        """제스처 리스트박스에서 제스처 선택 시 이벤트 목록 업데이트"""
+        """제스처 선택 시 이벤트 목록 업데이트"""
         print("on_gesture_select 함수 호출됨")  # 디버깅 로그 추가
-        # 선택된 제스처 확인
-        selected = self.gesture_listbox.curselection()
-        if not selected:
-            print("선택된 제스처 없음")  # 디버깅 로그 추가
+        current_selection = self.gesture_listbox.curselection()
+        print(f"현재 선택: {current_selection}")  # 디버깅 로그 추가
+        
+        # 선택이 없는 경우 바로 리턴
+        if not current_selection:
             return
             
-        # 제스처 이름 가져오기
-        gesture = self.gesture_listbox.get(selected[0])
-        print(f"선택된 제스처: {gesture}")  # 디버깅 로그 추가
+        # 내부 변수에 선택된 제스처 인덱스와 이름 저장
+        # 다중 선택의 경우 첫 번째 선택된 항목만 처리
+        self.selected_gesture_index = current_selection[0]
+        self.selected_gesture_name = self.gesture_listbox.get(current_selection[0])
+        print(f"제스처 선택 업데이트됨: {self.selected_gesture_name}")  # 디버깅 로그
         
-        # 선택된 제스처 정보 저장 (포커스 유지를 위함)
-        self.selected_gesture_index = selected[0]
-        self.selected_gesture_name = gesture
-        
-        # 이벤트 목록 클리어
-        self.event_listbox.delete(0, tk.END)
-        
-        # 해당 제스처의 매크로 로드
-        if self.gesture_manager and gesture in self.gesture_manager.gesture_mappings:
-            macro_name = self.gesture_manager.gesture_mappings[gesture]
-            print(f"매크로 이름: {macro_name}")  # 디버깅 로그 추가
-            
-            # 매크로 파일 경로 직접 구성
-            full_path = os.path.join("macros", macro_name)
-            
-            # 파일 내용 직접 읽기
-            try:
-                # 파일이 없으면 대체 경로 시도
-                if not os.path.exists(full_path):
-                    safe_gesture = gesture.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
-                    alternative_path = os.path.join("macros", f"gesture_{safe_gesture}.json")
-                    print(f"대체 경로 시도: {alternative_path}")  # 디버깅 로그 추가
-                    
-                    if os.path.exists(alternative_path):
-                        full_path = alternative_path
-                    else:
-                        raise FileNotFoundError(f"매크로 파일을 찾을 수 없음: {full_path} 또는 {alternative_path}")
-                
-                print(f"매크로 파일 경로: {full_path}")  # 디버깅 로그 추가
-                # 파일 읽기
-                with open(full_path, 'r') as f:
-                    import json
-                    macro_data = json.load(f)
-                
-                print(f"로드된 매크로 데이터: {len(macro_data)}개 이벤트")  # 디버깅 로그 추가
-                
-                # 빈 매크로는 표시하지 않음
-                if len(macro_data) == 0:
-                    self.update_status(f"제스처 '{gesture}'에 연결된 매크로가 비어있습니다")
-                    return
-                
-                # 에디터가 MacroEditor 클래스인지 확인
-                from editor import MacroEditor
-                
-                # 에디터에 이벤트 로드
-                if self.editor:
-                    print(f"editor 타입: {type(self.editor)}")  # 디버깅 로그 추가
-                    
-                    # editor.load_events 메서드 사용
-                    if hasattr(self.editor, 'load_events'):
-                        print("editor.load_events 메소드 사용")  # 디버깅 로그 추가
-                        if isinstance(self.editor, MacroEditor):
-                            # events 속성 직접 설정
-                            try:
-                                import copy
-                                self.editor.events = copy.deepcopy(macro_data)
-                                print(f"에디터에 {len(self.editor.events)}개 이벤트 직접 설정됨")  # 디버깅 로그 추가
-                            except Exception as e:
-                                print(f"에디터에 이벤트 직접 설정 중 오류: {e}")  # 디버깅 로그 추가
-                        else:
-                            # load_events 메서드 호출
-                            success = self.editor.load_events(macro_data)
-                            print(f"load_events 결과: {success}")  # 디버깅 로그 추가
-                    # get_events 메서드가 있으면 editor는 매크로 편집기 인스턴스
-                    elif hasattr(self.editor, 'get_events'):
-                        print("editor.get_events 메소드 발견, events 직접 설정")  # 디버깅 로그 추가
-                        try:
-                            import copy
-                            self.editor.events = copy.deepcopy(macro_data)
-                            print(f"에디터에 {len(self.editor.events)}개 이벤트 직접 설정됨")  # 디버깅 로그 추가
-                        except Exception as e:
-                            print(f"에디터에 이벤트 직접 설정 중 오류: {e}")  # 디버깅 로그 추가
-                    # events 속성만 있는 경우
-                    elif hasattr(self.editor, 'events'):
-                        print("editor.events 속성에 직접 할당")  # 디버깅 로그 추가
-                        try:
-                            import copy
-                            self.editor.events = copy.deepcopy(macro_data)
-                            print(f"에디터에 {len(self.editor.events)}개 이벤트 직접 설정됨")  # 디버깅 로그 추가
-                        except Exception as e:
-                            print(f"에디터에 이벤트 직접 설정 중 오류: {e}")  # 디버깅 로그 추가
-                    else:
-                        print("경고: editor에 이벤트를 로드할 방법이 없음")  # 디버깅 로그 추가
-                        
-                        # 새로운 events 속성 추가 시도
-                        try:
-                            import copy
-                            print("editor 객체에 events 속성 추가 시도")  # 디버깅 로그 추가
-                            self.editor.events = copy.deepcopy(macro_data)
-                            print(f"에디터에 {len(self.editor.events)}개 이벤트 속성 추가됨")  # 디버깅 로그 추가
-                        except Exception as e:
-                            print(f"에디터에 events 속성 추가 중 오류: {e}")  # 디버깅 로그 추가
-                else:
-                    print("경고: editor 인스턴스 없음")  # 디버깅 로그 추가
-                
-                # player 인스턴스 확인 후 이벤트 로드
-                if self.player:
-                    print(f"player 타입: {type(self.player)}")  # 디버깅 로그 추가
-                    
-                    # load_events 메서드 사용
-                    if hasattr(self.player, 'load_events'):
-                        print("player.load_events 메소드 사용")  # 디버깅 로그 추가
-                        try:
-                            self.player.load_events(macro_data)
-                        except Exception as e:
-                            print(f"player.load_events 호출 중 오류: {e}")  # 디버깅 로그 추가
-                    # events 속성 직접 설정
-                    elif hasattr(self.player, 'events'):
-                        print("player.events 속성에 직접 할당")  # 디버깅 로그 추가
-                        try:
-                            import copy
-                            self.player.events = copy.deepcopy(macro_data)
-                        except Exception as e:
-                            print(f"player.events 설정 중 오류: {e}")  # 디버깅 로그 추가
-                else:
-                    print("경고: player 인스턴스 없음")  # 디버깅 로그 추가
-                
-                # 이벤트 목록에 표시
-                for i, event in enumerate(macro_data):
-                    self.display_event(event, i)
-                
-                # 첫 번째 항목으로 스크롤
-                if self.event_listbox.size() > 0:
-                    self.event_listbox.see(0)
-                    
-                self.update_status(f"제스처 '{gesture}'의 매크로 이벤트 표시 중 ({len(macro_data)}개)")
-                
-                # 메서드/속성 확인을 위한 디버깅 정보 출력
-                print("--- 디버깅 정보 ---")
-                print(f"editor 객체 속성: {dir(self.editor)}")
-                print(f"editor get_events: {hasattr(self.editor, 'get_events')}")
-                print(f"editor events: {hasattr(self.editor, 'events')}")
-                
-                # editor.events 확인
-                if hasattr(self.editor, 'events'):
-                    print(f"editor.events 길이: {len(self.editor.events)}")
-                
-                # editor.get_events() 확인
-                if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
-                    events = self.editor.get_events()
-                    print(f"editor.get_events() 결과 길이: {len(events)}")
-                
-                print("--- 디버깅 정보 끝 ---")
-            except Exception as e:
-                print(f"매크로 로드 오류: {e}")
-                import traceback
-                traceback.print_exc()  # 스택 추적 출력
-                self.update_status(f"매크로 로드 중 오류가 발생했습니다")
-        else:
-            print(f"매크로를 찾을 수 없음: {gesture}")  # 디버깅 로그 추가
-            self.update_status(f"제스처 '{gesture}'에 연결된 매크로를 찾을 수 없습니다")
-
-    # 더블 클릭 이벤트 핸들러 추가
-    def on_event_double_click(self, event):
-        """이벤트 항목 더블 클릭 시 처리"""
-        print("더블 클릭 이벤트 발생")  # 디버깅 로그 추가
-        # 녹화 중에는 무시
-        if self.recorder.recording:
-            return
-            
-        # 선택된 항목 가져오기
-        selected = self.event_listbox.curselection()
-        if not selected:
-            return
-            
-        # 단일 항목만 처리
-        if len(selected) == 1:
-            index = selected[0]
-            events = self.editor.get_events()
-            if events and index < len(events):
-                event_type = events[index]['type']
-                
-                if event_type == 'delay':
-                    # 딜레이 이벤트면 수정 다이얼로그 표시
-                    print(f"딜레이 이벤트 더블 클릭: {index}")  # 디버깅 로그 추가
-                    self.modify_delay_time()
-                else:
-                    print(f"일반 이벤트 더블 클릭: {index}")  # 디버깅 로그 추가
-                    # 일반 이벤트에 대한 정보 표시
-                    messagebox.showinfo("이벤트 정보", f"이벤트 #{index+1}\n유형: {event_type}")
+        # 이벤트 목록 업데이트 - 첫 번째 선택된 제스처의 이벤트 표시
+        self.update_event_list_for_gesture(self.selected_gesture_name)
 
     def maintain_gesture_selection(self, event):
         """포커스가 사라져도 선택 유지"""
-        # 저장된 선택 인덱스가 있으면 복원
-        if self.selected_gesture_index is not None:
-            # 선택 복원
-            self.gesture_listbox.selection_clear(0, tk.END)
-            self.gesture_listbox.selection_set(self.selected_gesture_index)
-            print(f"제스처 선택 유지: {self.selected_gesture_name} (인덱스: {self.selected_gesture_index})")  # 디버깅 로그
-
+        print("maintain_gesture_selection 함수 호출됨")  # 디버깅 로그 추가
+        # 현재 선택 저장
+        current_selection = self.gesture_listbox.curselection()
+        
+        # 선택 제거 방지
+        if current_selection:
+            try:
+                # 현재 선택 정보 저장
+                selection_indices = list(current_selection)
+                
+                # 선택 유지를 위해 먼저 모든 선택 해제
+                self.gesture_listbox.selection_clear(0, tk.END)
+                
+                # 저장된 선택 복원
+                for idx in selection_indices:
+                    self.gesture_listbox.selection_set(idx)
+                    
+                print(f"선택 유지: {selection_indices}")  # 디버깅 로그 추가
+            except Exception as e:
+                print(f"선택 유지 중 오류: {e}")  # 디버깅 로그 추가
+        # 선택이 없지만 내부 변수에 선택 정보가 있는 경우
+        elif self.selected_gesture_index is not None:
+            try:
+                self.gesture_listbox.selection_set(self.selected_gesture_index)
+                print(f"선택 복원: {self.selected_gesture_index}")  # 디버깅 로그 추가
+            except Exception as e:
+                print(f"선택 복원 중 오류: {e}")  # 디버깅 로그 추가
+    
     def ensure_gesture_selection(self):
-        """제스처 선택 상태를 확인하고 유지"""
-        if self.gesture_listbox:
-            # 현재 리스트박스에서 선택된 항목 확인
-            current_selection = self.gesture_listbox.curselection()
-            
-            # 리스트박스에 선택이 없지만 내부 변수에 선택 정보가 있는 경우
-            if not current_selection and self.selected_gesture_index is not None:
-                # 선택 복원
-                try:
-                    if self.selected_gesture_index < self.gesture_listbox.size():
-                        self.gesture_listbox.selection_set(self.selected_gesture_index)
-                        print(f"제스처 선택 복원됨: {self.selected_gesture_name}")  # 디버깅 로그
-                except Exception as e:
-                    print(f"제스처 선택 복원 중 오류: {e}")
-            # 리스트박스에 선택이 있는데 내부 변수와 다른 경우
-            elif current_selection and current_selection[0] != self.selected_gesture_index:
-                # 내부 변수 업데이트
+        """제스처 선택이 유지되도록 함"""
+        # 현재 선택 확인
+        current_selection = self.gesture_listbox.curselection()
+        
+        # 선택된 항목이 없고 내부 변수에 선택 정보가 있는 경우
+        if not current_selection and self.selected_gesture_index is not None:
+            try:
+                # 이전 선택 복원
+                if self.selected_gesture_index < self.gesture_listbox.size():
+                    self.gesture_listbox.selection_clear(0, tk.END)
+                    self.gesture_listbox.selection_set(self.selected_gesture_index)
+                    print(f"선택 복원: {self.selected_gesture_index}")  # 디버깅 로그 추가
+            except Exception as e:
+                print(f"선택 보장 중 오류: {e}")  # 디버깅 로그 추가
+        # 선택된 항목이 있고 내부 변수와 다른 경우 내부 변수 업데이트
+        elif current_selection and (not self.selected_gesture_index or current_selection[0] != self.selected_gesture_index):
+            try:
+                # 첫 번째 선택 항목으로 내부 변수 업데이트
                 self.selected_gesture_index = current_selection[0]
                 self.selected_gesture_name = self.gesture_listbox.get(current_selection[0])
-                print(f"제스처 선택 업데이트됨: {self.selected_gesture_name}")  # 디버깅 로그
+                print(f"선택 정보 업데이트: {self.selected_gesture_name}")  # 디버깅 로그 추가
+            except Exception as e:
+                print(f"선택 정보 업데이트 중 오류: {e}")  # 디버깅 로그 추가
 
     def move_gesture_up(self):
         """선택한 제스처를 위로 이동"""
@@ -1850,40 +1699,110 @@ class SimpleGUI:
         if gesture_name in self.gesture_manager.gesture_mappings:
             macro_name = self.gesture_manager.gesture_mappings[gesture_name]
             full_path = os.path.join("macros", macro_name)
+            print(f"매크로 파일 경로 시도: {full_path}")  # 디버깅 로그 추가
             
             # 파일이 존재하는지 확인
             if not os.path.exists(full_path):
+                print(f"파일이 존재하지 않음, 대체 경로 시도")  # 디버깅 로그 추가
                 # 대체 경로 시도
                 safe_gesture = gesture_name.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
                 alternative_path = os.path.join("macros", f"gesture_{safe_gesture}.json")
+                print(f"대체 경로: {alternative_path}")  # 디버깅 로그 추가
                 
                 if os.path.exists(alternative_path):
                     full_path = alternative_path
+                    print(f"대체 경로 파일 존재함: {full_path}")  # 디버깅 로그 추가
                 else:
-                    print(f"매크로 파일을 찾을 수 없음: {macro_name}")  # 디버깅 로그 추가
+                    print(f"매크로 파일을 찾을 수 없음: {macro_name} / {alternative_path}")  # 디버깅 로그 추가
+                    
+                    # 매크로 매핑이 존재하지만 파일이 없는 경우, 경고 표시
+                    warning_message = f"제스처 '{gesture_name}'의 매크로 파일을 찾을 수 없습니다."
+                    self.update_status(warning_message)
+                    
+                    # 이벤트 목록 초기화
+                    self.event_listbox.delete(0, tk.END)
+                    self.event_listbox.insert(tk.END, "♦ 매크로 파일이 없습니다. '저장' 버튼으로 새 매크로를 저장하세요.")
+                    self.event_listbox.itemconfig(tk.END, {'bg': '#FFE0E0'})
                     return
+            else:
+                print(f"원래 경로 파일 존재함: {full_path}")  # 디버깅 로그 추가
             
             try:
-                # 매크로 파일 읽기
-                with open(full_path, 'r') as f:
+                # 매크로 파일 읽기 - UTF-8 인코딩 사용
+                with open(full_path, 'r', encoding='utf-8') as f:
                     import json
                     events = json.load(f)
                 
+                print(f"매크로 파일 내용 로드됨: {len(events)}개 이벤트")  # 디버깅 로그 추가
+                
+                # 임시 파일이고 이벤트가 없는 경우 특별 처리
+                if "_temp.json" in macro_name and len(events) == 0:
+                    print("임시 파일이고 이벤트가 없음 - 특별 메시지 표시")
+                    
+                    # 이벤트 목록 업데이트
+                    self.event_listbox.delete(0, tk.END)  # 기존 이벤트 목록 초기화
+                    self.event_listbox.insert(tk.END, "♦ 이 제스처에는 아직 이벤트가 없습니다.")
+                    self.event_listbox.insert(tk.END, "♦ 매크로를 녹화하려면 '매크로 녹화 시작' 버튼을 클릭하고,")
+                    self.event_listbox.insert(tk.END, "♦ 녹화 후 '녹화 중지' 버튼을 클릭하세요.")
+                    
+                    for i in range(3):
+                        self.event_listbox.itemconfig(i, {'bg': '#FFFFD0'})
+                        
+                    # 상태 업데이트
+                    self.update_status(f"제스처 '{gesture_name}'에 연결된 매크로가 비어있습니다. 새 매크로를 녹화하세요.")
+                    
+                    # 에디터에 빈 이벤트 목록 설정
+                    if hasattr(self.editor, 'load_events'):
+                        self.editor.load_events([])
+                    elif hasattr(self.editor, 'events'):
+                        self.editor.events = []
+                    
+                    return
+                
                 # 에디터에 이벤트 설정
                 if hasattr(self.editor, 'load_events'):
+                    print("editor.load_events 메서드 사용")  # 디버깅 로그 추가
                     self.editor.load_events(events)
                 elif hasattr(self.editor, 'events'):
+                    print("editor.events에 직접 할당")  # 디버깅 로그 추가
                     import copy
                     self.editor.events = copy.deepcopy(events)
+                else:
+                    print("에디터에 이벤트를 설정할 방법이 없음")  # 디버깅 로그 추가
+                    self.update_status(f"에디터에 이벤트를 로드할 수 없습니다.")
+                    return
                 
                 # 이벤트 목록 업데이트
-                self.update_event_list()
+                self.event_listbox.delete(0, tk.END)  # 기존 이벤트 목록 초기화
+                
+                # 이벤트 표시
+                for i, event in enumerate(events):
+                    self.display_event(event, i)
+                
+                # 이벤트가 있으면 첫 번째 항목으로 스크롤
+                if len(events) > 0:
+                    self.event_listbox.see(0)
                 
                 print(f"제스처 '{gesture_name}'의 이벤트 {len(events)}개 로드됨")  # 디버깅 로그 추가
+                
+                # 상태 업데이트
+                if len(events) == 0:
+                    self.update_status(f"제스처 '{gesture_name}'에 연결된 매크로가 비어있습니다.")
+                else:
+                    self.update_status(f"제스처 '{gesture_name}'의 이벤트 {len(events)}개 로드됨")
             except Exception as e:
                 print(f"제스처 이벤트 로드 중 오류: {e}")  # 디버깅 로그 추가
                 import traceback
                 traceback.print_exc()
+                self.update_status(f"매크로 로드 중 오류가 발생했습니다: {e}")
+                
+                # 오류 발생 시 이벤트 목록에 오류 메시지 표시
+                self.event_listbox.delete(0, tk.END)
+                self.event_listbox.insert(tk.END, f"♦ 매크로 파일 로드 중 오류 발생: {e}")
+                self.event_listbox.itemconfig(tk.END, {'bg': '#FFD0D0'})
+        else:
+            print(f"제스처 '{gesture_name}'에 대한 매핑이 없음")  # 디버깅 로그 추가
+            self.update_status(f"제스처 '{gesture_name}'에 대한 매크로 매핑이 없습니다.")
 
     def delete_delay_events(self):
         """선택된 이벤트 중 딜레이 이벤트만 삭제"""
@@ -1973,3 +1892,31 @@ class SimpleGUI:
         else:
             print("딜레이 이벤트 삭제 실패")  # 디버깅 로그 추가
             messagebox.showerror("오류", "딜레이 이벤트 삭제에 실패했습니다.")
+
+    def on_event_double_click(self, event):
+        """이벤트 항목 더블 클릭 시 처리"""
+        print("더블 클릭 이벤트 발생")  # 디버깅 로그 추가
+        # 녹화 중에는 무시
+        if self.recorder.recording:
+            return
+            
+        # 선택된 항목 가져오기
+        selected = self.event_listbox.curselection()
+        if not selected:
+            return
+            
+        # 단일 항목만 처리
+        if len(selected) == 1:
+            index = selected[0]
+            events = self.editor.get_events()
+            if events and index < len(events):
+                event_type = events[index]['type']
+                
+                if event_type == 'delay':
+                    # 딜레이 이벤트면 수정 다이얼로그 표시
+                    print(f"딜레이 이벤트 더블 클릭: {index}")  # 디버깅 로그 추가
+                    self.modify_delay_time()
+                else:
+                    print(f"일반 이벤트 더블 클릭: {index}")  # 디버깅 로그 추가
+                    # 일반 이벤트에 대한 정보 표시
+                    messagebox.showinfo("이벤트 정보", f"이벤트 #{index+1}\n유형: {event_type}")
