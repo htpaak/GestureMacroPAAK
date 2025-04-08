@@ -14,6 +14,7 @@ class MacroRecorder:
         self.record_mouse_move = False
         self.use_relative_coords = False
         self.record_keyboard = True
+        self.record_delay = False  # 딜레이 녹화 설정 기본값을 False로 변경
         
         # 좌표 기준점 (상대좌표 사용 시)
         self.base_x = 0
@@ -43,7 +44,17 @@ class MacroRecorder:
                 pos = mouse.get_position()
                 self.base_x, self.base_y = pos
             
-            print(f"매크로 녹화가 시작되었습니다. 마우스 이동 녹화: {'켜짐' if self.record_mouse_move else '꺼짐'}")
+            # 녹화 설정 정보 출력
+            settings = []
+            if self.record_delay:
+                settings.append("딜레이")
+            if self.record_mouse_move:
+                settings.append("마우스 이동")
+            if self.record_keyboard:
+                settings.append("키보드")
+                
+            settings_str = ", ".join(settings) if settings else "없음"
+            print(f"매크로 녹화가 시작되었습니다. 녹화 설정: {settings_str}")
     
     def stop_recording(self):
         """매크로 녹화 중지"""
@@ -59,6 +70,11 @@ class MacroRecorder:
     
     def _add_delay_event_if_needed(self, current_time):
         """필요한 경우 딜레이 이벤트 추가"""
+        # record_delay가 False이면 딜레이 이벤트를 추가하지 않음
+        if not self.record_delay:
+            self.last_event_time = current_time
+            return
+            
         elapsed = current_time - self.last_event_time
         
         # 지정된 최소 시간보다 대기 시간이 길면 딜레이 이벤트 추가

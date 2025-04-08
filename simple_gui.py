@@ -58,6 +58,7 @@ class SimpleGUI:
         
         # 녹화 설정
         self.record_mouse_move = tk.BooleanVar(value=False)
+        self.record_delay = tk.BooleanVar(value=False)  # 딜레이 녹화 설정 기본값을 False로 변경
         self.use_relative_coords = tk.BooleanVar(value=False)
         self.record_keyboard = tk.BooleanVar(value=True)
         
@@ -234,6 +235,11 @@ class SimpleGUI:
         settings_frame = ttk.Frame(right_frame)
         settings_frame.pack(fill=tk.X, pady=(5, 0))
         
+        # 딜레이 녹화 체크박스를 마우스 이동 녹화 체크박스 왼쪽에 추가
+        ttk.Checkbutton(settings_frame, text="딜레이 녹화", 
+                      variable=self.record_delay,
+                      command=self.update_record_settings).pack(side=tk.LEFT, padx=5)
+        
         ttk.Checkbutton(settings_frame, text="마우스 이동 녹화", 
                        variable=self.record_mouse_move,
                        command=self.update_record_settings).pack(side=tk.LEFT, padx=5)
@@ -273,8 +279,21 @@ class SimpleGUI:
         self.recorder.record_mouse_movement = self.record_mouse_move.get()
         self.recorder.use_relative_coords = self.use_relative_coords.get()
         self.recorder.record_keyboard = self.record_keyboard.get()
+        self.recorder.record_delay = self.record_delay.get()  # 딜레이 녹화 설정 추가
         
-        self.update_status("녹화 설정이 업데이트되었습니다.")
+        # 녹화 설정 메시지 준비
+        settings = []
+        if self.record_delay.get():
+            settings.append("딜레이")
+        if self.record_mouse_move.get():
+            settings.append("마우스 이동")
+        if self.record_keyboard.get():
+            settings.append("키보드")
+            
+        if settings:
+            self.update_status(f"녹화 설정이 업데이트되었습니다: {', '.join(settings)}")
+        else:
+            self.update_status("경고: 모든 녹화 설정이 비활성화되었습니다.")
     
     def start_gesture_recording(self):
         """새 제스처 녹화 시작"""
@@ -729,9 +748,18 @@ class SimpleGUI:
             # 초 단위를 밀리초 단위로 변환하여 표시
             delay_time = event['delay']
             delay_time_ms = int(delay_time * 1000)
-            event_details = f"⏱️ 딜레이: {delay_time_ms}ms"
+            delay_color = '#FFE0E0'  # 기본 색상
+            
+            # 녹화 설정에 따라 딜레이 이벤트 표시 방식 결정
+            if hasattr(self, 'record_delay') and not self.record_delay.get():
+                delay_color = '#FFE0E0'  # 붉은 배경 (딜레이 녹화 꺼짐)
+                event_details = f"⏱️ 딜레이: {delay_time_ms}ms (녹화 설정: 꺼짐)"
+            else:
+                delay_color = '#FFF0E0'  # 주황색 배경 (딜레이 녹화 켜짐)
+                event_details = f"⏱️ 딜레이: {delay_time_ms}ms"
+                
             self.event_listbox.insert(tk.END, f"{event_idx}{event_details}")
-            self.event_listbox.itemconfig(tk.END, {'bg': '#FFE0E0'})
+            self.event_listbox.itemconfig(tk.END, {'bg': delay_color})
             
         elif event_type == 'keyboard':
             key_event = event['event_type']
