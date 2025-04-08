@@ -1721,6 +1721,9 @@ class SimpleGUI:
             self.gesture_listbox.see(new_index)  # 해당 위치로 스크롤
             self.selected_gesture_index = new_index
             
+            # 이벤트 목록 갱신 추가
+            self.update_event_list_for_gesture(current_gesture)
+            
             self.update_status(f"제스처 '{current_gesture}'가 위로 이동되었습니다.")
         except Exception as e:
             print(f"제스처 이동 중 오류 발생: {e}")  # 디버깅 로그 추가
@@ -1795,6 +1798,9 @@ class SimpleGUI:
             self.gesture_listbox.selection_set(new_index)  # 새 위치 선택
             self.gesture_listbox.see(new_index)  # 해당 위치로 스크롤
             self.selected_gesture_index = new_index
+            
+            # 이벤트 목록 갱신 추가
+            self.update_event_list_for_gesture(current_gesture)
             
             self.update_status(f"제스처 '{current_gesture}'가 아래로 이동되었습니다.")
         except Exception as e:
