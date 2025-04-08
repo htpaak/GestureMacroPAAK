@@ -15,12 +15,18 @@ class SimpleGUI:
         self.storage = storage
         self.gesture_manager = gesture_manager  # 제스처 매니저 추가
         
+        # 제스처 인식 활성화 상태 변수 추가
+        self.gesture_enabled = tk.BooleanVar(value=False)
+        
+        # 스타일 설정
+        self.setup_styles()
+        
         # 윈도우 설정
         self.root.title("제스처 매크로 프로그램")
         
         # 창 크기 설정 (width x height) - 더 작은 크기로 변경
-        window_width = 900  # 1200에서 900으로 변경
-        window_height = 900  # 900으로 유지
+        window_width = 1200  # 900에서 1000으로 변경
+        window_height = 1200  # 900에서 1200으로 변경
         
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -83,24 +89,49 @@ class SimpleGUI:
         # 윈도우 전체에 클릭 이벤트 바인딩 - 제스처 선택 유지
         self.root.bind('<Button-1>', lambda e: self.root.after(10, self.ensure_gesture_selection))
         
-        # 상단 제어 프레임
-        control_frame = ttk.LabelFrame(main_frame, text="제스처 매크로 제어", padding=15)  # 패딩 증가
-        control_frame.pack(fill=tk.X, pady=(0, 15))  # 하단 패딩 증가
+        # 최상단 제스처 인식 제어 프레임 (전체 UI 위에 배치)
+        gesture_control_frame = ttk.Frame(main_frame)
+        gesture_control_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # 제목 레이블 추가
+        title_label = ttk.Label(gesture_control_frame, text="제스처 매크로 프로그램 제어", font=('Arial', 12, 'bold'))
+        title_label.pack(side=tk.TOP, pady=(0, 10))
+        
+        # 제스처 인식 시작/중지 버튼을 큰 버튼으로 상단에 배치
+        if self.gesture_manager:
+            gesture_button_frame = ttk.Frame(gesture_control_frame)
+            gesture_button_frame.pack(fill=tk.X)
+            
+            self.gesture_start_btn = ttk.Button(gesture_button_frame, text="제스처 인식 시작", width=20,
+                               command=self.start_gesture_recognition, style='Big.TButton')
+            self.gesture_start_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+            
+            self.gesture_stop_btn = ttk.Button(gesture_button_frame, text="제스처 인식 중지", width=20,
+                               command=self.stop_gesture_recognition, state=tk.DISABLED, style='Big.TButton')
+            self.gesture_stop_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+        
+        # 구분선 추가
+        separator = ttk.Separator(main_frame, orient='horizontal')
+        separator.pack(fill=tk.X, pady=10)
+        
+        # 상단 제어 프레임 (매크로 녹화 등)
+        control_frame = ttk.LabelFrame(main_frame, text="매크로 제어", padding=15)
+        control_frame.pack(fill=tk.X, pady=(0, 15))
         
         # 제어 버튼 프레임
         button_frame = ttk.Frame(control_frame)
-        button_frame.pack(fill=tk.X, pady=10)  # 패딩 추가
+        button_frame.pack(fill=tk.X, pady=10)
         
         # 제스처 녹화 버튼
         if self.gesture_manager:
-            ttk.Button(button_frame, text="제스처 녹화", width=15,  # 버튼 너비 추가
-                     command=self.start_gesture_recording).pack(side=tk.LEFT, padx=10)  # 패딩 증가
+            ttk.Button(button_frame, text="제스처 녹화", width=15,
+                     command=self.start_gesture_recording).pack(side=tk.LEFT, padx=10)
         
         # 매크로 녹화 버튼 - 선택된 제스처에 매크로 녹화 수행
         self.record_btn = ttk.Button(button_frame, text="매크로 녹화", 
-                                    width=15,  # 버튼 너비를 15로 변경 (제스처 녹화 버튼과 동일)
+                                    width=15,
                                     command=self.start_recording_for_selected_gesture)
-        self.record_btn.pack(side=tk.LEFT, padx=10)  # 패딩 증가
+        self.record_btn.pack(side=tk.LEFT, padx=10)
         
         # 녹화 중지 버튼
         self.stop_btn = ttk.Button(button_frame, text="녹화 중지", 
@@ -162,16 +193,6 @@ class SimpleGUI:
         ttk.Button(gesture_btn_frame, text="↓", width=2,
                   command=self.move_gesture_down).pack(side=tk.RIGHT, padx=2)
         
-        # 제스처 인식 켜기/끄기 토글 스위치를 별도 프레임으로 이동
-        if self.gesture_manager:
-            gesture_toggle_frame = ttk.Frame(gesture_frame)
-            gesture_toggle_frame.pack(fill=tk.X, pady=(5, 0))
-            
-            self.gesture_enabled = tk.BooleanVar(value=False)
-            ttk.Checkbutton(gesture_toggle_frame, text="제스처 인식 활성화", 
-                          variable=self.gesture_enabled, 
-                          command=self.toggle_gesture_recognition).pack(side=tk.LEFT, padx=5)
-
         # 반복 횟수 설정
         repeat_frame = ttk.Frame(gesture_frame)
         repeat_frame.pack(fill=tk.X, pady=(5, 0))
@@ -288,6 +309,12 @@ class SimpleGUI:
             # 매크로 녹화 요청 콜백 설정
             self.gesture_manager.set_macro_record_callback(self.start_macro_for_gesture)
             print("매크로 녹화 요청 콜백 설정 완료")  # 디버깅 로그 추가
+
+    def setup_styles(self):
+        """버튼 스타일 설정"""
+        style = ttk.Style()
+        # 큰 버튼 스타일 추가
+        style.configure('Big.TButton', font=('Arial', 11, 'bold'), padding=10)
 
     def update_status(self, message):
         """상태 메시지 업데이트"""
@@ -620,11 +647,9 @@ class SimpleGUI:
             return
             
         if self.gesture_enabled.get():
-            self.gesture_manager.start()
-            self.update_status("제스처 인식이 활성화되었습니다.")
+            self.stop_gesture_recognition()
         else:
-            self.gesture_manager.stop()
-            self.update_status("제스처 인식이 비활성화되었습니다.")
+            self.start_gesture_recognition()
     
     # 기존 매크로 관련 함수들 유지
     def play_macro(self):
@@ -2136,3 +2161,29 @@ class SimpleGUI:
         else:
             print("랜덤 좌표 추가 실패")  # 디버깅 로그 추가
             messagebox.showerror("오류", "랜덤 좌표 추가에 실패했습니다.")
+
+    def start_gesture_recognition(self):
+        """제스처 인식 시작"""
+        if not self.gesture_manager:
+            return
+            
+        self.gesture_enabled.set(True)
+        self.gesture_manager.start()
+        self.update_status("제스처 인식이 활성화되었습니다.")
+        
+        # 버튼 상태 업데이트
+        self.gesture_start_btn.config(state=tk.DISABLED)
+        self.gesture_stop_btn.config(state=tk.NORMAL)
+
+    def stop_gesture_recognition(self):
+        """제스처 인식 중지"""
+        if not self.gesture_manager:
+            return
+            
+        self.gesture_enabled.set(False)
+        self.gesture_manager.stop()
+        self.update_status("제스처 인식이 비활성화되었습니다.")
+        
+        # 버튼 상태 업데이트
+        self.gesture_start_btn.config(state=tk.NORMAL)
+        self.gesture_stop_btn.config(state=tk.DISABLED)

@@ -12,8 +12,8 @@ from gesture_manager import GestureManager
 def auto_enable_gesture():
     """자동으로 제스처 인식 활성화"""
     print("제스처 인식 자동 활성화")
-    gui.gesture_enabled.set(True)
-    gui.toggle_gesture_recognition()
+    # 체크박스 대신 시작 버튼 기능 사용
+    gui.start_gesture_recognition()
 
 def main():
     # 루트 윈도우 생성

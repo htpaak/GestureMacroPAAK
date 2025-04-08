@@ -5,5 +5,5 @@
     "Alt+↓→": "gesture_ALT+_DOWN__RIGHT_.json",
     "Ctrl+→←↓→": "gesture_Ctrl+_RIGHT__LEFT__DOWN__RIGHT_.json",
     "Ctrl+↓→↑←↑": "gesture_Ctrl+_DOWN__RIGHT__UP__LEFT__UP__temp.json",
-    "Alt+→↓←": "gesture_Alt+_RIGHT__DOWN__LEFT__temp.json"
+    "Alt+→↓←": "gesture_Alt+_RIGHT__DOWN__LEFT_.json"
 }
