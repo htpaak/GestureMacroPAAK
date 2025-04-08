@@ -22,6 +22,9 @@ class MacroRecorder:
         
         # 딜레이 자동 생성을 위한 최소 시간 (초)
         self.min_delay_time = 0.01
+        
+        # 현재 눌려있는 키를 추적하기 위한 딕셔너리 추가
+        self.pressed_keys = {}
     
     def start_recording(self):
         """매크로 녹화 시작"""
@@ -30,6 +33,9 @@ class MacroRecorder:
             self.events = []
             self.start_time = time.time()
             self.last_event_time = 0  # 첫 이벤트를 위해 0으로 초기화
+            
+            # 눌려있는 키 초기화
+            self.pressed_keys = {}
             
             # 키보드 이벤트 후크
             if self.record_keyboard:
@@ -97,16 +103,76 @@ class MacroRecorder:
         if self.recording and self.record_keyboard:
             current_time = time.time() - self.start_time
             
-            # 딜레이 체크 및 필요 시 딜레이 이벤트 추가
-            self._add_delay_event_if_needed(current_time)
+            # 키다운 이벤트 처리
+            if event.event_type == 'down':
+                # 이미 누른 상태로 기록된 키는 중복 키다운 이벤트를 무시
+                if event.name in self.pressed_keys:
+                    print(f"{event.name} 키가 이미 눌려있음 - 중복 키다운 무시")
+                    return
+                
+                # 딜레이 체크 및 필요 시 딜레이 이벤트 추가
+                self._add_delay_event_if_needed(current_time)
+                
+                # 키가 눌린 시간 기록
+                self.pressed_keys[event.name] = current_time
+                print(f"{event.name} 키다운 이벤트 기록 (첫 입력)")
+                
+                # 키다운 이벤트 추가
+                event_data = {
+                    'type': 'keyboard',
+                    'event_type': 'down',
+                    'key': event.name,
+                    'time': current_time
+                }
+                self.events.append(event_data)
             
-            event_data = {
-                'type': 'keyboard',
-                'event_type': event.event_type,  # 'down' or 'up'
-                'key': event.name,
-                'time': current_time
-            }
-            self.events.append(event_data)
+            # 키업 이벤트 처리
+            elif event.event_type == 'up':
+                # 해당 키가 눌려있는 상태로 기록되어 있는지 확인
+                if event.name in self.pressed_keys:
+                    press_time = self.pressed_keys[event.name]
+                    key_hold_duration = current_time - press_time
+                    
+                    print(f"{event.name} 키업 이벤트 기록 (키 홀드 시간: {key_hold_duration:.3f}초)")
+                    
+                    # 키 홀드 시간만큼의 딜레이 추가 (키 홀드 효과)
+                    delay_event = {
+                        'type': 'delay',
+                        'time': current_time - 0.001,  # 약간 시간을 당겨서 순서 보장
+                        'delay': key_hold_duration
+                    }
+                    self.events.append(delay_event)
+                    print(f"키 홀드 딜레이 추가: {int(key_hold_duration * 1000)}ms")
+                    
+                    # 키업 이벤트 추가
+                    event_data = {
+                        'type': 'keyboard',
+                        'event_type': 'up',
+                        'key': event.name,
+                        'time': current_time
+                    }
+                    self.events.append(event_data)
+                    
+                    # 마지막 이벤트 시간 업데이트 (이 다음 이벤트부터는 딜레이가 측정되도록)
+                    self.last_event_time = current_time
+                    
+                    # 눌려있는 키 목록에서 제거
+                    del self.pressed_keys[event.name]
+                else:
+                    # 키다운 없이 키업만 감지된 경우 (예: 녹화 시작 전에 키를 누른 상태)
+                    print(f"{event.name} 키업 이벤트 기록 (키다운 없이 감지됨)")
+                    
+                    # 딜레이 체크 및 필요 시 딜레이 이벤트 추가
+                    self._add_delay_event_if_needed(current_time)
+                    
+                    # 키업 이벤트만 추가
+                    event_data = {
+                        'type': 'keyboard',
+                        'event_type': 'up',
+                        'key': event.name,
+                        'time': current_time
+                    }
+                    self.events.append(event_data)
     
     def _mouse_callback(self, event):
         """마우스 이벤트 콜백"""
