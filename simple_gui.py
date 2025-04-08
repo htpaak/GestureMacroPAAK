@@ -882,9 +882,28 @@ class SimpleGUI:
             messagebox.showwarning("경고", "딜레이를 추가할 위치를 선택하세요.")
             return
         
+        # 이벤트 목록 가져오기
+        events = []
+        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+            events = self.editor.get_events()
+        elif hasattr(self.editor, 'events'):
+            events = self.editor.events
+            
+        print(f"현재 이벤트 개수: {len(events)}")  # 디버깅 로그 추가
+        
+        # 전체 선택인지 확인
+        is_all_selected = len(selected) > 1 and len(selected) == len(events)
+        
         # 딜레이 값 입력 받기 (밀리초 단위)
-        delay_time_ms = simpledialog.askinteger("딜레이 추가", "추가할 딜레이 시간(ms):", 
-                                              minvalue=10, maxvalue=60000)
+        if is_all_selected:
+            delay_time_ms = simpledialog.askinteger("모든 이벤트 사이에 딜레이 추가", 
+                                                "추가할 딜레이 시간(ms):", 
+                                                minvalue=10, maxvalue=60000)
+        else:
+            delay_time_ms = simpledialog.askinteger("딜레이 추가", 
+                                                "추가할 딜레이 시간(ms):", 
+                                                minvalue=10, maxvalue=60000)
+                                                
         if not delay_time_ms:
             print("딜레이 시간 입력 취소")  # 디버깅 로그 추가
             return
@@ -894,31 +913,28 @@ class SimpleGUI:
         # 밀리초를 초 단위로 변환
         delay_time = delay_time_ms / 1000
         
-        # 딜레이 이벤트 생성
-        delay_event = {
-            'type': 'delay',
-            'delay': delay_time,
-            'time': 0  # 시간은 나중에 설정됨
-        }
+        # 전체 선택인 경우, 모든 이벤트 사이에 딜레이 추가
+        if is_all_selected:
+            print("전체 선택 감지됨 - 모든 이벤트 사이에 딜레이 추가")  # 디버깅 로그 추가
+            return self.add_delay_between_all_events(delay_time, delay_time_ms)
         
+        # 일반적인 단일 위치에 딜레이 추가 처리
         # 선택한 이벤트 아래에 추가하기 위해 인덱스 + 1 위치에 삽입
         index = selected[0] + 1
         print(f"삽입 위치: {index}")  # 디버깅 로그 추가
-        
-        # 이벤트 개수 확인
-        events = []
-        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
-            events = self.editor.get_events()
-        elif hasattr(self.editor, 'events'):
-            events = self.editor.events
-            
-        print(f"현재 이벤트 개수: {len(events)}")  # 디버깅 로그 추가
         
         # 인덱스 유효성 검사
         if selected[0] >= len(events):
             print(f"유효하지 않은 인덱스: {selected[0]}")  # 디버깅 로그 추가
             messagebox.showerror("오류", "선택한 위치가 유효하지 않습니다.")
             return
+        
+        # 딜레이 이벤트 생성
+        delay_event = {
+            'type': 'delay',
+            'delay': delay_time,
+            'time': 0  # 시간은 나중에 설정됨
+        }
         
         # 에디터에 이벤트 추가
         insert_result = False
@@ -972,6 +988,101 @@ class SimpleGUI:
         else:
             print("딜레이 이벤트 추가 실패")  # 디버깅 로그 추가
             messagebox.showerror("오류", "딜레이 추가에 실패했습니다.")
+            
+    def add_delay_between_all_events(self, delay_time, delay_time_ms):
+        """모든 이벤트 사이에 딜레이 추가"""
+        print("add_delay_between_all_events 함수 호출됨")  # 디버깅 로그 추가
+        
+        # 이벤트 목록 가져오기
+        events = []
+        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+            events = self.editor.get_events()
+        elif hasattr(self.editor, 'events'):
+            events = self.editor.events
+            
+        # 이미 존재하는 딜레이 이벤트를 제외한 위치 찾기
+        insert_positions = []
+        event_count = len(events)
+        
+        if event_count < 2:
+            print("이벤트가 1개 이하라 딜레이를 추가할 위치가 없음")  # 디버깅 로그 추가
+            messagebox.showinfo("알림", "딜레이를 추가할 이벤트 사이가 없습니다.")
+            return False
+        
+        # 뒤에서부터 앞으로 처리 (인덱스 변화 방지)
+        # 우선 추가할 위치를 모두 파악
+        for i in range(event_count - 1, 0, -1):
+            # 현재 위치에 딜레이 이벤트가 없는 경우만 추가
+            if events[i-1]['type'] != 'delay' and events[i]['type'] != 'delay':
+                insert_positions.append(i)
+        
+        print(f"딜레이 추가할 위치: {insert_positions}")  # 디버깅 로그 추가
+        if not insert_positions:
+            messagebox.showinfo("알림", "모든 이벤트 사이에 이미 딜레이가 있습니다.")
+            return False
+        
+        # 딜레이 이벤트 템플릿
+        delay_event_template = {
+            'type': 'delay',
+            'delay': delay_time,
+            'time': 0
+        }
+        
+        # 삽입 성공 여부
+        insert_success = True
+        inserted_count = 0
+        
+        # 직접 이벤트 삽입
+        try:
+            if hasattr(self.editor, 'events'):
+                # 위치를 역순으로 정렬 (인덱스 변화 방지)
+                for i in sorted(insert_positions, reverse=True):
+                    # 딜레이 이벤트 복제
+                    delay_event = delay_event_template.copy()
+                    
+                    # 이전 이벤트 시간이 있다면 설정
+                    if 'time' in events[i-1]:
+                        delay_event['time'] = events[i-1]['time'] + 0.001
+                    
+                    # 이벤트 삽입
+                    self.editor.events.insert(i, delay_event)
+                    inserted_count += 1
+                
+                insert_success = True
+            else:
+                # insert_event 메서드가 있는 경우
+                for i in sorted(insert_positions, reverse=True):
+                    delay_event = delay_event_template.copy()
+                    if hasattr(self.editor, 'insert_event') and callable(self.editor.insert_event):
+                        self.editor.insert_event(i, delay_event)
+                        inserted_count += 1
+                
+                insert_success = True
+        except Exception as e:
+            print(f"일괄 딜레이 추가 중 오류 발생: {e}")  # 디버깅 로그 추가
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("오류", f"이벤트 사이 딜레이 추가 중 오류가 발생했습니다: {e}")
+            return False
+        
+        if insert_success:
+            print(f"모든 이벤트 사이에 딜레이 추가 성공: {inserted_count}개")  # 디버깅 로그 추가
+            # 선택 해제 및 저장
+            self.restore_selection = False
+            self.clear_selection()
+            
+            # 이벤트 목록 업데이트
+            self.update_event_list()
+            
+            # 선택 복원 플래그 원복
+            self.restore_selection = True
+            
+            self.update_status(f"모든 이벤트 사이에 {delay_time_ms}ms 딜레이 {inserted_count}개가 추가되었습니다.")
+            return True
+        else:
+            print("이벤트 사이 딜레이 추가 실패")  # 디버깅 로그 추가
+            messagebox.showerror("오류", "이벤트 사이 딜레이 추가에 실패했습니다.")
+            return False
     
     def modify_delay_time(self):
         """선택한 딜레이 이벤트의 시간을 직접 수정"""
