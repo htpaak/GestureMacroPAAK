@@ -1593,6 +1593,10 @@ class SimpleGUI:
         
         print(f"선택된 제스처: {self.selected_gesture_name}")  # 디버깅 로그 추가
         
+        # 선택된 이벤트 초기화 (제스처 변경 시 이전 선택된 이벤트 인덱스가 유효하지 않을 수 있음)
+        self.selected_events = []
+        self.clear_selection()
+        
         # 선택된 제스처의 이벤트 목록 업데이트
         self.update_event_list_for_gesture(self.selected_gesture_name)
 
@@ -1721,6 +1725,10 @@ class SimpleGUI:
             self.gesture_listbox.see(new_index)  # 해당 위치로 스크롤
             self.selected_gesture_index = new_index
             
+            # 선택된 이벤트 초기화 (제스처 변경 시 이전 선택된 이벤트 인덱스가 유효하지 않을 수 있음)
+            self.selected_events = []
+            self.clear_selection()
+            
             # 이벤트 목록 갱신 추가
             self.update_event_list_for_gesture(current_gesture)
             
@@ -1798,6 +1806,10 @@ class SimpleGUI:
             self.gesture_listbox.selection_set(new_index)  # 새 위치 선택
             self.gesture_listbox.see(new_index)  # 해당 위치로 스크롤
             self.selected_gesture_index = new_index
+            
+            # 선택된 이벤트 초기화 (제스처 변경 시 이전 선택된 이벤트 인덱스가 유효하지 않을 수 있음)
+            self.selected_events = []
+            self.clear_selection()
             
             # 이벤트 목록 갱신 추가
             self.update_event_list_for_gesture(current_gesture)

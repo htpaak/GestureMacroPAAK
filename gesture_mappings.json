@@ -1,3 +1,4 @@
 {
-    "SHIFT+←": "gesture_SHIFT+_LEFT_.json"
+    "SHIFT+↓": "gesture_SHIFT+_DOWN_.json",
+    "SHIFT+↑": "gesture_SHIFT+_UP_.json"
 }
