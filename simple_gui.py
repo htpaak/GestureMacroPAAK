@@ -18,9 +18,9 @@ class SimpleGUI:
         # 윈도우 설정
         self.root.title("제스처 매크로 프로그램")
         
-        # 창 크기 설정 (width x height)
-        window_width = 1600
-        window_height = 1200
+        # 창 크기 설정 (width x height) - 더 작은 크기로 변경
+        window_width = 900  # 1200에서 900으로 변경
+        window_height = 900  # 900으로 유지
         
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -122,9 +122,10 @@ class SimpleGUI:
         content_frame = ttk.Frame(main_frame)
         content_frame.pack(fill=tk.BOTH, expand=True)
         
-        # 왼쪽 프레임 - 제스처 목록
-        left_frame = ttk.Frame(content_frame)
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        # 왼쪽 프레임 - 제스처 목록 (가로 크기를 줄임)
+        left_frame = ttk.Frame(content_frame, width=300)  # 프레임 자체에 width 설정
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))  # width 옵션 제거
+        left_frame.pack_propagate(False)  # 크기 고정을 위해 pack_propagate를 False로 설정
         
         # 제스처 목록 프레임
         gesture_frame = ttk.LabelFrame(left_frame, text="제스처 목록", padding=10)
@@ -161,29 +162,35 @@ class SimpleGUI:
         ttk.Button(gesture_btn_frame, text="↓", width=2,
                   command=self.move_gesture_down).pack(side=tk.RIGHT, padx=2)
         
+        # 제스처 인식 켜기/끄기 토글 스위치를 별도 프레임으로 이동
+        if self.gesture_manager:
+            gesture_toggle_frame = ttk.Frame(gesture_frame)
+            gesture_toggle_frame.pack(fill=tk.X, pady=(5, 0))
+            
+            self.gesture_enabled = tk.BooleanVar(value=False)
+            ttk.Checkbutton(gesture_toggle_frame, text="제스처 인식 활성화", 
+                          variable=self.gesture_enabled, 
+                          command=self.toggle_gesture_recognition).pack(side=tk.LEFT, padx=5)
+
         # 반복 횟수 설정
         repeat_frame = ttk.Frame(gesture_frame)
         repeat_frame.pack(fill=tk.X, pady=(5, 0))
-        
+
         ttk.Label(repeat_frame, text="반복 횟수:").pack(side=tk.LEFT, padx=5)
-        
+
         self.repeat_count = tk.StringVar(value="1")
         self.repeat_count_entry = ttk.Entry(repeat_frame, textvariable=self.repeat_count, width=5)
         self.repeat_count_entry.pack(side=tk.LEFT, padx=5)
-        
-        # 무한 반복 체크박스 추가
-        self.infinite_checkbox = ttk.Checkbutton(repeat_frame, text="무한 반복", 
+
+        # 무한 반복 체크박스를 별도 프레임으로 이동
+        infinite_frame = ttk.Frame(gesture_frame)
+        infinite_frame.pack(fill=tk.X, pady=(5, 0))
+
+        self.infinite_checkbox = ttk.Checkbutton(infinite_frame, text="무한 반복", 
                                                 variable=self.infinite_repeat,
                                                 command=self.toggle_infinite_repeat)
         self.infinite_checkbox.pack(side=tk.LEFT, padx=5)
         
-        # 제스처 인식 켜기/끄기 토글 스위치
-        if self.gesture_manager:
-            self.gesture_enabled = tk.BooleanVar(value=False)
-            ttk.Checkbutton(gesture_btn_frame, text="제스처 인식 활성화", 
-                          variable=self.gesture_enabled, 
-                          command=self.toggle_gesture_recognition).pack(side=tk.RIGHT, padx=5)
-            
         # 오른쪽 프레임 - 이벤트 목록
         right_frame = ttk.LabelFrame(content_frame, text="이벤트 목록", padding=10)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
