@@ -95,7 +95,7 @@ class SimpleGUI:
         gesture_control_frame.pack(fill=tk.X, pady=(0, 15))
         
         # 제목 레이블 추가
-        title_label = ttk.Label(gesture_control_frame, text="제스처 매크로 프로그램 제어", font=('Arial', 12, 'bold'))
+        title_label = ttk.Label(gesture_control_frame, text="제스처 매크로", font=('Arial', 12, 'bold'))
         title_label.pack(side=tk.TOP, pady=(0, 10))
         
         # 제스처 인식 시작/중지 버튼을 큰 버튼으로 상단에 배치
@@ -103,11 +103,11 @@ class SimpleGUI:
             gesture_button_frame = ttk.Frame(gesture_control_frame)
             gesture_button_frame.pack(fill=tk.X)
             
-            self.gesture_start_btn = ttk.Button(gesture_button_frame, text="제스처 인식 시작", width=20,
+            self.gesture_start_btn = ttk.Button(gesture_button_frame, text="시작", width=20,
                                command=self.start_gesture_recognition, style='Big.TButton')
             self.gesture_start_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
             
-            self.gesture_stop_btn = ttk.Button(gesture_button_frame, text="제스처 인식 중지", width=20,
+            self.gesture_stop_btn = ttk.Button(gesture_button_frame, text="중지", width=20,
                                command=self.stop_gesture_recognition, state=tk.DISABLED, style='Big.TButton')
             self.gesture_stop_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
         
@@ -185,14 +185,12 @@ class SimpleGUI:
         gesture_btn_frame = ttk.Frame(gesture_frame)
         gesture_btn_frame.pack(fill=tk.X, pady=(10, 0))  # 상단 패딩 증가
         
+        ttk.Button(gesture_btn_frame, text="수정", width=10,  # 수정 버튼 추가
+                  command=self.edit_gesture).pack(side=tk.LEFT, padx=5)
         ttk.Button(gesture_btn_frame, text="삭제", width=10,  # 버튼 너비 추가
                   command=self.delete_gesture).pack(side=tk.LEFT, padx=5)
         
-        # 제스처 이동 버튼 추가
-        ttk.Button(gesture_btn_frame, text="↑", width=2,
-                  command=self.move_gesture_up).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(gesture_btn_frame, text="↓", width=2,
-                  command=self.move_gesture_down).pack(side=tk.RIGHT, padx=2)
+        # 제스처 이동 버튼은 삭제 (repeat_frame으로 이동)
         
         # 반복 횟수 설정
         repeat_frame = ttk.Frame(gesture_frame)
@@ -204,6 +202,12 @@ class SimpleGUI:
         self.repeat_count_entry = ttk.Entry(repeat_frame, textvariable=self.repeat_count, width=5)
         self.repeat_count_entry.pack(side=tk.LEFT, padx=5)
 
+        # 제스처 이동 버튼을 반복 횟수 오른쪽으로 이동
+        ttk.Button(repeat_frame, text="↑", width=2,
+                  command=self.move_gesture_up).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(repeat_frame, text="↓", width=2,
+                  command=self.move_gesture_down).pack(side=tk.RIGHT, padx=2)
+        
         # 무한 반복 체크박스를 별도 프레임으로 이동
         infinite_frame = ttk.Frame(gesture_frame)
         infinite_frame.pack(fill=tk.X, pady=(5, 0))
@@ -323,6 +327,10 @@ class SimpleGUI:
             # 매크로 녹화 요청 콜백 설정
             self.gesture_manager.set_macro_record_callback(self.start_macro_for_gesture)
             print("매크로 녹화 요청 콜백 설정 완료")  # 디버깅 로그 추가
+            
+            # GUI 참조 설정
+            self.gesture_manager.set_gui_callback(self)
+            print("GUI 참조 설정 완료")  # 디버깅 로그 추가
 
         # 초기 설정 업데이트 - 레코더의 설정 초기화
         print("초기 레코더 설정 업데이트")  # 디버깅 로그 추가
@@ -2377,3 +2385,99 @@ class SimpleGUI:
         coords_type = "상대좌표" if self.use_relative_coords.get() else "절대좌표"
         print(f"최종 좌표 타입 설정: {coords_type}")
         self.update_status(f"좌표 타입이 {coords_type}로 설정되었습니다.")
+
+    def edit_gesture(self):
+        """선택된 제스처 수정"""
+        # 선택된 항목의 인덱스 가져오기
+        selected_indices = list(self.gesture_listbox.curselection())
+        
+        if not selected_indices or len(selected_indices) > 1:
+            messagebox.showwarning("경고", "수정할 제스처를 하나만 선택해주세요.")
+            return
+            
+        # 선택된 제스처 이름과 매크로 정보 저장
+        gesture_index = selected_indices[0]
+        gesture_name = self.gesture_listbox.get(gesture_index)
+        
+        # 제스처가 매핑에 있는지 확인
+        if not self.gesture_manager or gesture_name not in self.gesture_manager.gesture_mappings:
+            messagebox.showerror("오류", "선택한 제스처를 찾을 수 없습니다.")
+            return
+            
+        # 기존 매크로 파일 이름 저장
+        macro_name = self.gesture_manager.gesture_mappings[gesture_name]
+        
+        # 확인 메시지
+        if not messagebox.askyesno("제스처 수정", f"'{gesture_name}' 제스처를 새로 녹화하시겠습니까?\n매크로는 유지됩니다."):
+            return
+            
+        # 임시 저장을 위한 정보
+        self.edit_gesture_info = {
+            "old_gesture": gesture_name,
+            "macro_name": macro_name
+        }
+        
+        # 제스처 녹화 시작
+        if self.gesture_manager:
+            # 제스처 인식이 비활성화된 경우 활성화
+            if not self.gesture_enabled.get():
+                if messagebox.askyesno("제스처 인식 활성화", 
+                                     "제스처 녹화를 위해 제스처 인식을 활성화해야 합니다.\n활성화하시겠습니까?"):
+                    self.gesture_enabled.set(True)
+                    self.toggle_gesture_recognition()
+                else:
+                    return
+            
+            # 기존 제스처 제거 (매크로 파일은 유지)
+            self.gesture_manager.gesture_mappings.pop(gesture_name, None)
+            
+            # 제스처 녹화 모드로 전환
+            self.gesture_manager.recording_mode = True
+            
+            # 수정 모드 설정
+            self.editing_gesture = True
+            
+            # 제스처 시각화 창 생성
+            self.gesture_manager.create_gesture_canvas()
+            
+            # 상태 업데이트
+            self.update_status(f"'{gesture_name}' 제스처 수정 중... 새 제스처를 그려주세요.")
+    
+    # GestureManager의 on_gesture_ended 메서드에서 호출할 콜백 메서드 추가
+    def on_gesture_edit_complete(self, new_gesture):
+        """제스처 수정 완료 콜백"""
+        if hasattr(self, 'editing_gesture') and self.editing_gesture and hasattr(self, 'edit_gesture_info'):
+            # 새 제스처에 기존 매크로 연결
+            old_gesture = self.edit_gesture_info["old_gesture"]
+            macro_name = self.edit_gesture_info["macro_name"]
+            
+            # 새 제스처가 이미 존재하는지 확인
+            if new_gesture in self.gesture_manager.gesture_mappings:
+                messagebox.showwarning("중복된 제스처", 
+                                     f"제스처 '{new_gesture}'가 이미 존재합니다. 수정이 취소되었습니다.")
+                
+                # 기존 제스처 복원
+                self.gesture_manager.gesture_mappings[old_gesture] = macro_name
+                self.gesture_manager.save_mappings()
+                self.update_gesture_list()
+                return
+            
+            # 새 제스처에 기존 매크로 할당
+            self.gesture_manager.gesture_mappings[new_gesture] = macro_name
+            
+            # 매핑 저장
+            self.gesture_manager.save_mappings()
+            
+            # 제스처 목록 업데이트
+            self.update_gesture_list()
+            
+            # 상태 업데이트
+            self.update_status(f"제스처가 '{old_gesture}'에서 '{new_gesture}'로 변경되었습니다.")
+            
+            # 편집 모드 종료
+            self.editing_gesture = False
+            delattr(self, 'edit_gesture_info')
+            
+            # 결과 메시지
+            messagebox.showinfo("제스처 수정 완료", 
+                              f"제스처가 '{old_gesture}'에서 '{new_gesture}'로 변경되었습니다.")

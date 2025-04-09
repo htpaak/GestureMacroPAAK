@@ -3,17 +3,17 @@
         "type": "keyboard",
         "event_type": "down",
         "key": "delete",
-        "time": 0.49448609352111816
+        "time": 1.687530755996704
     },
     {
         "type": "delay",
-        "time": 0.5815827121734619,
+        "time": 1.7746209373474122,
         "delay": 0.025
     },
     {
         "type": "keyboard",
         "event_type": "up",
         "key": "delete",
-        "time": 0.5825827121734619
+        "time": 1.775620937347412
     }
 ]

@@ -19,6 +19,7 @@ class GestureManager:
         # 콜백 함수
         self.on_update_gesture_list = None
         self.on_macro_record_request = None
+        self.gui_callback = None  # GUI 참조 추가
         
         # 임시 제스처 저장
         self.temp_gesture = None
@@ -107,7 +108,13 @@ class GestureManager:
             # 녹화 종료
             self.recording_mode = False
             
-            # 제스처만 저장 (매크로 없이)
+            # GUI에서 편집 모드가 활성화된 경우 편집 완료 콜백 호출
+            if self.gui_callback and hasattr(self.gui_callback, 'editing_gesture') and self.gui_callback.editing_gesture:
+                print(f"제스처 편집 완료 콜백 호출: {gesture}")
+                self.gui_callback.on_gesture_edit_complete(gesture)
+                return
+            
+            # 일반 녹화 모드: 제스처만 저장 (매크로 없이)
             self.save_gesture_only(gesture)
             
             return
@@ -363,7 +370,12 @@ class GestureManager:
         
     def set_macro_record_callback(self, callback):
         """매크로 녹화 요청 콜백 설정"""
-        self.on_macro_record_request = callback 
+        self.on_macro_record_request = callback
+    
+    def set_gui_callback(self, gui_instance):
+        """GUI 인스턴스 참조 설정"""
+        print(f"GUI 인스턴스 콜백 설정: {gui_instance}")  # 디버깅 로그 추가
+        self.gui_callback = gui_instance
 
     def save_gesture_only(self, gesture):
         """제스처만 저장 (매크로는 나중에 연결)"""
