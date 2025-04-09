@@ -3,39 +3,39 @@
         "type": "keyboard",
         "event_type": "down",
         "key": "alt",
-        "time": 0.5861027240753174
+        "time": 0.767695426940918
     },
     {
         "type": "delay",
-        "time": 1.0968381633758546,
+        "time": 1.030205177307129,
         "delay": 0.025
     },
     {
         "type": "keyboard",
         "event_type": "down",
         "key": "right",
-        "time": 1.0978381633758545
+        "time": 1.031205177307129
     },
     {
         "type": "delay",
-        "time": 1.2093390693664552,
+        "time": 1.126105712890625,
         "delay": 0.025
     },
     {
         "type": "keyboard",
         "event_type": "up",
         "key": "right",
-        "time": 1.210339069366455
+        "time": 1.127105712890625
     },
     {
         "type": "delay",
-        "time": 2.0083772411346437,
+        "time": 1.486487554550171,
         "delay": 0.025
     },
     {
         "type": "keyboard",
         "event_type": "up",
         "key": "alt",
-        "time": 2.0093772411346436
+        "time": 1.487487554550171
     }
 ]

@@ -129,13 +129,13 @@ class SimpleGUI:
                      command=self.start_gesture_recording).pack(side=tk.LEFT, padx=10)
         
         # 매크로 녹화 버튼 - 선택된 제스처에 매크로 녹화 수행
-        self.record_btn = ttk.Button(button_frame, text="매크로 녹화", 
+        self.record_btn = ttk.Button(button_frame, text="매크로 녹화 (F9)", 
                                     width=15,
                                     command=self.start_recording_for_selected_gesture)
         self.record_btn.pack(side=tk.LEFT, padx=10)
         
         # 녹화 중지 버튼
-        self.stop_btn = ttk.Button(button_frame, text="녹화 중지", 
+        self.stop_btn = ttk.Button(button_frame, text="녹화 완료 (F10)", 
                                   width=15,  # 버튼 너비 추가
                                   command=self.stop_recording, state=tk.DISABLED)
         self.stop_btn.pack(side=tk.LEFT, padx=10)  # 패딩 증가
@@ -1533,6 +1533,12 @@ class SimpleGUI:
         
         # F6 키: 매크로 실행 중지
         self.root.bind("<F6>", lambda event: self.stop_macro())
+        
+        # F9 키: 매크로 녹화 시작
+        self.root.bind("<F9>", lambda event: self.start_recording_for_selected_gesture())
+        
+        # F10 키: 매크로 녹화 중지
+        self.root.bind("<F10>", lambda event: self.stop_recording())
         
         # Ctrl+R: 녹화 시작/중지 토글
         self.root.bind("<Control-r>", self.toggle_recording)

@@ -1,41 +1,46 @@
 [
     {
+        "type": "delay",
+        "time": 1.2772015800476075,
+        "delay": 0.025
+    },
+    {
         "type": "keyboard",
         "event_type": "down",
         "key": "ctrl",
-        "time": 1.4822447299957275
+        "time": 1.2782015800476074
     },
     {
         "type": "delay",
-        "time": 2.120870040893555,
+        "time": 1.6135405769348146,
         "delay": 0.025
     },
     {
         "type": "keyboard",
         "event_type": "down",
         "key": "w",
-        "time": 2.1218700408935547
+        "time": 1.6145405769348145
     },
     {
         "type": "delay",
-        "time": 2.2889019718170167,
+        "time": 1.749663995742798,
         "delay": 0.025
     },
     {
         "type": "keyboard",
         "event_type": "up",
         "key": "w",
-        "time": 2.2899019718170166
+        "time": 1.7506639957427979
     },
     {
         "type": "delay",
-        "time": 3.24915926361084,
+        "time": 2.254152940750122,
         "delay": 0.025
     },
     {
         "type": "keyboard",
         "event_type": "up",
         "key": "ctrl",
-        "time": 3.25015926361084
+        "time": 2.255152940750122
     }
 ]

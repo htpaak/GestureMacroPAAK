@@ -1,0 +1,78 @@
+[
+    {
+        "type": "delay",
+        "time": 0.4454297294616699,
+        "delay": 0.025
+    },
+    {
+        "type": "mouse",
+        "event_type": "down",
+        "button": "right",
+        "time": 0.4464297294616699,
+        "position": [
+            0,
+            0
+        ],
+        "is_relative": true
+    },
+    {
+        "type": "delay",
+        "time": 0.5365149250030518,
+        "delay": 0.025
+    },
+    {
+        "type": "mouse",
+        "event_type": "up",
+        "button": "right",
+        "time": 0.5375149250030518,
+        "position": [
+            0,
+            0
+        ],
+        "is_relative": true
+    },
+    {
+        "type": "delay",
+        "time": 2.5409812202453614,
+        "delay": 0.025
+    },
+    {
+        "type": "keyboard",
+        "event_type": "down",
+        "key": "v",
+        "time": 2.5419812202453613
+    },
+    {
+        "type": "delay",
+        "time": 2.631063150405884,
+        "delay": 0.025
+    },
+    {
+        "type": "keyboard",
+        "event_type": "up",
+        "key": "v",
+        "time": 2.632063150405884
+    },
+    {
+        "type": "delay",
+        "time": 3.2374610176086427,
+        "delay": 0.5
+    },
+    {
+        "type": "keyboard",
+        "event_type": "down",
+        "key": "enter",
+        "time": 3.2384610176086426
+    },
+    {
+        "type": "delay",
+        "time": 3.349562334060669,
+        "delay": 0.025
+    },
+    {
+        "type": "keyboard",
+        "event_type": "up",
+        "key": "enter",
+        "time": 3.350562334060669
+    }
+]

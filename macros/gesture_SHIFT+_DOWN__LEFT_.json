@@ -1,0 +1,19 @@
+[
+    {
+        "type": "keyboard",
+        "event_type": "down",
+        "key": "delete",
+        "time": 0.49448609352111816
+    },
+    {
+        "type": "delay",
+        "time": 0.5815827121734619,
+        "delay": 0.025
+    },
+    {
+        "type": "keyboard",
+        "event_type": "up",
+        "key": "delete",
+        "time": 0.5825827121734619
+    }
+]
