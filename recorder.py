@@ -101,6 +101,11 @@ class MacroRecorder:
     def _keyboard_callback(self, event):
         """키보드 이벤트 콜백"""
         if self.recording and self.record_keyboard:
+            # F9와 F10 키는 무시 (단축키로 사용되기 때문에 녹화되지 않아야 함)
+            if event.name in ['f9', 'f10']:
+                print(f"{event.name} 키는 단축키로 사용되므로 녹화하지 않음")
+                return
+                
             current_time = time.time() - self.start_time
             
             # 키다운 이벤트 처리

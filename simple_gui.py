@@ -640,15 +640,25 @@ class SimpleGUI:
             return
             
         # 선택된 모든 제스처 삭제
+        deleted_count = 0
         for index in selected_indices:
             gesture_name = self.gesture_listbox.get(index)
             if gesture_name in self.gesture_manager.gesture_mappings:
                 self.gesture_manager.remove_mapping(gesture_name)
-                self.gesture_listbox.delete(index)
+                deleted_count += 1
+        
+        # 선택 초기화
+        self.selected_gesture_index = None
+        self.selected_gesture_name = None
         
         # 이벤트 목록 초기화
         self.event_listbox.delete(0, tk.END)
-        self.selected_gesture = None
+        
+        # 제스처 목록 전체 새로고침
+        self.update_gesture_list()
+        
+        # 삭제 결과 메시지
+        self.update_status(f"{deleted_count}개의 제스처가 삭제되었습니다.")
     
     def play_gesture_macro(self):
         """선택된 제스처의 매크로 실행"""
@@ -2312,15 +2322,25 @@ class SimpleGUI:
             return
             
         # 선택된 모든 제스처 삭제
+        deleted_count = 0
         for index in selected_indices:
             gesture_name = self.gesture_listbox.get(index)
             if gesture_name in self.gesture_manager.gesture_mappings:
                 self.gesture_manager.remove_mapping(gesture_name)
-                self.gesture_listbox.delete(index)
+                deleted_count += 1
+        
+        # 선택 초기화
+        self.selected_gesture_index = None
+        self.selected_gesture_name = None
         
         # 이벤트 목록 초기화
         self.event_listbox.delete(0, tk.END)
-        self.selected_gesture = None
+        
+        # 제스처 목록 전체 새로고침
+        self.update_gesture_list()
+        
+        # 삭제 결과 메시지
+        self.update_status(f"{deleted_count}개의 제스처가 삭제되었습니다.")
 
     def toggle_absolute_coords(self):
         """절대좌표 체크박스 토글 시 호출"""
