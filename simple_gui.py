@@ -532,16 +532,17 @@ class SimpleGUI:
             print("이벤트가 없어 빈 배열로 초기화")  # 디버깅 로그 추가
             events = []
         
-        # 선택된 제스처 확인 - 내부 변수 사용
-        selected_gesture = self.selected_gesture_name
-        
-        # 추가 확인: 리스트박스에서 현재 선택을 확인
-        if not selected_gesture and self.gesture_listbox and self.gesture_listbox.curselection():
+        # 현재 UI에서 선택된 제스처 확인 - 리스트박스에서 선택 확인
+        selected_gesture = None
+        if self.gesture_listbox and self.gesture_listbox.curselection():
             selected_index = self.gesture_listbox.curselection()[0]
             selected_gesture = self.gesture_listbox.get(selected_index)
             # 내부 변수 업데이트
             self.selected_gesture_index = selected_index
             self.selected_gesture_name = selected_gesture
+        # 리스트박스에 선택이 없는 경우 내부 변수 사용
+        elif self.selected_gesture_name:
+            selected_gesture = self.selected_gesture_name
         
         # 선택된 제스처가 있으면 해당 제스처에 매크로 저장
         if selected_gesture and self.gesture_manager:
@@ -551,6 +552,15 @@ class SimpleGUI:
                 if not messagebox.askyesno("빈 이벤트 저장", f"제스처 '{selected_gesture}'에 빈 이벤트 목록을 저장하시겠습니까?"):
                     self.update_status("저장이 취소되었습니다.")
                     return
+            
+            # 매크로 이름 생성 (제스처 기반) - 파일명으로 사용할 수 있게 가공
+            safe_gesture = selected_gesture.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
+            macro_name = f"gesture_{safe_gesture}.json"
+            
+            # 에디터에 현재 매크로 이름 설정
+            if hasattr(self.editor, 'set_current_macro') and callable(self.editor.set_current_macro):
+                self.editor.set_current_macro(macro_name)
+                print(f"저장 시 에디터의 현재 편집 중인 매크로 이름 설정: {macro_name}")  # 디버깅 로그
             
             success = self.gesture_manager.save_macro_for_gesture(selected_gesture, events)
             
@@ -1594,6 +1604,9 @@ class SimpleGUI:
         
         print(f"선택된 항목: {selected_index}, 텍스트: {selected_text}")  # 디버깅 로그 추가
         
+        # 이전에 선택했던 제스처 확인
+        previous_selected_gesture = self.selected_gesture_name
+        
         # 모디파이어 변환 고려 - UI에 표시된 이름과 실제 매핑 이름 일치시키기
         # 여기서는 매핑에서 실제 제스처 이름 찾기
         actual_gesture_name = None
@@ -1613,6 +1626,11 @@ class SimpleGUI:
         if not actual_gesture_name:
             actual_gesture_name = selected_text
         
+        # 이전 선택과 현재 선택이 같은 경우 중복 처리 방지
+        if previous_selected_gesture == actual_gesture_name:
+            print(f"같은 제스처({actual_gesture_name})가 다시 선택됨 - 처리 스킵")  # 디버깅 로그 추가
+            return
+        
         # 상태 저장
         self.selected_gesture_index = selected_index
         self.selected_gesture_name = actual_gesture_name
@@ -1622,6 +1640,10 @@ class SimpleGUI:
         # 선택된 이벤트 초기화 (제스처 변경 시 이전 선택된 이벤트 인덱스가 유효하지 않을 수 있음)
         self.selected_events = []
         self.clear_selection()
+        
+        # editor의 이벤트 초기화 (이전 제스처의 이벤트가 남아있는 것 방지)
+        if hasattr(self.editor, 'events'):
+            self.editor.events = []
         
         # 선택된 제스처의 이벤트 목록 업데이트
         self.update_event_list_for_gesture(self.selected_gesture_name)
@@ -1868,6 +1890,7 @@ class SimpleGUI:
                 
                 if os.path.exists(alternative_path):
                     full_path = alternative_path
+                    macro_name = f"gesture_{safe_gesture}.json"  # 매크로 이름 업데이트
                     print(f"대체 경로 파일 존재함: {full_path}")  # 디버깅 로그 추가
                 else:
                     print(f"매크로 파일을 찾을 수 없음: {macro_name} / {alternative_path}")  # 디버깅 로그 추가
@@ -1880,6 +1903,11 @@ class SimpleGUI:
                     self.event_listbox.delete(0, tk.END)
                     self.event_listbox.insert(tk.END, "♦ 매크로 파일이 없습니다. '저장' 버튼으로 새 매크로를 저장하세요.")
                     self.event_listbox.itemconfig(tk.END, {'bg': '#FFE0E0'})
+                    
+                    # editor의 현재 편집 중인 매크로 이름 업데이트
+                    if hasattr(self.editor, 'set_current_macro') and callable(self.editor.set_current_macro):
+                        self.editor.set_current_macro(macro_name)
+                    
                     return
             else:
                 print(f"원래 경로 파일 존재함: {full_path}")  # 디버깅 로그 추가
@@ -1909,18 +1937,17 @@ class SimpleGUI:
                     self.update_status(f"제스처 '{gesture_name}'에 연결된 매크로가 비어있습니다. 새 매크로를 녹화하세요.")
                     
                     # 에디터에 빈 이벤트 목록 설정
-                    if hasattr(self.editor, 'load_events'):
-                        self.editor.load_events([])
-                    elif hasattr(self.editor, 'events'):
+                    if hasattr(self.editor, 'events'):
                         self.editor.events = []
+                    
+                    # editor의 현재 편집 중인 매크로 이름 업데이트
+                    if hasattr(self.editor, 'set_current_macro') and callable(self.editor.set_current_macro):
+                        self.editor.set_current_macro(macro_name)
                     
                     return
                 
                 # 에디터에 이벤트 설정
-                if hasattr(self.editor, 'load_events'):
-                    print("editor.load_events 메서드 사용")  # 디버깅 로그 추가
-                    self.editor.load_events(events)
-                elif hasattr(self.editor, 'events'):
+                if hasattr(self.editor, 'events'):
                     print("editor.events에 직접 할당")  # 디버깅 로그 추가
                     import copy
                     self.editor.events = copy.deepcopy(events)
@@ -1928,6 +1955,11 @@ class SimpleGUI:
                     print("에디터에 이벤트를 설정할 방법이 없음")  # 디버깅 로그 추가
                     self.update_status(f"에디터에 이벤트를 로드할 수 없습니다.")
                     return
+                
+                # editor의 현재 편집 중인 매크로 이름 업데이트
+                if hasattr(self.editor, 'set_current_macro') and callable(self.editor.set_current_macro):
+                    self.editor.set_current_macro(macro_name)
+                    print(f"editor의 현재 편집 중인 매크로 이름 업데이트: {macro_name}")  # 디버깅 로그 추가
                 
                 # 이벤트 목록 업데이트
                 self.event_listbox.delete(0, tk.END)  # 기존 이벤트 목록 초기화

@@ -8,7 +8,7 @@
     {
         "type": "delay",
         "time": 2.120870040893555,
-        "delay": 0.05
+        "delay": 0.025
     },
     {
         "type": "keyboard",
@@ -19,7 +19,7 @@
     {
         "type": "delay",
         "time": 2.2889019718170167,
-        "delay": 0.05
+        "delay": 0.025
     },
     {
         "type": "keyboard",
@@ -30,7 +30,7 @@
     {
         "type": "delay",
         "time": 3.24915926361084,
-        "delay": 0.05
+        "delay": 0.025
     },
     {
         "type": "keyboard",

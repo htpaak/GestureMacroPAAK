@@ -8,7 +8,7 @@
     {
         "type": "delay",
         "time": 1.0877649059295655,
-        "delay": 0.05
+        "delay": 0.025
     },
     {
         "type": "keyboard",
@@ -19,7 +19,7 @@
     {
         "type": "delay",
         "time": 2.1357878913879396,
-        "delay": 0.05
+        "delay": 0.025
     },
     {
         "type": "keyboard",
@@ -30,7 +30,7 @@
     {
         "type": "delay",
         "time": 2.3430630435943605,
-        "delay": 0.05
+        "delay": 0.025
     },
     {
         "type": "keyboard",
@@ -41,7 +41,7 @@
     {
         "type": "delay",
         "time": 3.231266902923584,
-        "delay": 0.05
+        "delay": 0.025
     },
     {
         "type": "keyboard",
@@ -52,7 +52,7 @@
     {
         "type": "delay",
         "time": 3.7348167171478273,
-        "delay": 0.05
+        "delay": 0.025
     },
     {
         "type": "keyboard",
