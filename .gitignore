@@ -1,0 +1,64 @@
+# 바이트 컴파일된 파이썬 파일
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C 확장자 파일
+*.so
+
+# 배포 파일
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 로그 파일
+*.log
+
+# 유닛 테스트 / 커버리지 보고서
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# 가상 환경
+venv/
+ENV/
+env/
+.env
+
+# IDE 관련 파일
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 프로젝트 특정 파일
+temp/
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.wav
+*.mp3
+
+# 운영체제 파일
+.DS_Store
+Thumbs.db 
