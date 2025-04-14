@@ -7,4 +7,6 @@ numpy
 scipy
 pywin32
 PyQt5
-screeninfo 
+screeninfo
+pystray>=0.19
+Pillow>=9.0 
