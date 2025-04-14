@@ -1,16 +1,16 @@
 # gui_recording.py
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 
 class GuiRecordingMixin:
     """GUI의 매크로 및 제스처 녹화 관련 액션(시작, 중지, 저장) 처리를 담당하는 믹스인 클래스"""
 
     # --- 의존성 메서드 (다른 곳에서 구현 필요) ---
     def update_status(self, message): raise NotImplementedError
-    def update_event_list(self): raise NotImplementedError
-    def start_event_list_updates(self): raise NotImplementedError
-    def stop_event_list_updates(self): raise NotImplementedError
-    def toggle_gesture_recognition(self): raise NotImplementedError # start_gesture_recording에서 사용
+    # def update_event_list(self): raise NotImplementedError # 이제 GuiEventListMixin에 구현
+    # def start_event_list_updates(self): raise NotImplementedError # 이제 GuiUtilitiesMixin에 구현
+    # def stop_event_list_updates(self): raise NotImplementedError # 이제 GuiUtilitiesMixin에 구현
+    def toggle_gesture_recognition(self): raise NotImplementedError # GuiRecognitionControlMixin에 구현
 
     # --- 녹화 관련 메서드 ---
 
@@ -44,131 +44,199 @@ class GuiRecordingMixin:
 
 
     def start_recording_for_selected_gesture(self):
-        """선택된 제스처에 대한 매크로 녹화 시작 (UI 버튼 등에서 호출)"""
-        if not hasattr(self, 'gesture_listbox') or not hasattr(self, 'gesture_manager'):
-             messagebox.showerror("Error", "Required components (gesture listbox/manager) not initialized.")
-             return
+        """선택된 제스처에 대한 매크로 녹화 시작 (추출된 코드)"""
+        if not hasattr(self, 'gesture_listbox'):
+            messagebox.showerror("Error", "Gesture listbox not found.")
+            return
 
         selected_indices = self.gesture_listbox.curselection()
         if not selected_indices:
-            messagebox.showwarning("Selection Error", "Select a gesture to record the macro for.")
+            messagebox.showwarning("Selection Error", "Select a gesture to record the macro for.") # UI 텍스트 영어로
             return
 
-        selected_index = selected_indices[0]
-        selected_display_name = self.gesture_listbox.get(selected_index)
-        # 내부 키 변환 (GuiGestureManagerMixin의 헬퍼 사용 또는 직접 구현)
-        internal_gesture_key = selected_display_name.replace("Alt-", "A-").replace("Ctrl-", "CT-") # 임시
+        try:
+            selected_gesture_name = self.gesture_listbox.get(selected_indices[0])
+        except tk.TclError:
+             messagebox.showerror("Error", "Could not get selected gesture name.")
+             return
 
-        # 내부 상태 업데이트
-        self.current_gesture = internal_gesture_key # 현재 녹화 대상 제스처 (내부 키)
-        self.selected_gesture_name = internal_gesture_key # 선택된 제스처 이름도 내부 키로 통일 권장
-        self.selected_gesture_index = selected_index
+        # 내부 키 이름으로 변환 (GuiGestureManagerMixin의 메소드 사용 가정)
+        if hasattr(self, '_get_internal_gesture_key') and callable(self._get_internal_gesture_key):
+            internal_gesture_name = self._get_internal_gesture_key(selected_gesture_name)
+        else:
+            # Fallback or error
+            print("Warning: _get_internal_gesture_key not found. Using display name.")
+            internal_gesture_name = selected_gesture_name
 
-        print(f"Starting macro recording for gesture: {internal_gesture_key} (Display: {selected_display_name})")
-        self.start_recording() # 공통 녹화 시작 로직 호출
-        self.update_status(f"Recording macro for '{selected_display_name}' (Press F10 to finish)")
+        # 현재 녹화 대상 제스처 설정
+        self.current_gesture = internal_gesture_name
+        # 선택 상태 유지를 위한 변수들도 업데이트 (GuiGestureManagerMixin과 공유?)
+        # if hasattr(self, 'selected_gesture_name'): self.selected_gesture_name = internal_gesture_name
+        # if hasattr(self, 'selected_gesture_index'): self.selected_gesture_index = selected_indices[0]
+
+        print(f"Recording macro for selected gesture: {selected_gesture_name} (Internal key: {internal_gesture_name})")
+
+        # 실제 녹화 시작 함수 호출
+        if hasattr(self, 'start_recording') and callable(self.start_recording):
+            self.start_recording()
+        else:
+             messagebox.showerror("Error", "Start recording function is not available.")
+             self.current_gesture = None # 실패 시 초기화
+             return
+
+        # 상태 업데이트
+        if hasattr(self, 'update_status') and callable(self.update_status):
+            self.update_status(f"Recording macro for gesture '{selected_gesture_name}' (Press F10 to stop)") # UI 텍스트 영어로
 
 
     def start_recording(self):
-        """공통 매크로 녹화 시작 로직"""
+        """Start the actual macro recording process (extracted code)."""
+        print("start_recording method called")
         if not hasattr(self, 'recorder'):
-             messagebox.showerror("Error", "Recorder not initialized.")
-             return
+            messagebox.showerror("Error", "Recorder component not available.")
+            return
+
         if self.recorder.recording:
             print("Already recording.")
             return
 
+        # Start recorder
         try:
             self.recorder.start_recording()
-            print("Recorder started.")
-
-            # UI 업데이트
-            if hasattr(self, 'record_btn'): self.record_btn.config(state=tk.DISABLED)
-            if hasattr(self, 'stop_btn'): self.stop_btn.config(state=tk.NORMAL)
-            if hasattr(self, 'record_status'): self.record_status.config(text="RECORDING", foreground="red")
-            if hasattr(self, 'event_listbox'): self.event_listbox.delete(0, tk.END) # 이전 이벤트 지우기
-
-            # 실시간 업데이트 시작
-            self.start_event_list_updates()
-
-            # 상태 메시지 (제스처 녹화 아닐 때만)
-            if not getattr(self, 'current_gesture', None):
-                 self.update_status("Recording macro...")
-
+            print("recorder.start_recording() called successfully.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to start recording: {e}")
+            return
+
+        # --- Update GUI States ---
+        # Update button states
+        if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
+            self.record_btn.config(state=tk.DISABLED)
+        if hasattr(self, 'stop_btn') and self.stop_btn.winfo_exists():
+            self.stop_btn.config(state=tk.NORMAL)
+        # save_btn state remains unchanged
+
+        # Update recording status label
+        if hasattr(self, 'record_status') and self.record_status.winfo_exists():
+            self.record_status.config(text="Recording...", foreground="red")
+
+        # Clear event listbox
+        if hasattr(self, 'event_listbox') and self.event_listbox.winfo_exists():
+            try:
+                self.event_listbox.delete(0, tk.END)
+            except tk.TclError:
+                 print("Error clearing event listbox (likely destroyed).")
+
+        # Start real-time event list updates
+        if hasattr(self, 'start_event_list_updates') and callable(self.start_event_list_updates):
+            self.start_event_list_updates()
+        else:
+             print("Warning: start_event_list_updates method not found.")
+
+        # Update main status bar (only if not recording for a specific gesture)
+        if not getattr(self, 'current_gesture', None):
+             if hasattr(self, 'update_status') and callable(self.update_status):
+                 self.update_status("Macro recording started...")
 
 
     def stop_recording(self):
-        """매크로 녹화 중지 (UI 버튼, 단축키 등에서 호출)"""
+        """Stop the macro recording process (extracted code)."""
         if not hasattr(self, 'recorder') or not self.recorder.recording:
-            # print("Not recording.") # 필요 시 로그
+            print("Not currently recording.")
             return
 
+        # Stop recorder
         try:
             self.recorder.stop_recording()
-            print("Recorder stopped.")
-
-            # UI 업데이트
-            if hasattr(self, 'record_btn'): self.record_btn.config(state=tk.NORMAL)
-            if hasattr(self, 'stop_btn'): self.stop_btn.config(state=tk.DISABLED)
-            if hasattr(self, 'record_status'): self.record_status.config(text="Ready", foreground="black")
-
-            # 실시간 업데이트 중지 및 최종 업데이트
-            self.stop_event_list_updates()
-            self.update_event_list() # 최종 이벤트 목록 표시
-
-            # 제스처 매크로였다면 자동 저장
-            current_recording_gesture = getattr(self, 'current_gesture', None)
-            if current_recording_gesture:
-                 print(f"Recording finished for gesture '{current_recording_gesture}'. Saving automatically.")
-                 self.save_gesture_macro() # 자동 저장 함수 호출
-                 self.current_gesture = None # 대상 제스처 초기화
-            else:
-                 self.update_status("Recording finished. Click 'Save Macro' to save.")
-
+            print("Recorder stopped successfully.")
         except Exception as e:
-             messagebox.showerror("Error", f"Error stopping recording: {e}")
-             # 오류 발생 시 UI 상태 복구 시도
-             if hasattr(self, 'record_btn'): self.record_btn.config(state=tk.NORMAL)
-             if hasattr(self, 'stop_btn'): self.stop_btn.config(state=tk.DISABLED)
-             if hasattr(self, 'record_status'): self.record_status.config(text="Error", foreground="red")
+            messagebox.showerror("Error", f"Failed to stop recorder: {e}")
+            # Attempt to restore UI state even on error?
+            if hasattr(self, 'record_btn') and self.record_btn.winfo_exists(): self.record_btn.config(state=tk.NORMAL)
+            if hasattr(self, 'stop_btn') and self.stop_btn.winfo_exists(): self.stop_btn.config(state=tk.DISABLED)
+            if hasattr(self, 'record_status') and self.record_status.winfo_exists(): self.record_status.config(text="Error", foreground="red")
+            return
+
+        # --- Update GUI States ---
+        # Update button states
+        if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
+            self.record_btn.config(state=tk.NORMAL)
+        if hasattr(self, 'stop_btn') and self.stop_btn.winfo_exists():
+            self.stop_btn.config(state=tk.DISABLED)
+
+        # Update recording status label
+        if hasattr(self, 'record_status') and self.record_status.winfo_exists():
+            self.record_status.config(text="Ready", foreground="black")
+
+        # Stop real-time event list updates
+        if hasattr(self, 'stop_event_list_updates') and callable(self.stop_event_list_updates):
+            self.stop_event_list_updates()
+        else:
+            print("Warning: stop_event_list_updates method not found.")
+
+        # Final update to event list (optional, might be handled by stop_event_list_updates)
+        # if hasattr(self, 'update_event_list'): self.update_event_list()
+
+        # Auto-save if recording was for a specific gesture
+        current_rec_gesture = getattr(self, 'current_gesture', None)
+        if current_rec_gesture:
+            print(f"Recording finished for gesture '{current_rec_gesture}'. Attempting auto-save...")
+            if hasattr(self, 'save_gesture_macro') and callable(self.save_gesture_macro):
+                self.save_gesture_macro() # This method should handle status updates and clearing current_gesture
+            else:
+                print("Warning: save_gesture_macro method not found for auto-saving.")
+                # Clear the current gesture manually if save method is missing?
+                self.current_gesture = None
+                if hasattr(self, 'update_status'): self.update_status("Recording finished, but auto-save failed.")
+        else:
+            # Update status for generic macro recording
+            if hasattr(self, 'update_status') and callable(self.update_status):
+                self.update_status("Recording finished. Click 'Save Macro' to save.")
 
 
     def save_gesture_macro(self):
-        """현재 recorder의 이벤트를 self.current_gesture에 연결하여 저장 (stop_recording에서 호출)"""
-        gesture_key_to_save = getattr(self, 'current_gesture', None)
-        if not gesture_key_to_save or not hasattr(self, 'gesture_manager') or not hasattr(self, 'recorder'):
-            print("Error: Cannot save gesture macro - missing context.")
+        """Save the recorded macro events to the current gesture."""
+        print("Warning: save_gesture_macro called from GuiRecordingMixin, consider moving.")
+        if not hasattr(self, 'gesture_manager') or not hasattr(self, 'current_gesture') or not self.current_gesture:
+            print("Cannot save: gesture manager or current gesture missing.")
+            return
+        if not hasattr(self, 'recorder'):
+            print("Cannot save: recorder missing.")
             return
 
-        events = self.recorder.events if hasattr(self.recorder, 'events') else []
-        display_name = getattr(self, 'selected_gesture_name', gesture_key_to_save) # 표시용 이름
-
-        # 빈 이벤트 저장 확인
+        events = self.recorder.events
         if not events:
-            if not messagebox.askyesno("Save Empty Macro", f"Save empty event list for gesture '{display_name}'?"):
-                self.update_status("Save cancelled.")
-                return # 저장 취소
+            events = []
+            if not messagebox.askyesno("Save Empty Macro?",
+                                     f"Save an empty event list for gesture '{self.current_gesture}'?"):
+                if hasattr(self, 'update_status'): self.update_status("Save cancelled.")
+                self.current_gesture = None # Clear gesture if save is cancelled
+                return
 
-        # 저장 시도
+        # Use GestureManager to save (handles storage and callback)
+        success = False
         try:
-            if hasattr(self.gesture_manager, 'save_macro_for_gesture'):
-                 success = self.gesture_manager.save_macro_for_gesture(gesture_key_to_save, events)
-                 if success:
-                     msg = f"Empty macro saved for '{display_name}'." if not events else \
-                           f"Macro ({len(events)} events) saved for '{display_name}'."
-                     messagebox.showinfo("Save Complete", msg)
-                     self.update_status(msg.replace(f" ({len(events)} events)", ""))
-                 else:
-                     messagebox.showerror("Save Error", f"Failed to save macro for gesture '{display_name}'.")
-                     self.update_status(f"Error saving macro for '{display_name}'.")
+            if hasattr(self.gesture_manager, 'save_macro_for_gesture') and callable(self.gesture_manager.save_macro_for_gesture):
+                 success = self.gesture_manager.save_macro_for_gesture(self.current_gesture, events)
             else:
-                 messagebox.showerror("Error", "Gesture Manager does not support save_macro_for_gesture.")
+                 print("Error: GestureManager has no save_macro_for_gesture method.")
+                 messagebox.showerror("Error", "Failed to save macro: Save function not available.")
 
+            if success:
+                msg = f"Empty macro saved for gesture '{self.current_gesture}'." if not events else \
+                      f"Macro ({len(events)} events) saved for gesture '{self.current_gesture}'."
+                messagebox.showinfo("Save Complete", msg)
+                if hasattr(self, 'update_status'): self.update_status(msg)
+            else:
+                 # Error message already shown or logged
+                 if hasattr(self, 'update_status'): self.update_status("Error saving macro.")
         except Exception as e:
-             messagebox.showerror("Save Error", f"Error saving gesture macro: {e}")
-             self.update_status("Error during gesture macro save.")
+             print(f"Exception during save_gesture_macro: {e}")
+             messagebox.showerror("Error", f"An error occurred while saving the macro: {e}")
+             if hasattr(self, 'update_status'): self.update_status("Error saving macro.")
+
+        # Clear the current gesture regardless of save success/failure after attempt
+        self.current_gesture = None
 
 
     def save_macro(self):

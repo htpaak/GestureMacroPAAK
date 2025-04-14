@@ -74,44 +74,69 @@ class GuiUtilitiesMixin:
         self.update_status("Coordinate mode set to Relative.")
 
 
-    # --- 실시간 이벤트 업데이트 ---
+    # --- 실시간 이벤트 업데이트 (Extracted and refined) ---
     def start_event_list_updates(self):
-        """녹화 중 이벤트 목록 실시간 업데이트 시작"""
-        if not hasattr(self, 'root') or not hasattr(self, 'update_event_list'): return
+        """Start real-time event list updates during recording (extracted logic)."""
+        if not hasattr(self, 'root') or not hasattr(self, 'update_event_list') or not callable(self.update_event_list):
+            print("Error: Cannot start event list updates - missing components.")
+            return
 
-        # 기존 타이머 중지
-        if hasattr(self, 'update_timer') and self.update_timer:
-            try: self.root.after_cancel(self.update_timer)
-            except Exception: pass # 타이머 취소 실패 무시
-        self.update_timer = None
+        print("Starting event list updates.")
+        # Stop existing timer if any
+        self.stop_event_list_updates()
 
-        # 즉시 업데이트 및 다음 업데이트 예약
-        if callable(self.update_event_list):
-            self.update_event_list() # 즉시 한번 실행
-            interval = getattr(self, 'update_interval', 100) # 기본 100ms
+        # Immediately update once and schedule the next update
+        self.update_event_list() # Initial update
+        interval = getattr(self, 'update_interval', 100) # Default 100ms
+        try:
             self.update_timer = self.root.after(interval, self._periodic_update_event_list)
+        except Exception as e:
+            print(f"Error scheduling event list update: {e}")
+            self.update_timer = None
 
     def _periodic_update_event_list(self):
-        """주기적으로 이벤트 목록 업데이트 (녹화 중일 때만)"""
-        if hasattr(self, 'recorder') and self.recorder.recording:
-            if callable(self.update_event_list): self.update_event_list()
+        """Periodically update the event list (only while recording)."""
+        # Check if still recording
+        is_recording = hasattr(self, 'recorder') and self.recorder.recording
+
+        if is_recording:
+            if hasattr(self, 'update_event_list') and callable(self.update_event_list):
+                try:
+                    self.update_event_list()
+                except Exception as e:
+                    print(f"Error during periodic event list update: {e}")
+                    self.stop_event_list_updates() # Stop updates on error
+                    return
+
             interval = getattr(self, 'update_interval', 100)
-            # 다음 업데이트 예약 전에 타이머 ID 초기화 (after_cancel 방지)
-            current_timer_id = self.update_timer
-            self.update_timer = None
-            self.update_timer = self.root.after(interval, self._periodic_update_event_list)
+            # Schedule next update (ensure timer ID is managed correctly)
+            current_timer_id = getattr(self, 'update_timer', None)
+            self.update_timer = None # Clear before scheduling next
+            try:
+                self.update_timer = self.root.after(interval, self._periodic_update_event_list)
+            except Exception as e:
+                 print(f"Error rescheduling event list update: {e}")
+                 self.update_timer = None
         else:
-            self.stop_event_list_updates() # 녹화 중 아니면 중지
+            print("Recording stopped, halting periodic event list updates.")
+            self.stop_event_list_updates() # Stop if not recording anymore
 
     def stop_event_list_updates(self):
-        """이벤트 목록 실시간 업데이트 중지"""
-        if hasattr(self, 'root') and hasattr(self, 'update_timer') and self.update_timer:
-            try:
-                self.root.after_cancel(self.update_timer)
-                print("Event list update timer cancelled.")
-            except Exception as e:
-                print(f"Error cancelling update timer: {e}")
-        self.update_timer = None
+        """Stop the real-time event list updates (extracted logic)."""
+        if hasattr(self, 'update_timer') and self.update_timer:
+            timer_id = self.update_timer
+            self.update_timer = None # Clear timer ID first
+            if hasattr(self, 'root') and self.root.winfo_exists(): # Check if root window still exists
+                try:
+                    self.root.after_cancel(timer_id)
+                    print("Event list update timer cancelled.")
+                except Exception as e:
+                    # Ignore errors if timer was already cancelled or root is gone
+                    # print(f"Error cancelling update timer {timer_id}: {e}")
+                    pass
+            else:
+                 print("Root window not available to cancel timer.")
+        # else: print("No active event list update timer to stop.") # Optional log
 
 
     # --- 키보드 단축키 ---
