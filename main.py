@@ -138,10 +138,10 @@ def main():
         screen_height = root_window.winfo_screenheight()
         logging.info(f"Screen resolution: {screen_width}x{screen_height}")
 
-        # 창 크기를 화면의 가로 30%, 세로 50%로 설정
-        window_width = int(screen_width * 0.3) # 50% -> 30%
-        window_height = int(screen_height * 0.5)
-        logging.info(f"Initial window size set to 30% width, 50% height of screen: {window_width}x{window_height}")
+        # 창 크기를 화면의 가로 35%, 세로 50%로 설정
+        window_width = int(screen_width * 0.33) # 55% -> 35%    
+        window_height = int(screen_height * 0.6)
+        logging.info(f"Initial window size set to 33% width, 60% height of screen: {window_width}x{window_height}")
 
         # 창을 화면 중앙에 배치하기 위한 x, y 좌표 계산
         x = (screen_width - window_width) // 2

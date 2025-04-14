@@ -70,7 +70,7 @@ class GuiSetupMixin:
         self.content_frame.pack(fill=tk.BOTH, expand=True)
 
         # 왼쪽 프레임 (제스처 목록)
-        self.left_frame = ttk.Frame(self.content_frame, width=300)
+        self.left_frame = ttk.Frame(self.content_frame, width=350)
         self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
         self.left_frame.pack_propagate(False)
 
@@ -175,7 +175,7 @@ class GuiSetupMixin:
         content_frame.pack(fill=tk.BOTH, expand=True)
 
         # 왼쪽 프레임 - 제스처 목록 (가로 크기를 줄임)
-        self.left_frame = ttk.Frame(content_frame, width=300) # Make left_frame an instance variable
+        self.left_frame = ttk.Frame(content_frame, width=350) # Make left_frame an instance variable
         self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
         self.left_frame.pack_propagate(False)
 
