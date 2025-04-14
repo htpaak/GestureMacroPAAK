@@ -6,11 +6,8 @@ class GuiAdvancedEditorMixin:
     """GUI의 고급 이벤트 편집 기능 (딜레이 일괄 추가/삭제, 랜덤 딜레이/위치 추가)을 담당하는 믹스인 클래스"""
 
     # --- 의존성 메서드 (다른 믹스인에서 구현 필요) ---
-    def update_status(self, message): raise NotImplementedError
-    def update_event_list(self): raise NotImplementedError
-    def clear_selection(self): raise NotImplementedError
-    def set_single_selection(self, index): raise NotImplementedError
-    def _get_valid_selected_indices(self): raise NotImplementedError # GuiEventEditorMixin
+    # def update_status(self, message): raise NotImplementedError # GuiBase
+    # def update_event_list(self): raise NotImplementedError # GuiEventEditorMixin
 
     # --- 고급 편집 기능 ---
 
@@ -234,30 +231,65 @@ class GuiAdvancedEditorMixin:
         if hasattr(self, 'recorder') and self.recorder.recording:
             messagebox.showwarning("Warning", "Cannot edit events while recording.")
             return
+        
+        # --- 디버깅 코드 추가 V5 ---
+        print("--- Debugging V5: Checking selected indices ---")
+        indices_to_check = None # 초기화
+        assignment_error = None
+        try:
+            # _get_valid_selected_indices 호출 시도
+            indices_to_check = self._get_valid_selected_indices()
+            print(f"Call to _get_valid_selected_indices successful. Indices: {indices_to_check}")
+        except Exception as e:
+            print(f"ERROR during _get_valid_selected_indices call: {e}")
+            import traceback
+            traceback.print_exc() # 상세 트레이스백 출력
+            assignment_error = e
 
-        indices_to_check = self._get_valid_selected_indices()
-        if not indices_to_check:
-            messagebox.showwarning("Warning", "Select mouse event(s) to add/modify random position.")
+        # 할당 오류 또는 유효하지 않은 인덱스 처리
+        if assignment_error:
+            messagebox.showerror("Error", f"Failed to get selected indices: {assignment_error}")
             return
+        if indices_to_check is None: # _get_valid_selected_indices가 None을 반환했거나 예외 발생 (위에서 처리됨)
+            messagebox.showwarning("Warning", "Could not determine selected events.")
+            return
+        if not indices_to_check: # 빈 리스트 반환 (선택된 항목 없음)
+             messagebox.showwarning("Warning", "Select mouse event(s) to add/modify random position.")
+             return
 
-        # 에디터 이벤트 가져오기
+        # 에디터 이벤트 가져오기 (선택된 인덱스가 유효할 때만 진행)
         events = []
         try:
             if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
                 events = self.editor.get_events() or []
             elif hasattr(self.editor, 'events'): # Fallback
                 events = self.editor.events or []
+            else:
+                 raise RuntimeError("Editor has no way to get events.")
+            print(f"Successfully retrieved {len(events)} events from editor.")
         except Exception as e:
             messagebox.showerror("Error", f"Could not get events from editor: {e}")
             return
 
-        # 선택된 인덱스 중 마우스 이벤트만 필터링 (mouse_move, click, drag)
-        mouse_event_types = ['mouse_move', 'click', 'drag']
-        mouse_indices = [idx for idx in indices_to_check if 0 <= idx < len(events) and events[idx].get('type') in mouse_event_types]
+        # 선택된 인덱스 중 마우스 이벤트만 필터링 (이제 indices_to_check는 유효함)
+        print("Filtering for mouse events in selected indices:", indices_to_check)
+        mouse_indices = []
+        for idx in indices_to_check:
+            if 0 <= idx < len(events):
+                event_data = events[idx]
+                event_type = event_data.get('type', 'N/A')
+                print(f"  Index {idx}: Type='{event_type}'") # 타입 확인 로그
+                if event_type == 'mouse':
+                    mouse_indices.append(idx)
+            else:
+                 print(f"  Index {idx}: Invalid index for events list (len={len(events)})")
+        # --- 디버깅 코드 끝 V5 ---
 
         if not mouse_indices:
-            messagebox.showwarning("Warning", "No mouse events selected.")
+            messagebox.showwarning("Warning", "No mouse events selected.") # 이제 이 메시지가 정확히 떠야 함
             return
+
+        # ... (이후 랜덤 범위 설정 로직) ...
 
         # 첫 번째 선택된 이벤트의 현재 랜덤 범위 가져오기
         current_random_pixels = 0
@@ -278,7 +310,8 @@ class GuiAdvancedEditorMixin:
                 modified_count = self.editor.modify_random_positions(mouse_indices, new_random_pixels)
             elif hasattr(self.editor, 'events'): # Fallback
                 for idx in mouse_indices:
-                    if 0 <= idx < len(self.editor.events) and self.editor.events[idx]['type'] in mouse_event_types:
+                    # 마우스 이벤트 타입 확인 수정
+                    if 0 <= idx < len(self.editor.events) and self.editor.events[idx].get('type') == 'mouse':
                         if new_random_pixels > 0:
                             self.editor.events[idx]['random_range'] = new_random_pixels
                         elif 'random_range' in self.editor.events[idx]:
