@@ -132,9 +132,35 @@ def main():
         root_window = tk.Tk()
         root_window.withdraw()  # 시작 시 숨김
         logging.info("Root window created and hidden.")
+
+        # --- 화면 해상도 기반 창 크기 및 위치 설정 --- 
+        screen_width = root_window.winfo_screenwidth()
+        screen_height = root_window.winfo_screenheight()
+        logging.info(f"Screen resolution: {screen_width}x{screen_height}")
+
+        # 창 크기를 화면의 가로 30%, 세로 50%로 설정
+        window_width = int(screen_width * 0.3) # 50% -> 30%
+        window_height = int(screen_height * 0.5)
+        logging.info(f"Initial window size set to 30% width, 50% height of screen: {window_width}x{window_height}")
+
+        # 창을 화면 중앙에 배치하기 위한 x, y 좌표 계산
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        logging.info(f"Window centered at: x={x}, y={y}")
+
+        # 창 크기와 위치 설정
+        root_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        # 최소 창 크기 설정 (기존 로직 유지)
+        min_width = 800 # 예시: 최소 너비
+        min_height = 600 # 예시: 최소 높이
+        root_window.minsize(min_width, min_height)
+        logging.info(f"Minimum window size set to: {min_width}x{min_height}")
+        # --- 설정 끝 --- 
+
     except Exception as e:
-        logging.error("Failed to create root window:", exc_info=True)
-        return # 루트 윈도우 생성 실패 시 종료
+        logging.error("Failed to create root window or set geometry:", exc_info=True)
+        return # 루트 윈도우 생성/설정 실패 시 종료
 
     # 아이콘 경로 설정
     try:
