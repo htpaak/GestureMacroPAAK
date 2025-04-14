@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import ctypes
+import logging # 로깅 모듈 추가
 from recorder import MacroRecorder
 from player import MacroPlayer
 from editor import MacroEditor
@@ -11,13 +12,18 @@ from simple_gui import SimpleGUI
 from gesture_manager import GestureManager
 from tray_manager import TrayManager
 
+# 로깅 설정
+log_format = '%(asctime)s - PID:%(process)d - %(levelname)s - %(message)s'
+logging.basicConfig(level=logging.INFO, format=log_format)
+
 # Windows 작업표시줄 아이콘 설정 (프로그램 시작 전에 수행)
 if sys.platform == 'win32':
     try:
         myappid = "GestureMacro.App.1.0"  # 고유 애플리케이션 ID
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        logging.info(f"AppUserModelID set to: {myappid}")
     except Exception as e:
-        print("작업표시줄 아이콘 ID 설정 실패:", e)
+        logging.error("작업표시줄 아이콘 ID 설정 실패:", exc_info=True)
 
 # 전역 변수 선언 (트레이 관련 변수 제거, tray_manager 객체 추가)
 root_window = None
@@ -53,113 +59,200 @@ def auto_enable_gesture():
 def graceful_exit():
     """애플리케이션 종료 로직 (TrayManager 콜백)"""
     global root_window, tray_manager, gesture_manager, recorder
-    print("Starting graceful exit sequence...")
+    logging.info("Starting graceful exit sequence...")
     
-    # 1. 트레이 아이콘 중지 요청 (TrayManager가 담당)
-    if tray_manager:
-        tray_manager.stop() # 스레드 종료 대기 포함
-            
-    # 2. 매크로 녹화 중지
+    # 1. 매크로 녹화 중지
     if recorder and recorder.recording:
-        print("Stopping macro recorder...")
-        recorder.stop_recording()
-        time.sleep(0.1)
-
-    # 3. 제스처 리스너 중지
-    if gesture_manager:
-        print("Stopping gesture listener...")
-        gesture_manager.stop() # join 포함
-
-    # 4. Tkinter 메인 루프 종료 및 윈도우 파괴
-    if root_window:
-        print("Quitting Tkinter main loop and destroying window...")
+        logging.info("Stopping macro recorder...")
         try:
-            root_window.quit()
-            root_window.destroy()
-        except tk.TclError as e:
-            print(f"Error during Tkinter quit/destroy: {e}")
-        time.sleep(0.2)
+            recorder.stop_recording()
+            time.sleep(0.1) # 짧은 대기
+            logging.info("Macro recorder stopped.")
+        except Exception as e:
+            logging.error("Error stopping macro recorder:", exc_info=True)
+        finally:
+             recorder = None # 참조 제거
 
-    print("Graceful exit sequence complete.")
-    # sys.exit(0) # 필요한 경우 명시적 종료
+    # 2. 제스처 리스너 중지
+    if gesture_manager:
+        logging.info("Stopping gesture listener...")
+        try:
+            gesture_manager.stop() # join 포함
+            logging.info("Gesture listener stopped.")
+        except Exception as e:
+            logging.error("Error stopping gesture listener:", exc_info=True)
+        finally:
+            gesture_manager = None # 참조 제거
+
+    # 3. 트레이 아이콘 중지 요청 (Tkinter 종료 전에 실행)
+    if tray_manager:
+        logging.info("Stopping tray icon...")
+        try:
+            tray_manager.stop() # 스레드 종료 대기 포함
+            logging.info("Tray manager stopped.")
+        except Exception as e:
+            logging.error("Error stopping tray manager:", exc_info=True)
+        finally:
+             tray_manager = None # 참조 제거
+
+    # 4. Tkinter 메인 루프 종료 요청 (destroy는 제거)
+    if root_window:
+        logging.info("Requesting Tkinter main loop quit...")
+        try:
+            # quit()만 호출하여 mainloop가 종료되도록 함
+            root_window.quit()
+            # destroy()는 여기서 호출하지 않음
+        except Exception as e:
+             logging.error("Error requesting Tkinter quit:", exc_info=True)
+        # root_window = None # 참조 제거는 finally 블록에서 할 수 있음
+
+    logging.info("Graceful exit sequence complete. Main loop should terminate shortly.")
 
 # --- 메인 함수 수정 ---
 def main():
+    logging.info("Application starting...")
     # 전역 변수 사용 선언
     global root_window, gui, recorder, player, editor, storage, gesture_manager, tray_manager, icon_path_global
 
     # 루트 윈도우 생성
-    root_window = tk.Tk()
-    root_window.withdraw()  # 시작 시 숨김
+    try:
+        root_window = tk.Tk()
+        root_window.withdraw()  # 시작 시 숨김
+        logging.info("Root window created and hidden.")
+    except Exception as e:
+        logging.error("Failed to create root window:", exc_info=True)
+        return # 루트 윈도우 생성 실패 시 종료
 
     # 아이콘 경로 설정
-    icon_path_global = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'icon.ico')
-    app_name = "Gesture Macro"
+    try:
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        icon_path_global = os.path.join(base_path, 'assets', 'icon.ico')
+        app_name = "Gesture Macro"
+        logging.info(f"Icon path set to: {icon_path_global}")
+        if not os.path.exists(icon_path_global):
+             logging.warning(f"Icon file not found at: {icon_path_global}")
+    except Exception as e:
+        logging.error("Error setting icon path:", exc_info=True)
+        # 아이콘 경로 설정 실패해도 계속 진행
 
     # 제목 표시줄 아이콘 설정
-    if os.path.exists(icon_path_global):
+    if root_window and icon_path_global and os.path.exists(icon_path_global):
         try:
             root_window.iconbitmap(default=icon_path_global)
+            logging.info("Window title bar icon set.")
         except Exception as e:
-             print(f"제목표시줄 아이콘 설정 오류: {e}")
+             logging.warning(f"Failed to set title bar icon: {e}")
 
     # 애플리케이션 이름 설정
-    root_window.title(app_name)
+    if root_window:
+        root_window.title(app_name)
 
     # 작업표시줄 아이콘 설정 (윈도우 표시 후)
-    if os.path.exists(icon_path_global):
-        root_window.after(100, lambda: set_taskbar_icon(root_window, icon_path_global))
+    # set_taskbar_icon 함수는 AppUserModelID 설정으로 대체 가능성 있음 (테스트 필요)
+    # if root_window and icon_path_global and os.path.exists(icon_path_global):
+    #     root_window.after(100, lambda: set_taskbar_icon(root_window, icon_path_global))
 
-    # --- TrayManager 초기화 및 시작 --- (기존 트레이 코드 대체)
-    tray_manager = TrayManager(root_window, icon_path_global, app_name, graceful_exit)
-    if not tray_manager.start(): # 트레이 아이콘 시작 시도
-        print("시스템 트레이 아이콘을 시작할 수 없습니다.")
-        # 트레이 아이콘 없이 계속 진행하거나, 여기서 종료 처리 가능
+    # --- TrayManager 초기화 및 시작 ---
+    try:
+        logging.info("Initializing TrayManager...")
+        tray_manager = TrayManager(root_window, icon_path_global, app_name, graceful_exit)
+        logging.info("Attempting to start TrayManager...")
+        if not tray_manager.start():
+            logging.warning("Failed to start system tray icon. Continuing without tray support.")
+            # 트레이 아이콘 없이 계속 진행
+        else:
+             logging.info("TrayManager started successfully.")
+    except Exception as e:
+        logging.error("Failed to initialize or start TrayManager:", exc_info=True)
+        tray_manager = None # 실패 시 None 처리
 
     # 디버깅 정보 출력
-    print("System:", sys.platform)
-    print("Current Directory:", os.getcwd())
+    logging.info(f"System: {sys.platform}, CWD: {os.getcwd()}")
 
     # 인스턴스 생성
-    storage = MacroStorage()
-    recorder = MacroRecorder()
-    player = MacroPlayer()
-    editor = MacroEditor(storage)
-    gesture_manager = GestureManager(player, storage, recorder)
+    try:
+        storage = MacroStorage()
+        recorder = MacroRecorder()
+        player = MacroPlayer()
+        editor = MacroEditor(storage)
+        gesture_manager = GestureManager(player, storage, recorder)
+        logging.info("Core components initialized.")
+    except Exception as e:
+        logging.error("Failed to initialize core components:", exc_info=True)
+        graceful_exit() # 초기화 실패 시 정리 및 종료 시도
+        return
 
     # GUI 초기화
-    gui = SimpleGUI(root_window, recorder, player, editor, storage, gesture_manager)
-    gui.setup_ui()
+    try:
+        gui = SimpleGUI(root_window, recorder, player, editor, storage, gesture_manager)
+        gui.setup_ui()
+        logging.info("GUI initialized and setup.")
+    except Exception as e:
+        logging.error("Failed to initialize GUI:", exc_info=True)
+        graceful_exit() # 초기화 실패 시 정리 및 종료 시도
+        return
 
     # 윈도우 표시
-    root_window.deiconify()
+    if root_window:
+        root_window.deiconify()
+        logging.info("Root window shown.")
 
-    # 닫기(X) 버튼 클릭 시 동작을 TrayManager의 hide_window로 변경
-    if tray_manager:
-        root_window.protocol("WM_DELETE_WINDOW", tray_manager.hide_window)
-    else:
-        # 트레이 매니저가 없으면 그냥 종료하도록 설정 (선택 사항)
-        root_window.protocol("WM_DELETE_WINDOW", graceful_exit)
-
-    # 최소화 버튼 클릭 시 트레이 이동 로직 (선택 사항)
-    # if tray_manager:
-    #     root_window.bind("<Unmap>", lambda event: tray_manager.hide_window() if root_window.state() == 'iconic' else None)
+    # 닫기(X) 버튼 클릭 시 동작 설정
+    if root_window:
+        if tray_manager and tray_manager.is_running(): # 트레이 매니저가 성공적으로 시작되었는지 확인
+            root_window.protocol("WM_DELETE_WINDOW", tray_manager.hide_window)
+            logging.info("WM_DELETE_WINDOW bound to hide_window.")
+        else:
+            root_window.protocol("WM_DELETE_WINDOW", graceful_exit)
+            logging.info("WM_DELETE_WINDOW bound to graceful_exit.")
 
     # 자동으로 제스처 인식 활성화
-    root_window.after(500, auto_enable_gesture)
+    if root_window:
+        root_window.after(500, auto_enable_gesture)
 
     # 메인 루프 시작
     try:
-        root_window.mainloop()
+        logging.info("Starting Tkinter main loop...")
+        if root_window:
+            root_window.mainloop()
+        # mainloop 정상 종료 후
+        logging.info("Tkinter main loop has ended.")
     except KeyboardInterrupt:
-        print("KeyboardInterrupt received. Exiting gracefully...")
-        graceful_exit() # Ctrl+C 종료 시에도 정리 수행
+        logging.info("KeyboardInterrupt received. Initiating graceful exit...")
+        graceful_exit()
+    except Exception as e:
+         logging.error("Exception during main loop:", exc_info=True)
+         graceful_exit() # 예외 발생 시에도 정리 시도
     finally:
-        # 메인 루프가 정상/비정상 종료된 후 최종 정리
-        # (graceful_exit에서 이미 처리하지만, 만약을 대비)
-        if tray_manager:
-             tray_manager.stop() # 혹시 모를 트레이 아이콘 정리
-        print("Application main loop ended.")
+        # mainloop가 종료된 후 항상 실행되는 최종 정리
+        logging.info("Entering final cleanup phase (finally block)...")
+        # graceful_exit가 이미 tray_manager 등을 None으로 만들었을 수 있음
+        # 만약 graceful_exit가 호출되지 않은 비정상 종료 시에도 정리 시도
+        if tray_manager: # 혹시 아직 남아있다면
+             logging.warning("Tray manager still exists in finally block. Attempting stop again.")
+             try:
+                 tray_manager.stop()
+             except Exception as e:
+                 logging.error("Error stopping tray_manager in finally block:", exc_info=True)
+             tray_manager = None
+
+        # Tkinter 윈도우 파괴 (quit() 이후)
+        if root_window:
+             logging.info("Destroying Tkinter window in finally block...")
+             try:
+                 root_window.destroy()
+                 logging.info("Tkinter window destroyed in finally block.")
+             except Exception as e:
+                 logging.warning(f"Error destroying root window in finally block: {e}")
+             root_window = None
+
+        # 다른 전역 객체들도 확실히 정리 (선택 사항)
+        recorder = None
+        gesture_manager = None
+        storage = None
+        gui = None
+
+        logging.info("Application cleanup finished.")
 
 if __name__ == "__main__":
     main()
