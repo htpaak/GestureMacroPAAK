@@ -83,7 +83,50 @@ class GuiEventListMixin:
         ttk.Button(random_btn_frame, text="Add Random Delay",
                    command=add_random_delay_cmd).pack(side=tk.LEFT, padx=5)
 
-        # 설정 관련 위젯은 여기서 생성하지 않음 (다른 믹스인으로 이동 고려)
+        # --- 녹화 옵션 프레임 추가 ---
+        options_frame = ttk.LabelFrame(event_list_frame, text="Recording Options", padding=10)
+        options_frame.pack(fill=tk.X, pady=(10, 0)) # 랜덤 버튼 아래에 배치
+
+        # 옵션 체크박스들을 담을 내부 프레임
+        options_inner_frame = ttk.Frame(options_frame)
+        options_inner_frame.pack(fill=tk.X)
+
+        # 각 옵션을 위한 프레임 생성 (가로 정렬 용이)
+        move_frame = ttk.Frame(options_inner_frame)
+        move_frame.pack(side=tk.LEFT, padx=10, pady=2)
+        ttk.Checkbutton(move_frame, text="Record Mouse Move", variable=getattr(self, 'record_mouse_move', tk.BooleanVar(value=False))).pack(anchor=tk.W)
+
+        delay_frame = ttk.Frame(options_inner_frame)
+        delay_frame.pack(side=tk.LEFT, padx=10, pady=2)
+        ttk.Checkbutton(delay_frame, text="Record Delay", variable=getattr(self, 'record_delay', tk.BooleanVar(value=True))).pack(anchor=tk.W)
+
+        keyboard_frame = ttk.Frame(options_inner_frame)
+        keyboard_frame.pack(side=tk.LEFT, padx=10, pady=2)
+        ttk.Checkbutton(keyboard_frame, text="Record Keyboard", variable=getattr(self, 'record_keyboard', tk.BooleanVar(value=True))).pack(anchor=tk.W)
+
+        # 좌표 옵션 프레임 (절대/상대)
+        coord_frame = ttk.Frame(options_inner_frame)
+        coord_frame.pack(side=tk.LEFT, padx=10, pady=2)
+        # GuiBase에 정의된 BooleanVar 사용
+        abs_chk = ttk.Checkbutton(coord_frame, text="Absolute Coords", variable=getattr(self, 'use_absolute_coords', tk.BooleanVar(value=True)))
+        abs_chk.pack(anchor=tk.W)
+        rel_chk = ttk.Checkbutton(coord_frame, text="Relative Coords", variable=getattr(self, 'use_relative_coords', tk.BooleanVar(value=False)))
+        rel_chk.pack(anchor=tk.W)
+
+        # 절대/상대 좌표 상호 배제 로직 추가
+        def toggle_coords():
+            if self.use_absolute_coords.get():
+                self.use_relative_coords.set(False)
+            elif not self.use_relative_coords.get(): # 둘 다 False가 되는 경우 방지 (절대가 기본)
+                self.use_absolute_coords.set(True)
+
+            if self.use_relative_coords.get():
+                self.use_absolute_coords.set(False)
+            elif not self.use_absolute_coords.get(): # 둘 다 False가 되는 경우 방지 (절대가 기본)
+                 self.use_relative_coords.set(True)
+
+        abs_chk.config(command=toggle_coords)
+        rel_chk.config(command=toggle_coords)
 
     def update_event_list(self):
         """이벤트 목록 업데이트. 녹화 중이면 recorder에서, 아니면 editor에서 이벤트를 가져와 표시합니다."""
