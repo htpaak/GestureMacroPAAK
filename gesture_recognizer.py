@@ -106,7 +106,7 @@ class GestureRecognizer:
 
             # 방향이 변경되었거나 첫 방향인 경우
             if prev_direction is None or current_direction != prev_direction:
-                min_move_threshold = 10 # 20에서 10으로 수정
+                min_move_threshold = 5 # 10에서 5로 수정
                 if abs(dx) > min_move_threshold or abs(dy) > min_move_threshold:
                     print(f"[Recognizer/Direction]  -> 유효한 방향 변경 감지: {current_direction}")
                     directions.append(current_direction)
@@ -134,7 +134,7 @@ class GestureRecognizer:
                 final_direction = self.get_direction_from_delta(dx, dy)
                 # 로그 개선: 세그먼트 범위 명시
                 print(f"[Recognizer/Direction] 마지막 세그먼트 (인덱스 {last_segment_start_index_absolute}~끝): Avg=({avg_x:.1f}, {avg_y:.1f}), Delta=({dx:.1f}, {dy:.1f}) -> Dir={final_direction}")
-                min_move_threshold = 10 # 20에서 10으로 수정
+                min_move_threshold = 5 # 10에서 5로 수정
                 if (not directions or final_direction != directions[-1]) and (abs(dx) > min_move_threshold or abs(dy) > min_move_threshold):
                     print(f"[Recognizer/Direction]  -> 마지막 유효 방향 추가: {final_direction}")
                     directions.append(final_direction)
