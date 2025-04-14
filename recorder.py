@@ -49,6 +49,9 @@ class MacroRecorder:
             if self.use_relative_coords:
                 pos = mouse.get_position()
                 self.base_x, self.base_y = pos
+                print(f"Relative coordinate base set to: ({self.base_x}, {self.base_y})")
+            else:
+                self.base_x, self.base_y = 0, 0 # 절대 좌표 모드 시 초기화
             
             # 녹화 설정 정보 출력
             settings = []

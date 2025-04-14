@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sys  # For platform check
+import monitor_utils # 모니터 유틸리티 임포트
 
 
 class GuiEventListMixin:
@@ -111,9 +112,16 @@ class GuiEventListMixin:
         # 라디오 버튼 선택 시 BooleanVar 업데이트하는 콜백
         def update_coord_booleans():
             selected_coord = self.coord_selection_var.get()
-            self.use_absolute_coords.set(selected_coord == "absolute")
-            self.use_relative_coords.set(selected_coord == "relative")
-            # print(f"Coord selection changed: Absolute={self.use_absolute_coords.get()}, Relative={self.use_relative_coords.get()}") # 디버깅용
+            is_relative = (selected_coord == "relative")
+            self.use_absolute_coords.set(not is_relative)
+            self.use_relative_coords.set(is_relative)
+
+            # Recorder 설정 업데이트
+            if hasattr(self, 'recorder') and self.recorder:
+                self.recorder.use_relative_coords = is_relative
+                print(f"Recorder coord mode set to: {'Relative' if is_relative else 'Absolute'}") # 디버깅 로그
+            else:
+                print("Warning: Recorder object not found to update settings.")
 
         # GuiBase의 StringVar 사용
         ttk.Radiobutton(coord_frame, text="Absolute Coords",
@@ -236,16 +244,57 @@ class GuiEventListMixin:
                 timestamp = f"{event.get('time', 0):>8.3f}s"
                 # Type (left-aligned, 4 spaces)
                 display_str += f"{timestamp} K-{event_type_str:<4} {key}"
-            elif event_type == 'mouse_move':
-                pos_x, pos_y = event.get('position', (0, 0))
+            elif event_type == 'mouse':
+                event_type_str = event.get('event_type', 'unknown')
                 timestamp = f"{event.get('time', 0):>8.3f}s"
-                # Coordinates (right-aligned)
-                pos_str = f"({pos_x:>4}, {pos_y:>4})"
-                display_str += f"{timestamp} M-Move   {pos_str}"
-                if 'random_range' in event:
-                    range_px = event.get('random_range', 0)
-                    display_str += f" +/-{range_px:<3}px"
-            elif event_type == 'click' or event_type == 'drag':  # Assuming 'drag' also has button and pos
+
+                if event_type_str == 'move':
+                    pos_x, pos_y = event.get('position', (0, 0))
+                    is_relative = event.get('is_relative', False)
+
+                    if is_relative:
+                        pos_str = f"Rel:({pos_x:>4}, {pos_y:>4})"
+                    else:
+                        monitor = monitor_utils.get_monitor_from_point(pos_x, pos_y)
+                        if monitor:
+                            rel_x, rel_y = monitor_utils.absolute_to_relative(pos_x, pos_y, monitor)
+                            monitor_index = monitor_utils.get_monitors().index(monitor)
+                            pos_str = f"M{monitor_index}:({rel_x:>4}, {rel_y:>4})"
+                        else:
+                            pos_str = f"M?:({pos_x:>4}, {pos_y:>4})"
+
+                    display_str += f"{timestamp} M-Move   {pos_str}"
+                    if 'random_range' in event: # 랜덤 기능은 유지
+                        range_px = event.get('random_range', 0)
+                        display_str += f" +/-{range_px:<3}px"
+                elif event_type_str in ['up', 'down', 'double']:
+                    button = event.get('button', '')
+                    pos_x, pos_y = event.get('position', (0, 0))
+                    is_relative = event.get('is_relative', False)
+
+                    if is_relative:
+                        pos_str = f"Rel:({pos_x:>4}, {pos_y:>4})"
+                    else:
+                        monitor = monitor_utils.get_monitor_from_point(pos_x, pos_y)
+                        if monitor:
+                            rel_x, rel_y = monitor_utils.absolute_to_relative(pos_x, pos_y, monitor)
+                            monitor_index = monitor_utils.get_monitors().index(monitor)
+                            pos_str = f"M{monitor_index}:({rel_x:>4}, {rel_y:>4})"
+                        else:
+                            pos_str = f"M?:({pos_x:>4}, {pos_y:>4})"
+
+                    # Event type (left, 6), Button (left, 5)
+                    display_str += f"{timestamp} M-{event_type_str:<6} {button:<5} {pos_str}"
+                    if 'random_range' in event: # 랜덤 기능은 유지
+                        range_px = event.get('random_range', 0)
+                        display_str += f" +/-{range_px:<3}px"
+                elif event_type_str == 'scroll':
+                    delta = event.get('delta', 0)
+                    display_str += f"{timestamp} M-Scroll {delta:>4}"
+                else:
+                     display_str += f"{timestamp} ? Unknown mouse event_type: {event_type_str}"
+            elif event_type == 'click' or event_type == 'drag':  # 기존 로직 유지 (호환성 또는 다른 기능용?)
+                # 이 로직은 현재 recorder가 생성하지 않는 타입일 수 있음
                 button = event.get('button', '')
                 event_type_str = event.get(
                     'event_type', 'click')  # 'press' or 'release'
@@ -278,7 +327,7 @@ class GuiEventListMixin:
             if event_type == 'delay':
                 # Light green for random, light blue for normal
                 bg_color = '#E6F9E6' if 'random_range' in event else '#E6E6FF'
-            elif event_type in ['mouse_move', 'click', 'drag'] and 'random_range' in event:
+            elif event_type in ['mouse', 'click', 'drag'] and 'random_range' in event:
                 bg_color = '#F9E6E6'  # Light red for random position
 
             if bg_color:
