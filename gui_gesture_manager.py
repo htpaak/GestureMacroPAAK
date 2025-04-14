@@ -338,63 +338,75 @@ class GuiGestureManagerMixin:
                  self.gesture_manager.set_gesture_callback(None)
 
     def on_gesture_edit_complete(self, new_gesture_internal_key):
-        """Callback from GestureManager when gesture editing is complete (extracted code)."""
+        """Callback from GestureManager when gesture editing is complete."""
         if not (hasattr(self, 'editing_gesture') and self.editing_gesture and hasattr(self, 'edit_gesture_info')):
             print("Warning: on_gesture_edit_complete called unexpectedly.")
             return
 
         print(f"Gesture edit complete. New gesture key: {new_gesture_internal_key}")
         old_internal_key = self.edit_gesture_info["old_internal_key"]
-        macro_file_name = self.edit_gesture_info["macro_file_name"]
+        # macro_file_name is not directly used now, we load events using old_internal_key
+        # macro_file_name = self.edit_gesture_info["macro_file_name"]
 
-        # Check if the new gesture key already exists (excluding the old key itself)
-        current_mappings = self.gesture_manager.get_mappings()
+        # Check for duplicate gesture
+        try:
+            current_mappings = self.gesture_manager.get_mappings()
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not get current gesture mappings: {e}")
+            self.editing_gesture = False # Clean up edit state
+            if hasattr(self, 'edit_gesture_info'): delattr(self, 'edit_gesture_info')
+            return
+
         if new_gesture_internal_key != old_internal_key and new_gesture_internal_key in current_mappings:
             new_display_name = self._get_display_gesture_name(new_gesture_internal_key)
             old_display_name = self._get_display_gesture_name(old_internal_key)
             messagebox.showwarning("Duplicate Gesture", f"The new gesture '{new_display_name}' is already mapped.\nEdit cancelled. Restoring original gesture '{old_display_name}'.")
-            # Restore original mapping if it was temporarily removed
-            # self.gesture_manager.gesture_mappings[old_internal_key] = macro_file_name
-            # self.gesture_manager.save_mappings() # Assuming this is handled by GestureManager if needed
             if hasattr(self, 'update_gesture_list'): self.update_gesture_list()
         else:
-            # Update mapping: remove old, add new (or let GestureManager handle update)
+            # --- Update mapping using GestureManager methods --- 
             try:
-                # Assuming GestureManager has an update_mapping method
-                if hasattr(self.gesture_manager, 'update_mapping'):
-                    success = self.gesture_manager.update_mapping(old_internal_key, new_gesture_internal_key, macro_file_name)
-                else:
-                    # Fallback: Manually remove old and add new (less ideal)
-                    print("Warning: GestureManager has no update_mapping method. Attempting manual update.")
-                    if hasattr(self.gesture_manager, 'remove_mapping') and hasattr(self.gesture_manager, 'add_mapping'):
-                         self.gesture_manager.remove_mapping(old_internal_key) # Assume this also saves
-                         self.gesture_manager.add_mapping(new_gesture_internal_key, macro_file_name) # Assume this also saves
-                         success = True # Assume success if no exceptions
-                    else:
-                         success = False
-                         print("Error: Cannot manually update mapping.")
+                # 1. Load events from the old gesture mapping
+                if not hasattr(self, 'storage'): raise AttributeError("Storage object not found.")
+                events_to_keep = self.storage.load_macro(old_internal_key)
+                if events_to_keep is None:
+                    # This case might mean the macro file was deleted externally, treat as empty?
+                    print(f"Warning: Could not load macro events for old gesture '{old_internal_key}'. Assuming empty events.")
+                    events_to_keep = []
+                    # Alternatively, show error and abort?
+                    # messagebox.showerror("Error", f"Failed to retrieve macro data for the original gesture '{old_internal_key}'.")
+                    # raise Exception(f"Failed to load events for {old_internal_key}")
 
-                if success:
+                # 2. Remove the old mapping (GestureManager handles storage deletion and callback)
+                print(f"Removing old mapping: {old_internal_key}")
+                removed_old = self.gesture_manager.remove_mapping(old_internal_key)
+                if not removed_old:
+                    # This might happen if the mapping was already gone?
+                    print(f"Warning: Failed to remove old mapping '{old_internal_key}' (might have been removed already). Proceeding...")
+
+                # 3. Save the loaded events under the new gesture key (GestureManager handles storage saving and callback)
+                print(f"Saving events under new mapping: {new_gesture_internal_key}")
+                saved_new = self.gesture_manager.save_macro_for_gesture(new_gesture_internal_key, events_to_keep)
+
+                if saved_new:
                     new_display_name = self._get_display_gesture_name(new_gesture_internal_key)
                     old_display_name = self._get_display_gesture_name(old_internal_key)
-                    if hasattr(self, 'update_gesture_list'): self.update_gesture_list()
+                    # Callbacks within remove_mapping/save_macro_for_gesture should handle list update
                     if hasattr(self, 'update_status'): self.update_status(f"Gesture '{old_display_name}' changed to '{new_display_name}'.")
                     messagebox.showinfo("Gesture Edit Complete", f"Gesture changed from '{old_display_name}' to '{new_display_name}'.")
                 else:
-                    messagebox.showerror("Error", "Failed to update gesture mapping.")
-                    # Attempt to restore?
-                    if hasattr(self, 'update_gesture_list'): self.update_gesture_list()
+                    messagebox.showerror("Error", f"Failed to save new gesture mapping for '{new_gesture_internal_key}'.")
+                    # Attempt to restore old mapping? Difficult state.
+                    if hasattr(self, 'update_gesture_list'): self.update_gesture_list() # Ensure list reflects current state
 
             except Exception as e:
                  print(f"Error during gesture mapping update: {e}")
                  messagebox.showerror("Error", f"An error occurred while updating gesture mapping: {e}")
-                 # Ensure list is updated even on error
                  if hasattr(self, 'update_gesture_list'): self.update_gesture_list()
 
         # Clean up edit state
         self.editing_gesture = False
         if hasattr(self, 'edit_gesture_info'): delattr(self, 'edit_gesture_info')
-        # Reset GestureManager callback? (Might be handled by GestureManager itself)
+        # Reset GestureManager callback?
         # if hasattr(self.gesture_manager, 'set_gesture_callback'):
         #      self.gesture_manager.set_gesture_callback(None)
 
