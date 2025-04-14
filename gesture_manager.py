@@ -196,7 +196,41 @@ class GestureManager:
 
                  try:
                      print(f"매크로 실행: {len(events)}개 이벤트")
-                     self.macro_player.play_macro(events, 1) # 1회 실행
+
+                     # --- 반복 횟수 결정 로직 추가 ---
+                     repeat_count = 1 # 기본값
+                     if self.gui_callback:
+                         try:
+                             is_infinite = getattr(self.gui_callback, 'infinite_repeat', None)
+                             count_var = getattr(self.gui_callback, 'repeat_count', None)
+
+                             if is_infinite and isinstance(is_infinite, tk.BooleanVar) and is_infinite.get():
+                                 repeat_count = 0 # 0은 무한 반복을 의미
+                                 print("무한 반복 설정 감지")
+                             elif count_var and isinstance(count_var, tk.StringVar):
+                                 repeat_str = count_var.get()
+                                 if repeat_str.isdigit():
+                                     parsed_count = int(repeat_str)
+                                     if parsed_count > 0:
+                                         repeat_count = parsed_count
+                                         print(f"반복 횟수 설정 감지: {repeat_count}")
+                                     else:
+                                         print(f"경고: 반복 횟수가 0 이하({parsed_count})이므로 1회 실행합니다.")
+                                         repeat_count = 1
+                                 else:
+                                     print(f"경고: 반복 횟수 문자열({repeat_str})이 숫자가 아니므로 1회 실행합니다.")
+                                     repeat_count = 1
+                             else:
+                                 print("GUI 콜백에서 반복 설정 변수(infinite_repeat, repeat_count)를 찾을 수 없어 1회 실행합니다.")
+                         except Exception as e_gui:
+                             print(f"GUI에서 반복 설정 가져오기 오류: {e_gui}. 1회 실행합니다.")
+                             repeat_count = 1
+                     else:
+                         print("GUI 콜백이 설정되지 않아 1회 실행합니다.")
+                     # --- 로직 끝 ---
+
+                     # 결정된 반복 횟수로 매크로 실행
+                     self.macro_player.play_macro(events, repeat_count)
                      return True
                  except Exception as e:
                      print(f"매크로 실행 중 오류 발생: {e}")

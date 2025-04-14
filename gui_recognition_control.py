@@ -58,17 +58,22 @@ class GuiRecognitionControlMixin:
             # GestureManager의 stop 메서드 호출
             if hasattr(self.gesture_manager, 'stop') and callable(self.gesture_manager.stop):
                 self.gesture_manager.stop() # 리스너 중지 등
-                self.gesture_enabled.set(False)
-                self.update_status("Gesture recognition deactivated.")
-                print("Gesture recognition stopped via GUI/Hotkey.")
-                # 버튼 상태 업데이트
-                if hasattr(self, 'gesture_start_btn'): self.gesture_start_btn.config(state=tk.NORMAL)
-                if hasattr(self, 'gesture_stop_btn'): self.gesture_stop_btn.config(state=tk.DISABLED)
-            else:
-                messagebox.showerror("Error", "Gesture Manager does not support stop method.")
+
+            # --- 현재 재생 중인 매크로 중지 호출 추가 ---
+            if hasattr(self, 'player') and hasattr(self.player, 'stop_playing') and callable(self.player.stop_playing):
+                print("Stopping any currently playing macro...")
+                self.player.stop_playing()
+            # --- 추가 끝 ---
+
+            self.gesture_enabled.set(False)
+            self.update_status("Gesture recognition deactivated.")
+            print("Gesture recognition stopped via GUI/Hotkey.")
+            # 버튼 상태 업데이트
+            if hasattr(self, 'gesture_start_btn'): self.gesture_start_btn.config(state=tk.NORMAL)
+            if hasattr(self, 'gesture_stop_btn'): self.gesture_stop_btn.config(state=tk.DISABLED)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to stop gesture recognition: {e}")
+            messagebox.showerror("Error", f"Failed to stop gesture recognition or macro playback: {e}") # 오류 메시지 수정
             # 실패 시 상태는? 일단 False로 유지? 아니면 True로 복원? -> False 유지
             self.gesture_enabled.set(False)
             # 버튼 상태는? -> 중지 시도했으므로 비활성화 상태 유지?
