@@ -59,26 +59,27 @@ class GestureManager:
         """제스처 인식 중지"""
         self.gesture_listener.stop()
         
-    def on_gesture_started(self, point, modifiers):
+    def on_gesture_started(self, rel_pos, monitor, modifiers):
         """제스처 시작 콜백"""
-        self.gesture_recognizer.start_recording(point, modifiers)
+        print(f"GestureManager 시작: 상대좌표 {rel_pos}, 모니터 {monitor.name}, 모디파이어 {modifiers}")
+        self.gesture_recognizer.start_recording(rel_pos, modifiers)
         
         # 제스처 시각화 캔버스가 있는 경우 점 추가
         if self.gesture_canvas:
             self.gesture_canvas.create_oval(
-                point[0]-3, point[1]-3, point[0]+3, point[1]+3, 
+                rel_pos[0]-3, rel_pos[1]-3, rel_pos[0]+3, rel_pos[1]+3, 
                 fill="blue", outline="blue", tags="gesture"
             )
         
-    def on_gesture_moved(self, point):
+    def on_gesture_moved(self, rel_pos, monitor):
         """제스처 이동 콜백"""
-        self.gesture_recognizer.add_point(point)
+        self.gesture_recognizer.add_point(rel_pos)
         
         # 제스처 시각화 캔버스가 있는 경우 선 추가
         if self.gesture_canvas and len(self.gesture_recognizer.points) > 1:
             prev_point = self.gesture_recognizer.points[-2]
             self.gesture_canvas.create_line(
-                prev_point[0], prev_point[1], point[0], point[1],
+                prev_point[0], prev_point[1], rel_pos[0], rel_pos[1],
                 fill="red", width=2, tags="gesture"
             )
         

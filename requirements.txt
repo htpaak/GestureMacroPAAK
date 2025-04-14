@@ -6,4 +6,5 @@ pynput
 numpy
 scipy
 pywin32
-PyQt5 
+PyQt5
+screeninfo 

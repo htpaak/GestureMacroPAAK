@@ -2,12 +2,14 @@ import tkinter as tk
 import pyautogui
 import time
 from pynput import keyboard, mouse
+import monitor_utils  # monitor_utils 모듈 임포트
 
 class GlobalGestureListener:
     def __init__(self):
         # 상태 플래그
         self.is_running = False
         self.is_recording = False
+        self.start_monitor = None # 제스처 시작 시점의 모니터 저장
         
         # 현재 눌린 모디파이어 키 추적
         self.current_modifiers = 0  # tkinter에서는 Qt 대신 일반 정수 값 사용
@@ -22,21 +24,21 @@ class GlobalGestureListener:
         self.shift_pressed = False
         self.alt_pressed = False
         
-        # 콜백 함수
-        self.on_gesture_started = None
-        self.on_gesture_moved = None
-        self.on_gesture_ended = None
+        # 콜백 함수 (시그니처 변경됨)
+        self.on_gesture_started = None # (rel_pos, monitor, modifiers)
+        self.on_gesture_moved = None   # (rel_pos, monitor)
+        self.on_gesture_ended = None   # ()
         
         # 키보드/마우스 리스너
         self.keyboard_listener = None
         self.mouse_listener = None
     
     def set_callbacks(self, started_cb, moved_cb, ended_cb):
-        """콜백 함수 설정"""
+        """콜백 함수 설정 (변경된 시그니처에 맞춰 사용해야 함)"""
         self.on_gesture_started = started_cb
         self.on_gesture_moved = moved_cb
         self.on_gesture_ended = ended_cb
-        print(f"콜백 설정 완료: {started_cb}, {moved_cb}, {ended_cb}")
+        print(f"콜백 설정 완료 (변경된 시그니처): {started_cb}, {moved_cb}, {ended_cb}")
     
     def start(self):
         """글로벌 제스처 리스너 시작"""
@@ -82,6 +84,7 @@ class GlobalGestureListener:
         # 진행 중인 제스처 종료
         if self.is_recording:
             self.is_recording = False
+            self.start_monitor = None # 시작 모니터 초기화
             if self.on_gesture_ended:
                 print("제스처 종료 콜백 호출")
                 self.on_gesture_ended()
@@ -101,14 +104,14 @@ class GlobalGestureListener:
     def on_key_press(self, key):
         """키보드 키 누름 이벤트 처리"""
         try:
-            print(f"키 눌림: {key}")  # 디버깅을 위한 출력
+            # print(f"키 눌림: {key}") # 디버깅 출력 줄임
             
             # ESC 키 처리
             if key == keyboard.Key.esc:
                 print("ESC 키 눌림 - 제스처 취소")
-                # 현재 진행 중인 제스처가 있으면 종료
                 if self.is_recording:
                     self.is_recording = False
+                    self.start_monitor = None # 시작 모니터 초기화
                     print("제스처 취소됨 (ESC로 인해)")
                     self.reset_modifiers()
                     if self.on_gesture_ended:
@@ -116,34 +119,46 @@ class GlobalGestureListener:
                 return
                 
             # 모디파이어 키 확인 및 업데이트
+            modifier_pressed = False
             if key == keyboard.Key.ctrl or key == keyboard.Key.ctrl_l or key == keyboard.Key.ctrl_r:
+                if not self.ctrl_pressed: modifier_pressed = True
                 self.ctrl_pressed = True
-                self._update_modifiers()
                 print("Ctrl 키 눌림")
             elif key == keyboard.Key.shift or key == keyboard.Key.shift_l or key == keyboard.Key.shift_r:
+                if not self.shift_pressed: modifier_pressed = True
                 self.shift_pressed = True
-                self._update_modifiers()
                 print("Shift 키 눌림")
             elif key == keyboard.Key.alt or key == keyboard.Key.alt_l or key == keyboard.Key.alt_r:
+                if not self.alt_pressed: modifier_pressed = True
                 self.alt_pressed = True
-                self._update_modifiers()
                 print("Alt 키 눌림")
                 
-            # 모디파이어 키가 하나라도 눌린 상태에서 제스처 시작
-            if not self.is_recording and self._any_modifier_pressed():
-                self.is_recording = True
-                print(f"제스처 시작: ({pyautogui.position()}), 모디파이어: {self.current_modifiers}")
-                if self.on_gesture_started:
-                    self.on_gesture_started(pyautogui.position(), self.current_modifiers)
-                else:
-                    print("제스처 시작 콜백이 설정되지 않음")
+            if modifier_pressed:
+                self._update_modifiers()
+                
+                # 모디파이어 키가 처음 눌렸고, 아직 제스처 기록 중이 아닐 때 제스처 시작
+                if not self.is_recording:
+                    abs_x, abs_y = pyautogui.position()
+                    current_monitor = monitor_utils.get_monitor_from_point(abs_x, abs_y)
+
+                    if current_monitor:
+                        self.is_recording = True
+                        self.start_monitor = current_monitor # 시작 모니터 저장
+                        rel_x, rel_y = monitor_utils.absolute_to_relative(abs_x, abs_y, current_monitor)
+                        print(f"제스처 시작: 모니터 {monitor_utils.get_monitors().index(current_monitor)} 상대좌표 ({rel_x}, {rel_y}), 절대좌표 ({abs_x}, {abs_y}), 모디파이어: {self.current_modifiers}")
+                        if self.on_gesture_started:
+                            self.on_gesture_started((rel_x, rel_y), current_monitor, self.current_modifiers)
+                        else:
+                            print("제스처 시작 콜백이 설정되지 않음")
+                    else:
+                        print(f"마우스 ({abs_x}, {abs_y})가 인식된 모니터 외부에 있어 제스처를 시작할 수 없습니다.")
         except Exception as e:
             print(f"키 누름 처리 오류: {e}")
     
     def on_key_release(self, key):
         """키보드 키 해제 이벤트 처리"""
         try:
-            print(f"키 해제: {key}")  # 디버깅을 위한 출력
+            # print(f"키 해제: {key}") # 디버깅 출력 줄임
             
             # ESC 키 처리
             if key == keyboard.Key.esc:
@@ -151,58 +166,60 @@ class GlobalGestureListener:
                 return
                 
             # 모디파이어 키 확인 및 업데이트
+            modifier_released = False
             if key == keyboard.Key.ctrl or key == keyboard.Key.ctrl_l or key == keyboard.Key.ctrl_r:
                 self.ctrl_pressed = False
-                self._update_modifiers()
+                modifier_released = True
                 print("Ctrl 키 해제")
             elif key == keyboard.Key.shift or key == keyboard.Key.shift_l or key == keyboard.Key.shift_r:
                 self.shift_pressed = False
-                self._update_modifiers()
+                modifier_released = True
                 print("Shift 키 해제")
             elif key == keyboard.Key.alt or key == keyboard.Key.alt_l or key == keyboard.Key.alt_r:
                 self.alt_pressed = False
-                self._update_modifiers()
+                modifier_released = True
                 print("Alt 키 해제")
                 
-            print(f"모디파이어 업데이트: {self.current_modifiers}")
-            
-            # 모든 모디파이어 키가 해제된 경우 제스처 종료
-            if not self._any_modifier_pressed() and self.is_recording:
-                self.is_recording = False
-                print("제스처 종료 - 모든 모디파이어 키 해제됨")
-                if self.on_gesture_ended:
-                    self.on_gesture_ended()
-                else:
-                    print("제스처 종료 콜백이 설정되지 않음")
+            if modifier_released:
+                self._update_modifiers()
+                # print(f"모디파이어 업데이트: {self.current_modifiers}") # 디버깅 출력 줄임
+                
+                # 모든 모디파이어 키가 해제된 경우 제스처 종료
+                if not self._any_modifier_pressed() and self.is_recording:
+                    self.is_recording = False
+                    self.start_monitor = None # 시작 모니터 초기화
+                    print("제스처 종료 - 모든 모디파이어 키 해제됨")
+                    if self.on_gesture_ended:
+                        self.on_gesture_ended()
+                    else:
+                        print("제스처 종료 콜백이 설정되지 않음")
         except Exception as e:
             print(f"키 해제 처리 오류: {e}")
     
     def on_mouse_move(self, x, y):
         """마우스 이동 이벤트 처리"""
-        if not self.is_running or not self.is_recording:
+        if not self.is_running or not self.is_recording or not self.start_monitor:
             return
             
         try:
-            # 좌표값 간소화 (디버깅 출력 감소를 위해)
-            if hasattr(self, 'last_logged_pos'):
-                last_x, last_y = self.last_logged_pos
-                # 일정 거리 이상 이동했을 때만 로그 출력
-                dist_sq = (x - last_x)**2 + (y - last_y)**2
-                if dist_sq > 1000:  # 약 30픽셀 이상 이동했을 때
-                    print(f"마우스 이동: ({x}, {y})")
-                    self.last_logged_pos = (x, y)
-            else:
-                print(f"마우스 이동: ({x}, {y})")
-                self.last_logged_pos = (x, y)
-            
-            # 제스처 이동 시그널 발생
-            if self.on_gesture_moved:
-                self.on_gesture_moved((x, y))
-            else:
-                # 이 메시지는 한 번만 출력 (스팸 방지)
-                if not hasattr(self, 'logged_no_move_callback'):
-                    print("제스처 이동 콜백이 설정되지 않음")
-                    self.logged_no_move_callback = True
+            # 현재 마우스 위치가 속한 모니터 확인
+            current_monitor = monitor_utils.get_monitor_from_point(x, y)
+
+            # 제스처가 시작된 모니터와 동일한 모니터 내에서만 이동 처리
+            if current_monitor == self.start_monitor:
+                rel_x, rel_y = monitor_utils.absolute_to_relative(x, y, current_monitor)
+
+                # 제스처 이동 콜백 호출 (상대 좌표와 모니터 객체 전달)
+                if self.on_gesture_moved:
+                    self.on_gesture_moved((rel_x, rel_y), current_monitor)
+                else:
+                    # 이 메시지는 한 번만 출력 (스팸 방지)
+                    if not hasattr(self, 'logged_no_move_callback'):
+                        print("제스처 이동 콜백이 설정되지 않음")
+                        self.logged_no_move_callback = True
+            # else:
+                # print(f"마우스가 다른 모니터로 이동 ({x}, {y}). 제스처는 시작 모니터({self.start_monitor.name})에서만 유효합니다.") # 디버깅용
+
         except Exception as e:
             print(f"Error on mouse move: {e}")
     
@@ -220,8 +237,8 @@ class GlobalGestureListener:
         if self.alt_pressed:
             self.current_modifiers |= self.ALT_MODIFIER
             
-        if prev_modifiers != self.current_modifiers:
-            print(f"모디파이어 업데이트: {self.current_modifiers}")
+        # if prev_modifiers != self.current_modifiers: # 상태 변경 시에만 출력
+            # print(f"모디파이어 업데이트: {self.current_modifiers}") # 디버깅 출력 줄임
     
     def _any_modifier_pressed(self):
         """현재 모디파이어 키가 눌려있는지 확인"""
