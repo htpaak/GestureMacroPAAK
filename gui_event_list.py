@@ -104,29 +104,24 @@ class GuiEventListMixin:
         keyboard_frame.pack(side=tk.LEFT, padx=10, pady=2)
         ttk.Checkbutton(keyboard_frame, text="Record Keyboard", variable=getattr(self, 'record_keyboard', tk.BooleanVar(value=True))).pack(anchor=tk.W)
 
-        # 좌표 옵션 프레임 (절대/상대)
+        # 좌표 옵션 프레임 (절대/상대 라디오 버튼)
         coord_frame = ttk.Frame(options_inner_frame)
         coord_frame.pack(side=tk.LEFT, padx=10, pady=2)
-        # GuiBase에 정의된 BooleanVar 사용
-        abs_chk = ttk.Checkbutton(coord_frame, text="Absolute Coords", variable=getattr(self, 'use_absolute_coords', tk.BooleanVar(value=True)))
-        abs_chk.pack(anchor=tk.W)
-        rel_chk = ttk.Checkbutton(coord_frame, text="Relative Coords", variable=getattr(self, 'use_relative_coords', tk.BooleanVar(value=False)))
-        rel_chk.pack(anchor=tk.W)
 
-        # 절대/상대 좌표 상호 배제 로직 추가
-        def toggle_coords():
-            if self.use_absolute_coords.get():
-                self.use_relative_coords.set(False)
-            elif not self.use_relative_coords.get(): # 둘 다 False가 되는 경우 방지 (절대가 기본)
-                self.use_absolute_coords.set(True)
+        # 라디오 버튼 선택 시 BooleanVar 업데이트하는 콜백
+        def update_coord_booleans():
+            selected_coord = self.coord_selection_var.get()
+            self.use_absolute_coords.set(selected_coord == "absolute")
+            self.use_relative_coords.set(selected_coord == "relative")
+            # print(f"Coord selection changed: Absolute={self.use_absolute_coords.get()}, Relative={self.use_relative_coords.get()}") # 디버깅용
 
-            if self.use_relative_coords.get():
-                self.use_absolute_coords.set(False)
-            elif not self.use_absolute_coords.get(): # 둘 다 False가 되는 경우 방지 (절대가 기본)
-                 self.use_relative_coords.set(True)
-
-        abs_chk.config(command=toggle_coords)
-        rel_chk.config(command=toggle_coords)
+        # GuiBase의 StringVar 사용
+        ttk.Radiobutton(coord_frame, text="Absolute Coords",
+                        variable=self.coord_selection_var, value="absolute",
+                        command=update_coord_booleans).pack(anchor=tk.W)
+        ttk.Radiobutton(coord_frame, text="Relative Coords",
+                        variable=self.coord_selection_var, value="relative",
+                        command=update_coord_booleans).pack(anchor=tk.W)
 
     def update_event_list(self):
         """이벤트 목록 업데이트. 녹화 중이면 recorder에서, 아니면 editor에서 이벤트를 가져와 표시합니다."""
