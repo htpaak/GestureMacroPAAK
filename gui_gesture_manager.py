@@ -411,87 +411,121 @@ class GuiGestureManagerMixin:
         #      self.gesture_manager.set_gesture_callback(None)
 
     def move_gesture_up(self):
-        """선택된 단일 제스처를 목록 위로 이동"""
+        """선택된 제스처를 목록에서 위로 이동 (순서 저장 기능 사용)"""
         if not hasattr(self, 'gesture_listbox') or not hasattr(self, 'gesture_manager'): return
-
         selected_indices = self.gesture_listbox.curselection()
-        if len(selected_indices) != 1:
-            messagebox.showwarning("Warning", "Select exactly one gesture to move.")
+        if not selected_indices:
+            messagebox.showwarning("Warning", "Select a gesture to move.")
+            return
+        if len(selected_indices) > 1:
+            messagebox.showwarning("Warning", "Select only one gesture to move.")
             return
 
-        current_index = selected_indices[0]
-        if current_index == 0:
-            messagebox.showinfo("Info", "Cannot move the first gesture further up.")
+        selected_index = selected_indices[0]
+        if selected_index == 0:
+            if hasattr(self, 'update_status'): self.update_status("Gesture is already at the top.")
             return
 
-        # GestureManager에 순서 변경 요청
-        gestures_internal = list(self.gesture_manager.get_mappings().keys())
-        if not (0 < current_index < len(gestures_internal)): return # 인덱스 오류 방지
+        # 현재 제스처 키 목록 가져오기 (Storage의 순서 반영)
+        try:
+            current_mappings = self.gesture_manager.storage.get_all_mappings()
+            gestures = list(current_mappings.keys())
+        except AttributeError:
+             messagebox.showerror("Error", "Could not get gesture list via storage.")
+             return
+        except Exception as e:
+             messagebox.showerror("Error", f"Error getting gesture list: {e}")
+             return
 
-        gesture_to_move = gestures_internal[current_index]
+        if selected_index >= len(gestures):
+            messagebox.showerror("Error", "Selected gesture index is out of bounds.")
+            return
+
+        # 이동할 제스처의 내부 키
+        internal_key = gestures[selected_index]
+        display_name = self._get_display_gesture_name(internal_key)
 
         try:
-            if self.gesture_manager.move_gesture(gesture_to_move, current_index - 1):
-                # 성공 시 목록 업데이트 및 새 위치 선택
-                new_index = current_index - 1
-                self.update_gesture_list() # 목록 업데이트 (선택 복원 로직 내장)
-                # update_gesture_list에서 선택 복원이 안될 경우 대비
-                if self.gesture_listbox.curselection() != (new_index,):
-                    self._skip_selection = True
-                    self.gesture_listbox.selection_clear(0, tk.END)
-                    self.gesture_listbox.selection_set(new_index)
-                    self.gesture_listbox.see(new_index)
-                    self._skip_selection = False
-                    self.selected_gesture_index = new_index
-                    self.selected_gesture_name = gesture_to_move # 내부 키 저장
-                    self.update_event_list_for_gesture(gesture_to_move) # 이벤트 목록도 업데이트
+            # 1. 키 리스트 순서 변경
+            gestures.pop(selected_index)
+            gestures.insert(selected_index - 1, internal_key)
 
-                display_name = self._get_display_gesture_name(gesture_to_move)
-                self.update_status(f"Gesture '{display_name}' moved up.")
-            else:
-                messagebox.showerror("Error", "Failed to move gesture up in GestureManager.")
+            # 2. 변경된 순서를 MacroStorage에 저장
+            save_success = self.gesture_manager.storage.save_gesture_order(gestures)
+
+            if not save_success:
+                messagebox.showerror("Error", "Failed to save the new gesture order.")
+                return # 저장 실패 시 UI 업데이트 중단
+
+            # 3. UI 업데이트
+            self.selected_gesture_name = internal_key
+            self.update_gesture_list() # 목록 새로고침 (storage가 새 순서를 반영)
+            if hasattr(self, 'update_status'): self.update_status(f"Gesture '{display_name}' moved up.")
+
+        except AttributeError:
+            messagebox.showerror("Error", "Storage object or save_gesture_order method not found.")
         except Exception as e:
-            messagebox.showerror("Error", f"Error moving gesture up: {e}")
+            print(f"Unexpected error moving gesture up: {e}")
+            messagebox.showerror("Error", f"An unexpected error occurred while moving: {e}")
 
     def move_gesture_down(self):
-        """선택된 단일 제스처를 목록 아래로 이동"""
+        """선택된 제스처를 목록에서 아래로 이동 (순서 저장 기능 사용)"""
         if not hasattr(self, 'gesture_listbox') or not hasattr(self, 'gesture_manager'): return
-
         selected_indices = self.gesture_listbox.curselection()
-        if len(selected_indices) != 1:
-            messagebox.showwarning("Warning", "Select exactly one gesture to move.")
+        if not selected_indices:
+            messagebox.showwarning("Warning", "Select a gesture to move.")
+            return
+        if len(selected_indices) > 1:
+            messagebox.showwarning("Warning", "Select only one gesture to move.")
             return
 
-        current_index = selected_indices[0]
-        gestures_internal = list(self.gesture_manager.get_mappings().keys())
-        if current_index >= len(gestures_internal) - 1:
-            messagebox.showinfo("Info", "Cannot move the last gesture further down.")
-            return
-        if not (0 <= current_index < len(gestures_internal) -1): return # 인덱스 오류 방지
+        selected_index = selected_indices[0]
 
-        gesture_to_move = gestures_internal[current_index]
+        # 현재 제스처 키 목록 가져오기 (Storage의 순서 반영)
+        try:
+            current_mappings = self.gesture_manager.storage.get_all_mappings()
+            gestures = list(current_mappings.keys())
+        except AttributeError:
+             messagebox.showerror("Error", "Could not get gesture list via storage.")
+             return
+        except Exception as e:
+             messagebox.showerror("Error", f"Error getting gesture list: {e}")
+             return
+
+        if selected_index >= len(gestures) - 1:
+            if hasattr(self, 'update_status'): self.update_status("Gesture is already at the bottom.")
+            return
+
+        if selected_index >= len(gestures): # 추가적인 인덱스 검사
+            messagebox.showerror("Error", "Selected gesture index is out of bounds.")
+            return
+
+        # 이동할 제스처의 내부 키
+        internal_key = gestures[selected_index]
+        display_name = self._get_display_gesture_name(internal_key)
 
         try:
-            if self.gesture_manager.move_gesture(gesture_to_move, current_index + 1):
-                # 성공 시 목록 업데이트 및 새 위치 선택
-                new_index = current_index + 1
-                self.update_gesture_list()
-                if self.gesture_listbox.curselection() != (new_index,):
-                    self._skip_selection = True
-                    self.gesture_listbox.selection_clear(0, tk.END)
-                    self.gesture_listbox.selection_set(new_index)
-                    self.gesture_listbox.see(new_index)
-                    self._skip_selection = False
-                    self.selected_gesture_index = new_index
-                    self.selected_gesture_name = gesture_to_move
-                    self.update_event_list_for_gesture(gesture_to_move)
+            # 1. 키 리스트 순서 변경
+            gestures.pop(selected_index)
+            gestures.insert(selected_index + 1, internal_key)
 
-                display_name = self._get_display_gesture_name(gesture_to_move)
-                self.update_status(f"Gesture '{display_name}' moved down.")
-            else:
-                messagebox.showerror("Error", "Failed to move gesture down in GestureManager.")
+            # 2. 변경된 순서를 MacroStorage에 저장
+            save_success = self.gesture_manager.storage.save_gesture_order(gestures)
+
+            if not save_success:
+                messagebox.showerror("Error", "Failed to save the new gesture order.")
+                return # 저장 실패 시 UI 업데이트 중단
+
+            # 3. UI 업데이트
+            self.selected_gesture_name = internal_key
+            self.update_gesture_list() # 목록 새로고침 (storage가 새 순서를 반영)
+            if hasattr(self, 'update_status'): self.update_status(f"Gesture '{display_name}' moved down.")
+
+        except AttributeError:
+            messagebox.showerror("Error", "Storage object or save_gesture_order method not found.")
         except Exception as e:
-            messagebox.showerror("Error", f"Error moving gesture down: {e}")
+            print(f"Unexpected error moving gesture down: {e}")
+            messagebox.showerror("Error", f"An unexpected error occurred while moving: {e}")
 
     # --- Gesture Selection Maintenance ---
 

@@ -1,4 +1,4 @@
-# gui_event_list.py
+    # gui_event_list.py
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sys  # For platform check
@@ -22,8 +22,8 @@ class GuiEventListMixin:
                                         activestyle='dotbox', highlightthickness=2, exportselection=False)
         self.event_listbox.pack(fill=tk.BOTH, expand=True)
         self.event_listbox.config(yscrollcommand=event_scrollbar.set,
-                                  selectbackground='#4a6cd4',
-                                  selectforeground='white')
+                                      selectbackground='#4a6cd4',
+                                      selectforeground='white')
         event_scrollbar.config(command=self.event_listbox.yview)
 
         # 이벤트 바인딩 (콜백 함수는 GuiEventListMixin 또는 GuiEventEditorMixin 등에 있어야 함)
@@ -56,6 +56,8 @@ class GuiEventListMixin:
 
         ttk.Button(event_btn_frame, text="Select All",
                    command=select_all_cmd).pack(side=tk.LEFT, padx=5)
+        ttk.Button(event_btn_frame, text="Delete Selected",
+                   command=delete_selected_cmd).pack(side=tk.LEFT, padx=5)
         ttk.Button(event_btn_frame, text="Add Delay",
                    command=add_delay_cmd).pack(side=tk.LEFT, padx=5)
         ttk.Button(event_btn_frame, text="Delete Delay",

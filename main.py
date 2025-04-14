@@ -189,6 +189,14 @@ def main():
         player = MacroPlayer()
         editor = MacroEditor(storage)
         gesture_manager = GestureManager(player, storage, recorder)
+        # --- 디버깅 코드 추가 --- 
+        print(f"[DEBUG main.py] gesture_manager 생성됨: {gesture_manager}")
+        if hasattr(gesture_manager, 'storage'):
+            print(f"[DEBUG main.py] gesture_manager.storage: {gesture_manager.storage}")
+            print(f"[DEBUG main.py] type(gesture_manager.storage): {type(gesture_manager.storage)}")
+        else:
+            print("[DEBUG main.py] gesture_manager에 storage 속성 없음!")
+        # --- 디버깅 코드 끝 --- 
         logging.info("Core components initialized.")
     except Exception as e:
         logging.error("Failed to initialize core components:", exc_info=True)
