@@ -58,7 +58,7 @@ def auto_enable_gesture():
 
 def graceful_exit():
     """애플리케이션 종료 로직 (TrayManager 콜백)"""
-    global root_window, tray_manager, gesture_manager, recorder
+    global root_window, tray_manager, gesture_manager, recorder, gui
     logging.info("Starting graceful exit sequence...")
     
     # 1. 매크로 녹화 중지
@@ -95,7 +95,19 @@ def graceful_exit():
         finally:
              tray_manager = None # 참조 제거
 
-    # 4. Tkinter 메인 루프 종료 요청 (destroy는 제거)
+    # 4. GUI 정리 (quit 전에)
+    if gui:
+        logging.info("Cleaning up GUI...")
+        try:
+            # GUI 객체에 정리 메서드가 있다면 호출 (예: gui.cleanup())
+            # 현재 SimpleGUI에는 없으므로 참조만 제거
+            pass
+        except Exception as e:
+            logging.error("Error cleaning up GUI:", exc_info=True)
+        finally:
+            gui = None
+
+    # 5. Tkinter 메인 루프 종료 요청
     if root_window:
         logging.info("Requesting Tkinter main loop quit...")
         try:

@@ -175,9 +175,20 @@ class TrayManager:
         """트레이 메뉴의 'Exit' 클릭 시 호출됨"""
         logger.info("Exit requested from tray menu.")
         if self.app_exit_callback:
-            logger.info("Calling the application exit callback.")
-            # 등록된 메인 애플리케이션 종료 콜백 함수 호출
-            self.app_exit_callback()
+            logger.info("Scheduling the application exit callback in the main thread.")
+            # 메인 스레드에서 app_exit_callback (graceful_exit) 실행 예약
+            try:
+                # root_window가 유효한지 확인 후 호출
+                if self.root_window and self.root_window.winfo_exists():
+                     self.root_window.after(0, self.app_exit_callback)
+                else:
+                     logger.warning("Root window does not exist or is destroyed. Cannot schedule exit callback.")
+                     # 최후의 수단으로 직접 stop 시도 (오류 가능성 있음)
+                     self.stop()
+            except Exception as e:
+                 logger.error("Error scheduling exit callback:", exc_info=True)
+                 # 예약 실패 시 최후의 수단
+                 self.stop()
         else:
             logger.error("No exit callback provided to TrayManager. Attempting fallback exit...")
             # 콜백이 없으면 직접 종료 시도 (최후의 수단)
