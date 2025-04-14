@@ -1893,129 +1893,68 @@ class SimpleGUI:
 
     def update_event_list_for_gesture(self, gesture_name):
         """선택된 제스처에 대한 이벤트 목록 업데이트"""
-        print(f"update_event_list_for_gesture 함수 호출: {gesture_name}")  # 디버깅 로그 추가
-        
+        print(f"update_event_list_for_gesture 함수 호출: {gesture_name}")
+
         if not self.gesture_manager or not gesture_name:
             return
-            
-        # 제스처에 대한 매크로 파일 경로 가져오기
-        if gesture_name in self.gesture_manager.gesture_mappings:
-            macro_name = self.gesture_manager.gesture_mappings[gesture_name]
-            full_path = os.path.join("macros", macro_name)
-            print(f"매크로 파일 경로 시도: {full_path}")  # 디버깅 로그 추가
-            
-            # 파일이 존재하는지 확인
-            if not os.path.exists(full_path):
-                print(f"파일이 존재하지 않음, 대체 경로 시도")  # 디버깅 로그 추가
-                # 대체 경로 시도
-                safe_gesture = gesture_name.replace('→', '_RIGHT_').replace('↓', '_DOWN_').replace('←', '_LEFT_').replace('↑', '_UP_')
-                alternative_path = os.path.join("macros", f"gesture_{safe_gesture}.json")
-                print(f"대체 경로: {alternative_path}")  # 디버깅 로그 추가
-                
-                if os.path.exists(alternative_path):
-                    full_path = alternative_path
-                    macro_name = f"gesture_{safe_gesture}.json"  # 매크로 이름 업데이트
-                    print(f"대체 경로 파일 존재함: {full_path}")  # 디버깅 로그 추가
-                else:
-                    print(f"매크로 파일을 찾을 수 없음: {macro_name} / {alternative_path}")  # 디버깅 로그 추가
-                    
-                    # 매크로 매핑이 존재하지만 파일이 없는 경우, 경고 표시
-                    warning_message = f"제스처 '{gesture_name}'의 매크로 파일을 찾을 수 없습니다."
-                    self.update_status(warning_message)
-                    
-                    # 이벤트 목록 초기화
-                    self.event_listbox.delete(0, tk.END)
-                    self.event_listbox.insert(tk.END, "♦ 매크로 파일이 없습니다. '저장' 버튼으로 새 매크로를 저장하세요.")
-                    self.event_listbox.itemconfig(tk.END, {'bg': '#FFE0E0'})
-                    
-                    # editor의 현재 편집 중인 매크로 이름 업데이트
-                    if hasattr(self.editor, 'set_current_macro') and callable(self.editor.set_current_macro):
-                        self.editor.set_current_macro(macro_name)
-                    
-                    return
+
+        # storage에서 직접 이벤트 로드
+        events = self.gesture_manager.storage.load_macro(gesture_name)
+
+        if events is not None: # 제스처가 존재하면 (빈 리스트일 수도 있음)
+            print(f"매크로 로드됨: 제스처='{gesture_name}', 이벤트 수={len(events)}")
+
+            # 에디터에 이벤트 설정
+            if hasattr(self.editor, 'events'):
+                print("editor.events에 직접 할당")
+                import copy
+                self.editor.events = copy.deepcopy(events) # 에디터용 복사본 생성
             else:
-                print(f"원래 경로 파일 존재함: {full_path}")  # 디버깅 로그 추가
-            
-            try:
-                # 매크로 파일 읽기 - UTF-8 인코딩 사용
-                with open(full_path, 'r', encoding='utf-8') as f:
-                    import json
-                    events = json.load(f)
-                
-                print(f"매크로 파일 내용 로드됨: {len(events)}개 이벤트")  # 디버깅 로그 추가
-                
-                # 임시 파일이고 이벤트가 없는 경우 특별 처리
-                if "_temp.json" in macro_name and len(events) == 0:
-                    print("임시 파일이고 이벤트가 없음 - 특별 메시지 표시")
-                    
-                    # 이벤트 목록 업데이트
-                    self.event_listbox.delete(0, tk.END)  # 기존 이벤트 목록 초기화
-                    self.event_listbox.insert(tk.END, "♦ 이 제스처에는 아직 이벤트가 없습니다.")
-                    self.event_listbox.insert(tk.END, "♦ 매크로를 녹화하려면 '매크로 녹화 시작' 버튼을 클릭하고,")
-                    self.event_listbox.insert(tk.END, "♦ 녹화 후 '녹화 중지' 버튼을 클릭하세요.")
-                    
-                    for i in range(3):
-                        self.event_listbox.itemconfig(i, {'bg': '#FFFFD0'})
-                        
-                    # 상태 업데이트
-                    self.update_status(f"제스처 '{gesture_name}'에 연결된 매크로가 비어있습니다. 새 매크로를 녹화하세요.")
-                    
-                    # 에디터에 빈 이벤트 목록 설정
-                    if hasattr(self.editor, 'events'):
-                        self.editor.events = []
-                    
-                    # editor의 현재 편집 중인 매크로 이름 업데이트
-                    if hasattr(self.editor, 'set_current_macro') and callable(self.editor.set_current_macro):
-                        self.editor.set_current_macro(macro_name)
-                    
-                    return
-                
-                # 에디터에 이벤트 설정
-                if hasattr(self.editor, 'events'):
-                    print("editor.events에 직접 할당")  # 디버깅 로그 추가
-                    import copy
-                    self.editor.events = copy.deepcopy(events)
-                else:
-                    print("에디터에 이벤트를 설정할 방법이 없음")  # 디버깅 로그 추가
-                    self.update_status(f"에디터에 이벤트를 로드할 수 없습니다.")
-                    return
-                
-                # editor의 현재 편집 중인 매크로 이름 업데이트
-                if hasattr(self.editor, 'set_current_macro') and callable(self.editor.set_current_macro):
-                    self.editor.set_current_macro(macro_name)
-                    print(f"editor의 현재 편집 중인 매크로 이름 업데이트: {macro_name}")  # 디버깅 로그 추가
-                
-                # 이벤트 목록 업데이트
-                self.event_listbox.delete(0, tk.END)  # 기존 이벤트 목록 초기화
-                
+                print("에디터에 이벤트를 설정할 방법이 없음")
+                self.update_status(f"에디터에 이벤트를 로드할 수 없습니다.")
+                return
+
+            # editor의 현재 편집 중인 매크로 이름 업데이트 (이제 제스처 이름 사용)
+            if hasattr(self.editor, 'set_current_macro') and callable(self.editor.set_current_macro):
+                 self.editor.set_current_macro(gesture_name) # 파일 이름 대신 제스처 이름
+                 print(f"editor의 현재 편집 중인 매크로 이름 업데이트: {gesture_name}")
+            elif hasattr(self.editor, 'current_editing_macro'): # 직접 할당 시도
+                 self.editor.current_editing_macro = gesture_name
+                 print(f"editor의 현재 편집 중인 매크로 이름 업데이트 (직접): {gesture_name}")
+
+
+            # 이벤트 목록 UI 업데이트
+            self.event_listbox.delete(0, tk.END) # 기존 목록 초기화
+
+            if not events: # 빈 매크로인 경우 특별 메시지 표시
+                print("빈 매크로 - 특별 메시지 표시")
+                self.event_listbox.insert(tk.END, "♦ 이 제스처에는 아직 이벤트가 없습니다.")
+                self.event_listbox.insert(tk.END, "♦ 매크로를 녹화하려면 '매크로 녹화 시작' 버튼을 클릭하고,")
+                self.event_listbox.insert(tk.END, "♦ 녹화 후 '녹화 중지' 버튼을 클릭하세요.")
+                for i in range(3):
+                    self.event_listbox.itemconfig(i, {'bg': '#FFFFD0'})
+                self.update_status(f"제스처 '{gesture_name}'에 연결된 매크로가 비어있습니다. 새 매크로를 녹화하세요.")
+            else: # 이벤트가 있는 경우
                 # 이벤트 표시
                 for i, event in enumerate(events):
                     self.display_event(event, i)
-                
-                # 이벤트가 있으면 첫 번째 항목으로 스크롤
-                if len(events) > 0:
-                    self.event_listbox.see(0)
-                
-                print(f"제스처 '{gesture_name}'의 이벤트 {len(events)}개 로드됨")  # 디버깅 로그 추가
-                
-                # 상태 업데이트
-                if len(events) == 0:
-                    self.update_status(f"제스처 '{gesture_name}'에 연결된 매크로가 비어있습니다.")
-                else:
-                    self.update_status(f"제스처 '{gesture_name}'의 이벤트 {len(events)}개 로드됨")
-            except Exception as e:
-                print(f"제스처 이벤트 로드 중 오류: {e}")  # 디버깅 로그 추가
-                import traceback
-                traceback.print_exc()
-                self.update_status(f"매크로 로드 중 오류가 발생했습니다: {e}")
-                
-                # 오류 발생 시 이벤트 목록에 오류 메시지 표시
-                self.event_listbox.delete(0, tk.END)
-                self.event_listbox.insert(tk.END, f"♦ 매크로 파일 로드 중 오류 발생: {e}")
-                self.event_listbox.itemconfig(tk.END, {'bg': '#FFD0D0'})
-        else:
-            print(f"제스처 '{gesture_name}'에 대한 매핑이 없음")  # 디버깅 로그 추가
+                # 첫 번째 항목으로 스크롤
+                self.event_listbox.see(0)
+                print(f"제스처 '{gesture_name}'의 이벤트 {len(events)}개 로드됨")
+                self.update_status(f"제스처 '{gesture_name}'의 이벤트 {len(events)}개 로드됨")
+
+        else: # 제스처가 존재하지 않는 경우
+            print(f"제스처 '{gesture_name}'에 대한 매핑이 없음")
             self.update_status(f"제스처 '{gesture_name}'에 대한 매크로 매핑이 없습니다.")
+            # 이벤트 목록 초기화
+            self.event_listbox.delete(0, tk.END)
+            self.event_listbox.insert(tk.END, f"♦ 제스처 '{gesture_name}'는 아직 저장되지 않았습니다.")
+            self.event_listbox.itemconfig(tk.END, {'bg': '#FFE0E0'})
+            # 에디터 이벤트 목록도 비우기
+            if hasattr(self.editor, 'events'):
+                self.editor.events = []
+            if hasattr(self.editor, 'set_current_macro') and callable(self.editor.set_current_macro):
+                 self.editor.set_current_macro(None) # 현재 편집 매크로 없음
 
     def delete_delay_events(self):
         """선택된 이벤트 중 딜레이 이벤트만 삭제"""
