@@ -8,7 +8,8 @@ from recorder import MacroRecorder
 from player import MacroPlayer
 from editor import MacroEditor
 from storage import MacroStorage
-from simple_gui import SimpleGUI
+# from simple_gui import SimpleGUI  # 주석 처리 또는 삭제
+from gui_base import GuiBase      # GuiBase 임포트
 from gesture_manager import GestureManager
 from tray_manager import TrayManager
 
@@ -194,11 +195,11 @@ def main():
         graceful_exit() # 초기화 실패 시 정리 및 종료 시도
         return
 
-    # GUI 초기화
+    # GUI 초기화 - SimpleGUI 대신 GuiBase 사용
     try:
-        gui = SimpleGUI(root_window, recorder, player, editor, storage, gesture_manager)
-        gui.setup_ui()
-        logging.info("GUI initialized and setup.")
+        gui = GuiBase(root_window, recorder, player, editor, storage, gesture_manager)
+        # gui.setup_ui() # GuiBase __init__에서 호출되므로 여기서 제거
+        logging.info("GUI initialized using GuiBase.") # 로그 메시지 수정
     except Exception as e:
         logging.error("Failed to initialize GUI:", exc_info=True)
         graceful_exit() # 초기화 실패 시 정리 및 종료 시도
