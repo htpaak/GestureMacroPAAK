@@ -103,11 +103,11 @@ class SimpleGUI:
             gesture_button_frame = ttk.Frame(gesture_control_frame)
             gesture_button_frame.pack(fill=tk.X)
             
-            self.gesture_start_btn = ttk.Button(gesture_button_frame, text="시작", width=20,
+            self.gesture_start_btn = ttk.Button(gesture_button_frame, text="Start (F11)", width=20,
                                command=self.start_gesture_recognition, style='Big.TButton')
             self.gesture_start_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
             
-            self.gesture_stop_btn = ttk.Button(gesture_button_frame, text="중지", width=20,
+            self.gesture_stop_btn = ttk.Button(gesture_button_frame, text="Stop (F12)", width=20,
                                command=self.stop_gesture_recognition, state=tk.DISABLED, style='Big.TButton')
             self.gesture_stop_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
         
@@ -1546,24 +1546,37 @@ class SimpleGUI:
     
     def setup_keyboard_shortcuts(self):
         """키보드 단축키 설정"""
-        # F5 키: 매크로 실행
-        self.root.bind("<F5>", lambda event: self.play_macro())
-        
-        # F6 키: 매크로 실행 중지
-        self.root.bind("<F6>", lambda event: self.stop_macro())
-        
-        # F9 키: 매크로 녹화 시작
-        self.root.bind("<F9>", lambda event: self.start_recording_for_selected_gesture())
-        
-        # F10 키: 매크로 녹화 중지
-        self.root.bind("<F10>", lambda event: self.stop_recording())
-        
-        # Ctrl+R: 녹화 시작/중지 토글
-        self.root.bind("<Control-r>", self.toggle_recording)
-        
-        # Ctrl+S: 매크로 저장
-        self.root.bind("<Control-s>", lambda event: self.save_macro())
-    
+        try:
+            # 기존 단축키 제거 (오류 방지)
+            hotkeys_to_remove = ['f9', 'f10', 'f11', 'f12', 'delete', 'ctrl+a']
+            for hotkey in hotkeys_to_remove:
+                try: keyboard.remove_hotkey(hotkey)
+                except: pass
+
+            # 녹화 시작/중지 단축키
+            keyboard.add_hotkey('f9', self.toggle_recording)
+            keyboard.add_hotkey('f10', self.toggle_recording)
+            print("매크로 녹화 단축키: F9(시작), F10(중지)")
+
+            # 제스처 인식 시작/중지 단축키
+            if self.gesture_manager:
+                # 올바른 함수(start_gesture_recognition, stop_gesture_recognition) 연결
+                keyboard.add_hotkey('f11', self.start_gesture_recognition)
+                keyboard.add_hotkey('f12', self.stop_gesture_recognition)
+                print("제스처 인식 단축키: F11(시작), F12(중지)")
+
+            # 기타 단축키
+            keyboard.add_hotkey('delete', self.delete_selected_event)
+            print("이벤트 삭제 단축키: Delete")
+            keyboard.add_hotkey('ctrl+a', self.select_all_events)
+            print("전체 이벤트 선택 단축키: Ctrl+A")
+
+        except ImportError:
+            print("경고: 'keyboard' 라이브러리를 찾을 수 없습니다. 단축키 기능이 비활성화됩니다.")
+        except Exception as e:
+            print(f"키보드 단축키 설정 중 오류 발생: {e}")
+            messagebox.showwarning("단축키 오류", f"단축키 설정 중 오류가 발생했습니다.\n{e}")
+
     def toggle_recording(self, event=None):
         """녹화 시작/중지 토글"""
         # 현재 녹화 중이면 중지, 아니면 시작
@@ -1584,24 +1597,28 @@ class SimpleGUI:
             self.repeat_count.set("1")
     
     def start_recording_for_selected_gesture(self):
-        """선택된 제스처에 대해 매크로 녹화 시작"""
-        # 선택된 제스처 확인
-        selected = self.gesture_listbox.curselection()
-        if not selected:
-            messagebox.showwarning("선택 오류", "매크로를 녹화할 제스처를 선택하세요.")
+        """선택된 제스처에 대한 매크로 녹화 시작"""
+        selected_indices = self.gesture_listbox.curselection()
+        if not selected_indices:
+            messagebox.showwarning("선택 오류", "매크로를 녹화할 제스처를 먼저 선택하세요.")
             return
-            
-        # 제스처 이름 가져오기
-        gesture = self.gesture_listbox.get(selected[0])
-        
-        # 현재 제스처 설정 (매크로 녹화 완료 후 저장에 사용)
-        self.current_gesture = gesture
-        
-        # 매크로 녹화 시작
+        selected_gesture_name = self.gesture_listbox.get(selected_indices[0])
+        # 제스처 이름 변환 (Alt- 등) - 저장된 키와 일치하도록
+        internal_gesture_name = selected_gesture_name.replace("Alt-", "A-").replace("Ctrl-", "CT-")
+        # 혹시 모를 다른 변환도 고려 (예: Shift-)
+        print(f"Attempting to record macro for displayed: {selected_gesture_name}, internal: {internal_gesture_name}")
+
+        # storage 에서 실제 키가 있는지 확인
+        # if self.storage.load_macro(internal_gesture_name) is None:
+        #    messagebox.showerror("오류", f"내부 오류: 제스처 키 '{internal_gesture_name}'를 찾을 수 없습니다.")
+        #    return
+
+        self.current_gesture = internal_gesture_name # 내부 키 이름으로 설정
+        self.selected_gesture_name = selected_gesture_name # 표시 이름 저장
+        self.selected_gesture_index = selected_indices[0]
+        print(f"Recording macro for selected gesture: {selected_gesture_name} (Internal key: {internal_gesture_name})")
         self.start_recording()
-        
-        # 상태 업데이트
-        self.update_status("제스처 녹화 중...")
+        self.update_status(f"제스처 '{selected_gesture_name}'에 대한 매크로 녹화 중 (F10으로 완료)")
 
     def on_gesture_select(self, event=None):
         """제스처 선택 시 이벤트 처리"""
@@ -2235,26 +2252,30 @@ class SimpleGUI:
     def start_gesture_recognition(self):
         """제스처 인식 시작"""
         if not self.gesture_manager:
+            print("제스처 매니저가 설정되지 않아 인식을 시작할 수 없습니다.")
             return
-            
+        if self.gesture_enabled.get():
+            print("제스처 인식이 이미 활성화되어 있습니다.")
+            return
         self.gesture_enabled.set(True)
         self.gesture_manager.start()
         self.update_status("제스처 인식이 활성화되었습니다.")
-        
-        # 버튼 상태 업데이트
+        print("Gesture recognition started via GUI/Hotkey.")
         self.gesture_start_btn.config(state=tk.DISABLED)
         self.gesture_stop_btn.config(state=tk.NORMAL)
 
     def stop_gesture_recognition(self):
         """제스처 인식 중지"""
         if not self.gesture_manager:
+            print("제스처 매니저가 설정되지 않아 인식을 중지할 수 없습니다.")
             return
-            
+        if not self.gesture_enabled.get():
+            print("제스처 인식이 이미 비활성화되어 있습니다.")
+            return
         self.gesture_enabled.set(False)
         self.gesture_manager.stop()
         self.update_status("제스처 인식이 비활성화되었습니다.")
-        
-        # 버튼 상태 업데이트
+        print("Gesture recognition stopped via GUI/Hotkey.")
         self.gesture_start_btn.config(state=tk.NORMAL)
         self.gesture_stop_btn.config(state=tk.DISABLED)
 
