@@ -67,15 +67,45 @@ def show_window(icon=None, item=None):
         # 트레이 아이콘 자체는 계속 실행 중이므로 여기서 stop()을 호출하지 않음
 
 
-def on_exit(icon, item): # icon, item 파라미터 추가 (pystray 콜백 표준)
+def on_exit(icon, item):
     """애플리케이션 종료"""
-    global root_window, tray_icon
+    global root_window, tray_icon, gesture_manager, recorder # recorder 전역 변수 추가
     print("Exiting application...")
+    
+    # 1. 트레이 아이콘 중지 (에러 발생 방지)
     if tray_icon:
-        tray_icon.stop() # 트레이 아이콘 명시적 중지
+        try:
+            tray_icon.stop()
+        except Exception as e:
+            print(f"Error stopping tray icon: {e}")
+            
+    # 2. 매크로 녹화 중지 (recorder 스레드 종료)
+    if recorder and recorder.recording: # is_recording -> recording 으로 수정
+        print("Stopping macro recorder...")
+        recorder.stop_recording() # unhook 호출
+        # recorder의 스레드가 데몬이 아닐 수 있으므로 약간의 시간 부여
+        time.sleep(0.1) 
+
+    # 3. 제스처 리스너 중지 (pynput 리스너 스레드 종료)
+    if gesture_manager:
+        print("Stopping gesture listener...")
+        gesture_manager.stop() # 내부적으로 join() 호출됨
+        # gesture_manager.stop()에서 join 대기 시간이 길어질 수 있으므로 추가 sleep은 불필요
+
+    # 4. Tkinter 메인 루프 종료 및 윈도우 파괴
     if root_window:
-        root_window.quit() # Tkinter 메인 루프 정상 종료
-        # root_window.destroy() # 선택 사항: 리소스 즉시 해제
+        print("Quitting Tkinter main loop and destroying window...")
+        try:
+            root_window.quit() # Tkinter 메인 루프 종료 요청
+            # quit() 호출 후 destroy()를 호출하여 윈도우 리소스 정리
+            root_window.destroy()
+        except tk.TclError as e:
+            # 이미 윈도우가 파괴된 경우 등 예외 처리
+            print(f"Error during Tkinter quit/destroy: {e}")
+        # 메인 루프 종료 후 실제로 프로세스가 정리될 때까지 약간의 시간 추가
+        time.sleep(0.2) 
+
+    print("Exit sequence complete.") # 모든 종료 단계 완료 로그
 
 def run_tray_icon(icon):
     """트레이 아이콘을 별도 스레드에서 실행"""

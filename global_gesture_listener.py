@@ -93,9 +93,15 @@ class GlobalGestureListener:
         try:
             if self.keyboard_listener:
                 self.keyboard_listener.stop()
+                # 키보드 리스너 스레드가 종료될 때까지 대기
+                self.keyboard_listener.join()
+                print("Keyboard listener stopped and joined.")
                 
             if self.mouse_listener:
                 self.mouse_listener.stop()
+                # 마우스 리스너 스레드가 종료될 때까지 대기
+                self.mouse_listener.join()
+                print("Mouse listener stopped and joined.")
                 
             print("Global gesture listener stopped successfully")
         except Exception as e:
