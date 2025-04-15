@@ -77,9 +77,6 @@ class MacroPlayer:
                 loop_start_time = time.time() # 루프 시작 시간 (매 반복마다)
                 print(f"[TimeLog] Repeat {current_repeat} started at: {loop_start_time:.3f}")
                 
-                # 실행 시작 시간 기록 (매크로 기준 시간)
-                macro_start_time = time.time() # 매크로 시간 0점
-                
                 for i, event in enumerate(sorted_events):
                     if self.stop_requested:
                         break
@@ -89,33 +86,41 @@ class MacroPlayer:
                     
                     # 딜레이 이벤트 처리
                     if event_type == 'delay':
+                        # --- 디버깅 로그 추가 ---
+                        print(f"--- Processing Delay Event ---")
+                        print(f"Event Data: {event}") # 이벤트 객체 전체 출력
+                        # --- 디버깅 로그 끝 ---
+
                         base_delay = event.get('delay', 0)
                         actual_delay = base_delay
                         if 'random_range' in event:
-                            range_value = event['random_range']
-                            min_delay = max(0, base_delay - range_value)
-                            max_delay = base_delay + range_value
-                            actual_delay = random.uniform(min_delay, max_delay)
-                            print(f"랜덤 딜레이: {base_delay:.3f}s ±{range_value:.3f}s → {actual_delay:.3f}s")
+                             range_value = event.get('random_range', 0) # .get() 사용 권장
+                             # range_value 타입 확인 및 변환 (안정성 강화)
+                             try:
+                                 range_value_float = float(range_value)
+                             except (ValueError, TypeError):
+                                 range_value_float = 0
+                                 print(f"Warning: Invalid random_range '{range_value}', using 0.")
+
+                             min_delay = max(0, base_delay - range_value_float)
+                             max_delay = base_delay + range_value_float
+                             actual_delay = random.uniform(min_delay, max_delay)
+                             print(f"랜덤 딜레이: {base_delay:.3f}s ±{range_value_float:.3f}s → {actual_delay:.3f}s")
                         else:
-                            print(f"딜레이: {actual_delay:.3f}s")
-                        
+                             print(f"일반 딜레이 값 (사용 전): {actual_delay:.3f}s")
+
+                        # --- 디버깅 로그 추가 ---
+                        print(f"Actual delay value for time.sleep(): {actual_delay:.3f}s (Type: {type(actual_delay)})")
+                        # --- 디버깅 로그 끝 ---
+
                         sleep_start = time.time()
+                        # *** 오직 딜레이 이벤트의 delay 값 만큼만 sleep ***
                         time.sleep(actual_delay)
                         delay_end_time = time.time()
                         print(f"[TimeLog] Finished delay event {i+1} at {delay_end_time:.3f} (slept {delay_end_time - sleep_start:.3f}s)")
-                        continue # 딜레이 처리 후 다음 이벤트로
+                        continue
                     
-                    # 이전 이벤트와의 시간차 대신 절대 시간 기반 대기
-                    current_loop_time = time.time()
-                    target_event_absolute_time = macro_start_time + event['time']
-                    wait_time = target_event_absolute_time - current_loop_time
-                    if wait_time > 0:
-                        sleep_start = time.time()
-                        time.sleep(wait_time)
-                        sleep_end = time.time()
-                        print(f"[TimeLog] Waited for event {i+1} until {sleep_end:.3f} (slept {sleep_end - sleep_start:.3f}s)")
-                    
+                    # 딜레이가 아닌 이벤트는 바로 실행
                     if event_type == 'keyboard':
                         self._play_keyboard_event(event)
                     elif event_type == 'mouse':
