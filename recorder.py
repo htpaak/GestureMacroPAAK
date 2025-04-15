@@ -4,11 +4,14 @@ import time
 from datetime import datetime
 
 class MacroRecorder:
-    def __init__(self):
+    def __init__(self, parent=None):
         self.recording = False
         self.events = []
         self.start_time = 0
         self.last_event_time = 0
+        
+        # 부모 객체 참조 저장 (GUI 등)
+        self.parent = parent
         
         # 녹화 설정
         self.record_mouse_move = False
@@ -68,12 +71,32 @@ class MacroRecorder:
     def stop_recording(self):
         """매크로 녹화 중지"""
         if self.recording:
-            # 후크 해제
-            keyboard.unhook_all()
+            # 특정 콜백만 해제
+            try:
+                # 키보드 콜백 해제 - 콜백 함수를 지정하여 해당 콜백만 해제
+                keyboard.unhook(self._keyboard_callback)
+                print("키보드 녹화 콜백만 해제")
+            except Exception as e:
+                print(f"키보드 콜백 해제 오류: {e}")
+                # 최후의 수단으로 모든 훅 해제
+                keyboard.unhook_all()
+                print("모든 키보드 훅 해제")
+            
+            # 마우스 훅 해제
             mouse.unhook_all()
             
+            # 상태 업데이트
             self.recording = False
             print("매크로 녹화가 중지되었습니다.")
+            
+            # 녹화 중지 후 단축키 다시 설정
+            if hasattr(self, 'parent') and hasattr(self.parent, 'setup_keyboard_shortcuts'):
+                try:
+                    self.parent.setup_keyboard_shortcuts()
+                    print("녹화 중지 후 단축키 재설정 시도")
+                except Exception as e:
+                    print(f"단축키 재설정 오류: {e}")
+            
             return self.events
         return None
     

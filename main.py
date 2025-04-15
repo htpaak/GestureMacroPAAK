@@ -211,10 +211,21 @@ def main():
     # 인스턴스 생성
     try:
         storage = MacroStorage()
-        recorder = MacroRecorder()
         player = MacroPlayer()
         editor = MacroEditor(storage)
+        
+        # Recorder 먼저 생성 (GUI 없이)
+        recorder = MacroRecorder()
+        
+        # GestureManager 생성
         gesture_manager = GestureManager(player, storage, recorder)
+        
+        # 이제 GUI 생성 (모든 필요한 컴포넌트 전달)
+        gui = GuiBase(root_window, recorder, player, editor, storage, gesture_manager)
+        
+        # Recorder에 부모 설정
+        recorder.parent = gui
+        
         # --- 디버깅 코드 추가 --- 
         print(f"[DEBUG main.py] gesture_manager 생성됨: {gesture_manager}")
         if hasattr(gesture_manager, 'storage'):
@@ -226,16 +237,6 @@ def main():
         logging.info("Core components initialized.")
     except Exception as e:
         logging.error("Failed to initialize core components:", exc_info=True)
-        graceful_exit() # 초기화 실패 시 정리 및 종료 시도
-        return
-
-    # GUI 초기화 - SimpleGUI 대신 GuiBase 사용
-    try:
-        gui = GuiBase(root_window, recorder, player, editor, storage, gesture_manager)
-        # gui.setup_ui() # GuiBase __init__에서 호출되므로 여기서 제거
-        logging.info("GUI initialized using GuiBase.") # 로그 메시지 수정
-    except Exception as e:
-        logging.error("Failed to initialize GUI:", exc_info=True)
         graceful_exit() # 초기화 실패 시 정리 및 종료 시도
         return
 
