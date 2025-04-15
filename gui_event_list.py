@@ -161,7 +161,7 @@ class GuiEventListMixin:
         # 각 옵션을 위한 프레임 생성 (가로 정렬 용이)
         move_frame = ttk.Frame(options_inner_frame)
         move_frame.pack(side=tk.LEFT, padx=10, pady=2)
-        ttk.Checkbutton(move_frame, text="Record Mouse Move", variable=getattr(self, 'record_mouse_move', tk.BooleanVar(value=False))).pack(anchor=tk.W)
+        # ttk.Checkbutton(move_frame, text="Record Mouse Move", variable=getattr(self, 'record_mouse_move', tk.BooleanVar(value=False))).pack(anchor=tk.W)
 
         delay_frame = ttk.Frame(options_inner_frame)
         delay_frame.pack(side=tk.LEFT, padx=10, pady=2)
