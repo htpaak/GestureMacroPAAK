@@ -292,32 +292,28 @@ class GuiEventListMixin:
         #     except Exception as e: print(f"Error restoring scroll/selection: {e}")
 
     def display_event(self, event, index):
-        """Format and display a single event in the listbox (extracted code)."""
+        """이벤트 목록 표시 형식 변경: 키/버튼 값 우선, 시간 정보 제거"""
         if not hasattr(self, 'event_listbox'):
             print("Error: event_listbox not found in display_event.")
             return
 
         event_type = event.get('type', 'unknown')
-        display_str = f"{index+1:<4} "  # Index (left-aligned, 4 spaces)
+        display_str = f"{index+1:<4} "  # 인덱스 (왼쪽 정렬, 4칸)
 
         try:
-            # Format based on event type
+            # 이벤트 유형별 포맷
             if event_type == 'keyboard':
                 key = event.get('key', '')
-                event_type_str = 'down' if event.get(
-                    'event_type') == 'down' else 'up'
-                # Timestamp (right-aligned, 8 spaces)
-                timestamp = f"{event.get('time', 0):>8.3f}s"
-                # Type (left-aligned, 4 spaces)
-                display_str += f"{timestamp} K-{event_type_str:<4} {key}"
+                event_type_str = 'down' if event.get('event_type') == 'down' else 'up'
+                # 키 값 부분을 특정 길이로 맞추고 UP/DOWN 정렬
+                key_part = f"Key: {key}"
+                display_str += f"{key_part.ljust(20)} {event_type_str.upper()}"
             elif event_type == 'mouse':
                 event_type_str = event.get('event_type', 'unknown')
-                timestamp = f"{event.get('time', 0):>8.3f}s"
 
                 if event_type_str == 'move':
                     pos_x, pos_y = event.get('position', (0, 0))
                     is_relative = event.get('is_relative', False)
-
                     if is_relative:
                         pos_str = f"Rel:({pos_x:>4}, {pos_y:>4})"
                     else:
@@ -328,16 +324,14 @@ class GuiEventListMixin:
                             pos_str = f"M{monitor_index}:({rel_x:>4}, {rel_y:>4})"
                         else:
                             pos_str = f"M?:({pos_x:>4}, {pos_y:>4})"
-
-                    display_str += f"{timestamp} M-Move   {pos_str}"
-                    if 'random_range' in event: # 랜덤 기능은 유지
+                    display_str += f"Move     {pos_str}"
+                    if 'random_range' in event:
                         range_px = event.get('random_range', 0)
                         display_str += f" +/-{range_px:<3}px"
                 elif event_type_str in ['up', 'down', 'double']:
                     button = event.get('button', '')
                     pos_x, pos_y = event.get('position', (0, 0))
                     is_relative = event.get('is_relative', False)
-
                     if is_relative:
                         pos_str = f"Rel:({pos_x:>4}, {pos_y:>4})"
                     else:
@@ -348,56 +342,54 @@ class GuiEventListMixin:
                             pos_str = f"M{monitor_index}:({rel_x:>4}, {rel_y:>4})"
                         else:
                             pos_str = f"M?:({pos_x:>4}, {pos_y:>4})"
-
-                    # Event type (left, 6), Button (left, 5)
-                    display_str += f"{timestamp} M-{event_type_str:<6} {button:<5} {pos_str}"
-                    if 'random_range' in event: # 랜덤 기능은 유지
+                    # 버튼 값 부분을 특정 길이로 맞추고 UP/DOWN 정렬
+                    button_part = f"Mouse: {button}"
+                    action_str = f"{event_type_str.upper()}"
+                    display_str += f"{button_part.ljust(20)} {action_str.ljust(6)} {pos_str}"
+                    if 'random_range' in event:
                         range_px = event.get('random_range', 0)
                         display_str += f" +/-{range_px:<3}px"
                 elif event_type_str == 'scroll':
                     delta = event.get('delta', 0)
-                    display_str += f"{timestamp} M-Scroll {delta:>4}"
+                    display_str += f"Scroll   Delta: {delta:>4}"
                 else:
-                     display_str += f"{timestamp} ? Unknown mouse event_type: {event_type_str}"
-            elif event_type == 'click' or event_type == 'drag':  # 기존 로직 유지 (호환성 또는 다른 기능용?)
-                # 이 로직은 현재 recorder가 생성하지 않는 타입일 수 있음
-                button = event.get('button', '')
-                event_type_str = event.get(
-                    'event_type', 'click')  # 'press' or 'release'
-                pos_x, pos_y = event.get('position', (0, 0))
-                timestamp = f"{event.get('time', 0):>8.3f}s"
-                pos_str = f"({pos_x:>4}, {pos_y:>4})"
-                # Event type (left, 6), Button (left, 5)
-                display_str += f"{timestamp} M-{event_type_str:<6} {button:<5} {pos_str}"
-                if 'random_range' in event:
-                    range_px = event.get('random_range', 0)
-                    display_str += f" +/-{range_px:<3}px"
+                     display_str += f"? Unknown mouse: {event_type_str}"
             elif event_type == 'delay':
                 delay_sec = event.get('delay', 0)
                 delay_ms = int(delay_sec * 1000)
-                timestamp = f"{event.get('time', 0):>8.3f}s"
-                display_str += f"{timestamp} Delay    {delay_ms:>6} ms"
+                # 딜레이 시간 표시 형식 변경 (ms 값이 콜론 바로 뒤에 오도록)
+                # delay_part = "Delay:"
+                # display_str += f"{delay_part.ljust(20)} {delay_ms:>6} ms"
+                display_str += f"Delay: {delay_ms} ms"
                 if 'random_range' in event:
                     range_sec = event.get('random_range', 0)
                     range_ms = int(range_sec * 1000)
-                    display_str += f" +/-{range_ms:<5}ms"
+                    # display_str += f" +/-{range_ms:<5}ms"
+                    display_str += f" +/-{range_ms}ms"
             else:
-                timestamp = f"{event.get('time', 0):>8.3f}s"
-                display_str += f"{timestamp} ? Unknown event type: {event_type}"
+                # 시간 정보 제거
+                display_str += f"? Unknown event type: {event_type}"
 
-            # Add to listbox
+            # 리스트박스에 추가
             self.event_listbox.insert(tk.END, display_str)
 
-            # Apply background color for specific events
+            # Apply background color based on event type
             bg_color = None
-            if event_type == 'delay':
-                # Light green for random, light blue for normal
-                bg_color = '#E6F9E6' if 'random_range' in event else '#E6E6FF'
-            elif event_type in ['mouse', 'click', 'drag'] and 'random_range' in event:
-                bg_color = '#F9E6E6'  # Light red for random position
+            if event_type == 'keyboard':
+                # bg_color = '#FFFFE0' # Light Yellow
+                bg_color = '#E6F0FF' # Light Blue (Swapped)
+            elif event_type == 'mouse' or event_type == 'click' or event_type == 'drag':
+                bg_color = '#FFE6E6' # Light Red
+            elif event_type == 'delay': # 딜레이 배경색 추가
+                 bg_color = '#FFFFE0' # Light Yellow
+            # else: # Unknown type, no specific background
+            #     pass
 
             if bg_color:
-                self.event_listbox.itemconfig(tk.END, {'bg': bg_color})
+                try:
+                    self.event_listbox.itemconfig(tk.END, {'bg': bg_color})
+                except tk.TclError: # Handle cases where the widget might be destroyed
+                    pass
 
         except tk.TclError:
             print("Error adding item to event_listbox (likely destroyed).")
