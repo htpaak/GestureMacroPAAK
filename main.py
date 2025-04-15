@@ -17,6 +17,52 @@ from tray_manager import TrayManager
 log_format = '%(asctime)s - PID:%(process)d - %(levelname)s - %(message)s'
 logging.basicConfig(level=logging.INFO, format=log_format)
 
+# --- 파일 로깅 설정 추가 ---
+# temp 디렉토리 생성 (없으면)
+temp_dir = 'temp'
+os.makedirs(temp_dir, exist_ok=True)
+
+# 파일 핸들러 설정 (덮어쓰기 모드 'w', UTF-8 인코딩)
+log_file_path = os.path.join(temp_dir, 'debug.log')
+file_handler = logging.FileHandler(log_file_path, mode='w', encoding='utf-8')
+file_handler.setLevel(logging.INFO) # 파일 로그 레벨 설정 (필요에 따라 DEBUG 등으로 변경 가능)
+
+# 포맷터 설정 (기존 포맷 사용)
+formatter = logging.Formatter(log_format)
+file_handler.setFormatter(formatter)
+
+# 루트 로거에 파일 핸들러 추가
+logging.getLogger().addHandler(file_handler)
+# --- 파일 로깅 설정 끝 ---
+
+# --- 표준 출력/오류 리디렉션 설정 ---
+class StreamToLogger:
+    """
+    파일과 유사한 스트림 객체로, 스트림에 쓰여진 모든 것을 로거로 리디렉션합니다.
+    """
+    def __init__(self, logger, log_level=logging.INFO):
+        self.logger = logger
+        self.log_level = log_level
+        self.linebuf = '' # 쓰기 호출 사이에 부분 라인을 버퍼링합니다.
+
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.log_level, line.rstrip())
+
+    def flush(self):
+        # 로깅 핸들러가 자동으로 플러시하므로 이 메소드는 아무것도 할 필요가 없습니다.
+        pass
+
+# stdout 및 stderr 리디렉션
+stdout_logger = logging.getLogger('STDOUT')
+sl = StreamToLogger(stdout_logger, logging.INFO)
+sys.stdout = sl
+
+stderr_logger = logging.getLogger('STDERR')
+sl_err = StreamToLogger(stderr_logger, logging.ERROR)
+sys.stderr = sl_err
+# --- 표준 출력/오류 리디렉션 설정 끝 ---
+
 # Windows 작업표시줄 아이콘 설정 (프로그램 시작 전에 수행)
 if sys.platform == 'win32':
     try:
