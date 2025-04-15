@@ -37,29 +37,40 @@ class MacroEditor:
         return False
     
     def delete_events(self, indices):
-        """여러 인덱스의 이벤트 삭제"""
-        print(f"delete_events 호출됨: {indices}")  # 디버깅 로그
+        """여러 인덱스의 이벤트 삭제하고, 삭제된 개수 반환"""
+        print(f"delete_events 호출됨: {indices}")
         if not indices:
-            print("삭제할 인덱스가 없음")  # 디버깅 로그
-            return False
-            
+            print("삭제할 인덱스가 없음")
+            return 0 # 삭제된 개수 0 반환
+
+        deleted_count = 0 # 삭제된 개수 카운터
         # 인덱스 정렬하여 높은 인덱스부터 삭제
         sorted_indices = sorted(indices, reverse=True)
-        print(f"정렬된 인덱스: {sorted_indices}")  # 디버깅 로그
-        
-        # 유효한 인덱스인지 확인
-        if max(sorted_indices) >= len(self.events):
-            print(f"유효하지 않은 인덱스: 최대 {max(sorted_indices)}, 이벤트 개수: {len(self.events)}")  # 디버깅 로그
-            return False
-            
+        print(f"정렬된 인덱스: {sorted_indices}")
+
+        # 유효한 인덱스 확인은 루프 내에서 수행
+        # if max(sorted_indices) >= len(self.events): # 이 검사는 제거
+        #     print(f"유효하지 않은 인덱스...")
+        #     return 0 # 삭제된 개수 0 반환
+
         # 높은 인덱스부터 삭제
         for idx in sorted_indices:
+            # 루프 내에서 각 인덱스의 유효성 검사
             if 0 <= idx < len(self.events):
                 del self.events[idx]
-                print(f"이벤트 {idx} 삭제됨")  # 디버깅 로그
-        
-        self.modified = True
-        return True
+                print(f"이벤트 {idx} 삭제됨")
+                deleted_count += 1 # 삭제 성공 시 카운트 증가
+            else:
+                 # 삭제 시점에 인덱스가 유효하지 않은 경우 (거의 발생 안 함)
+                 print(f"경고: 삭제 시점에 인덱스 {idx}가 유효하지 않음 (현재 길이: {len(self.events)})")
+
+        if deleted_count > 0:
+            self.modified = True
+            print(f"총 {deleted_count}개의 이벤트 삭제 완료") # 완료 로그 추가
+        else:
+             print("유효한 인덱스가 없어 삭제된 이벤트가 없습니다.") # 삭제 실패 로그 추가
+
+        return deleted_count # 실제 삭제된 개수 반환
     
     def add_delay_event(self, index, delay_seconds):
         """특정 인덱스 이후에 딜레이 이벤트 추가"""

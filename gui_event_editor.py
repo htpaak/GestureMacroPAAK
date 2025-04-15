@@ -320,12 +320,16 @@ class GuiEventEditorMixin:
         return valid_indices
 
     def delete_selected_event(self):
-        """선택된 이벤트 삭제"""
+        """선택된 이벤트 삭제 (내부 함수 _get_valid_selected_indices 사용)"""
         if hasattr(self, 'recorder') and self.recorder.recording:
             messagebox.showwarning("Warning", "Cannot edit events while recording.")
             return
 
-        indices_to_delete = self._get_valid_selected_indices()
+        # --- _get_valid_selected_indices() 사용하여 현재 유효한 선택 가져오기 ---
+        indices_to_delete = self._get_valid_selected_indices() # 수정된 부분
+        print(f"Delete request: Using _get_valid_selected_indices(): {indices_to_delete}") # 로그 수정
+        # --- 가져오기 끝 ---
+
         if not indices_to_delete:
             messagebox.showwarning("Warning", "Select event(s) to delete.")
             return
@@ -334,13 +338,17 @@ class GuiEventEditorMixin:
         deleted_count = 0
         try:
             if hasattr(self.editor, 'delete_events') and callable(self.editor.delete_events):
+                # *** 가져온 indices_to_delete 사용 ***
+                print(f"Calling editor.delete_events with: {indices_to_delete}") # 디버깅 로그 추가
                 deleted_count = self.editor.delete_events(indices_to_delete)
+                # editor.delete_events가 삭제된 개수를 반환하는지 확인 필요
             elif hasattr(self.editor, 'events'): # Fallback
-                # 역순으로 삭제하여 인덱스 문제 방지
+                print(f"Using fallback direct deletion with: {indices_to_delete}") # 디버깅 로그 추가
+                initial_len = len(self.editor.events)
                 for idx in sorted(indices_to_delete, reverse=True):
                     if 0 <= idx < len(self.editor.events):
                         del self.editor.events[idx]
-                        deleted_count += 1
+                deleted_count = initial_len - len(self.editor.events) # 직접 계산
             else:
                 messagebox.showerror("Error", "Editor does not support event deletion.")
                 return
@@ -349,13 +357,15 @@ class GuiEventEditorMixin:
             return
 
         if deleted_count > 0:
-            self.restore_selection = False # 삭제 후 선택 복원 안 함
-            self.clear_selection()
+            self.restore_selection = False
+            self.clear_selection() # 내부 self.selected_events도 여기서 초기화됨
             self.update_event_list()
             self.restore_selection = True
             self.update_status(f"{deleted_count} event(s) deleted.")
         else:
-            messagebox.showerror("Error", "Failed to delete selected events.")
+            # 삭제된 것이 없는 경우 (선택은 있었으나 에디터가 삭제하지 못함)
+            print(f"No events were deleted by the editor for indices: {indices_to_delete}")
+            messagebox.showerror("Error", "Failed to delete selected events (editor reported no deletion or error).")
 
 
     def add_delay_to_event(self):
