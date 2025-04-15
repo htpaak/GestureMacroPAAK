@@ -123,6 +123,8 @@ class GuiEventListMixin:
             self, 'add_random_position', lambda: print("add_random_position not found"))
         add_random_delay_cmd = getattr(
             self, 'add_random_delay', lambda: print("add_random_delay not found"))
+        add_mouse_move_cmd = getattr(
+            self, 'add_mouse_move_event', lambda: print("add_mouse_move_event not found"))
 
         tk.Button(random_btn_frame, text="Add Random Position", 
                  font=('Arial', 9),
@@ -139,6 +141,14 @@ class GuiEventListMixin:
                  borderwidth=2,
                  highlightthickness=0,
                  command=add_random_delay_cmd).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(random_btn_frame, text="Add Mouse Move",
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=add_mouse_move_cmd).pack(side=tk.LEFT, padx=5)
 
         # --- 녹화 옵션 프레임 추가 ---
         options_frame = ttk.LabelFrame(event_list_frame, text="Recording Options", padding=10)

@@ -162,31 +162,46 @@ class MacroEditor:
         return self.modified
     
     def insert_event(self, index, event):
-        """특정 인덱스에 이벤트 삽입"""
+        """특정 인덱스에 이벤트 삽입 또는 맨 끝에 추가"""
+        # 인덱스가 음수이면 리스트 끝을 의미하도록 처리
+        if index < 0:
+            index = len(self.events)
+            print(f"insert_event: Negative index provided, inserting at the end (index {index}).") # 디버깅 로그
+
+        # 유효한 인덱스 범위 검사 (0 <= index <= len(self.events))
         if 0 <= index <= len(self.events):
-            # 이벤트에 시간 정보가 없으면 적절한 시간 계산
+            print(f"insert_event: Inserting event at index {index}.") # 디버깅 로그
+            # 이벤트에 시간 정보가 없으면 적절한 시간 계산 (기존 로직 유지)
             if 'time' not in event or event['time'] == 0:
-                # 삽입 위치 앞뒤 이벤트의 시간 정보 사용
                 if index > 0 and index < len(self.events):
-                    # 앞뒤 이벤트 시간의 중간 값으로 설정
                     prev_time = self.events[index-1]['time']
                     next_time = self.events[index]['time']
                     event['time'] = prev_time + (next_time - prev_time) / 2
                 elif index > 0:
-                    # 마지막에 추가하는 경우 마지막 이벤트 시간 + 0.1초
                     event['time'] = self.events[index-1]['time'] + 0.1
                 elif len(self.events) > 0:
-                    # 맨 앞에 추가하는 경우 첫 이벤트 시간 - 0.1초
-                    event['time'] = self.events[0]['time'] - 0.1
+                     event['time'] = max(0, self.events[0]['time'] - 0.1) # 음수 시간 방지
                 else:
-                    # 첫 이벤트인 경우 0으로 설정
                     event['time'] = 0
-                    
+                print(f"insert_event: Calculated time for event: {event['time']:.3f}s") # 디버깅 로그
+
+            # --- is_relative 플래그 처리 추가 ---
+            # event 딕셔너리에 is_relative 키가 있으면 그대로 사용, 없으면 기본값 False 추가
+            if 'is_relative' not in event and event.get('type') == 'mouse' and event.get('event_type') == 'move':
+                event['is_relative'] = False # 마우스 이동 이벤트의 기본값은 절대 좌표
+                print("insert_event: Added default 'is_relative': False to mouse move event.") # 디버깅 로그
+            elif 'is_relative' in event:
+                 print(f"insert_event: Event has 'is_relative': {event['is_relative']}") # 디버깅 로그
+            # --- is_relative 플래그 처리 끝 ---
+
             # 이벤트 삽입
             self.events.insert(index, event)
             self.modified = True
-            return True
-        return False
+            print(f"insert_event: Event successfully inserted at index {index}.") # 디버깅 로그
+            return index # 성공 시 삽입된 인덱스 반환
+        else:
+             print(f"insert_event: Failed to insert event. Invalid index {index} (list length: {len(self.events)}).") # 디버깅 로그
+             return -1 # 실패 시 -1 반환
         
     def duplicate_events(self, indices):
         """선택된 이벤트들을 복제"""

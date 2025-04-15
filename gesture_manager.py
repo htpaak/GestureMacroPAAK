@@ -5,6 +5,8 @@ from global_gesture_listener import GlobalGestureListener
 from gesture_canvas import GestureCanvas
 import tkinter as tk
 from tkinter import messagebox
+import mouse # mouse 모듈 임포트 추가
+import time
 
 class GestureManager:
     def __init__(self, macro_player, storage, recorder=None):
@@ -12,6 +14,8 @@ class GestureManager:
         self.macro_player = macro_player
         self.storage = storage # 이제 MacroStorage는 macros.json을 관리
         self.recorder = recorder
+        self.gesture_start_x = 0 # 제스처 시작 시 절대 X 좌표
+        self.gesture_start_y = 0 # 제스처 시작 시 절대 Y 좌표
         
         # 콜백 함수
         self.on_update_gesture_list = None
@@ -51,8 +55,22 @@ class GestureManager:
         self.gesture_listener.stop()
         
     def on_gesture_started(self, rel_pos, monitor, modifiers):
-        """제스처 시작 콜백"""
+        """제스처 시작 콜백 - 시작 시 절대 좌표 저장"""
         print(f"GestureManager 시작: 상대좌표 {rel_pos}, 모니터 {monitor.name}, 모디파이어 {modifiers}")
+
+        # --- 제스처 시작 시 절대 마우스 좌표 저장 ---
+        try:
+            abs_x, abs_y = mouse.get_position()
+            self.gesture_start_x = abs_x
+            self.gesture_start_y = abs_y
+            print(f"제스처 시작 절대 좌표 저장: ({self.gesture_start_x}, {self.gesture_start_y})")
+        except Exception as e:
+             print(f"Error getting absolute mouse position: {e}")
+             # 기본값 유지 또는 오류 처리
+             self.gesture_start_x = 0
+             self.gesture_start_y = 0
+        # --- 좌표 저장 끝 ---
+
         self.gesture_recognizer.start_recording(rel_pos, modifiers)
         
         # 제스처 시각화 캔버스가 있는 경우 점 추가
@@ -75,10 +93,13 @@ class GestureManager:
             )
         
     def on_gesture_ended(self):
-        """제스처 종료 콜백"""
-        # 제스처 인식
+        gesture_end_time = time.time()
+        print(f"[TimeLog] Gesture ended at: {gesture_end_time:.3f}")
+
+        recognition_start_time = time.time()
         gesture = self.gesture_recognizer.stop_recording()
-        print(f"제스처 인식 완료: {gesture}")
+        recognition_end_time = time.time()
+        print(f"[TimeLog] Gesture recognition finished at: {recognition_end_time:.3f} (took {recognition_end_time - recognition_start_time:.3f}s)")
         
         # 캔버스 창 닫기
         if self.canvas_window:
@@ -113,7 +134,11 @@ class GestureManager:
         
         # 일반 모드인 경우 매크로 실행
         print(f"제스처 실행 시도: {gesture}")
-        self.execute_gesture_action(gesture)
+        execution_start_time = time.time()
+        print(f"[TimeLog] Starting gesture action execution at: {execution_start_time:.3f}")
+        self.execute_gesture_action(gesture, self.gesture_start_x, self.gesture_start_y)
+        # execution_end_time = time.time() # 이 로그는 execute_gesture_action 내부로 이동
+        # print(f"[TimeLog] Called execute_gesture_action at: {execution_end_time:.3f} (call overhead: {execution_end_time - execution_start_time:.3f}s)")
         
     def start_gesture_recording(self):
         """새 제스처 녹화 시작"""
@@ -180,60 +205,57 @@ class GestureManager:
         # storage 에서 직접 가져옴
         return self.storage.get_all_mappings()
         
-    def execute_gesture_action(self, gesture):
-        """제스처에 해당하는 매크로 실행"""
-        # storage 에서 이벤트 목록을 직접 로드
+    def execute_gesture_action(self, gesture, base_x, base_y):
+        load_start_time = time.time()
         events = self.storage.load_macro(gesture)
+        load_end_time = time.time()
+        print(f"[TimeLog] Loaded macro events at: {load_end_time:.3f} (took {load_end_time - load_start_time:.3f}s)")
 
-        if events is not None: # 키가 존재하면 빈 리스트라도 반환될 수 있으므로 None 체크
-            print(f"Executing macro for gesture: {gesture}")
+        if events is not None:
+            print(f"Executing macro for gesture: {gesture} with base ({base_x}, {base_y})")
 
-            # 이벤트 목록 유효성 검사 및 실행
             if isinstance(events, list):
-                 if not events: # 빈 매크로
+                 if not events:
                      print(f"매크로가 비어 있어 실행할 수 없습니다: {gesture}")
                      return False
 
                  try:
                      print(f"매크로 실행: {len(events)}개 이벤트")
-
-                     # --- 반복 횟수 결정 로직 추가 ---
-                     repeat_count = 1 # 기본값
+                     repeat_count = 1
                      if self.gui_callback:
                          try:
                              is_infinite = getattr(self.gui_callback, 'infinite_repeat', None)
                              count_var = getattr(self.gui_callback, 'repeat_count', None)
-
                              if is_infinite and isinstance(is_infinite, tk.BooleanVar) and is_infinite.get():
-                                 repeat_count = 0 # 0은 무한 반복을 의미
+                                 repeat_count = 0
                                  print("무한 반복 설정 감지")
                              elif count_var and isinstance(count_var, tk.StringVar):
                                  repeat_str = count_var.get()
                                  if repeat_str.isdigit():
                                      parsed_count = int(repeat_str)
-                                     if parsed_count > 0:
-                                         repeat_count = parsed_count
-                                         print(f"반복 횟수 설정 감지: {repeat_count}")
-                                     else:
-                                         print(f"경고: 반복 횟수가 0 이하({parsed_count})이므로 1회 실행합니다.")
-                                         repeat_count = 1
+                                     if parsed_count > 0: repeat_count = parsed_count
+                                     else: repeat_count = 1
+                                     print(f"반복 횟수 설정 감지: {repeat_count}")
                                  else:
                                      print(f"경고: 반복 횟수 문자열({repeat_str})이 숫자가 아니므로 1회 실행합니다.")
                                      repeat_count = 1
-                             else:
-                                 print("GUI 콜백에서 반복 설정 변수(infinite_repeat, repeat_count)를 찾을 수 없어 1회 실행합니다.")
-                         except Exception as e_gui:
-                             print(f"GUI에서 반복 설정 가져오기 오류: {e_gui}. 1회 실행합니다.")
-                             repeat_count = 1
-                     else:
-                         print("GUI 콜백이 설정되지 않아 1회 실행합니다.")
-                     # --- 로직 끝 ---
+                             else: print("GUI 콜백에서 반복 설정 변수 못 찾음")
+                         except Exception as e_gui: print(f"GUI 반복 설정 오류: {e_gui}")
+                     else: print("GUI 콜백 없음")
 
-                     # 결정된 반복 횟수로 매크로 실행
-                     self.macro_player.play_macro(events, repeat_count)
-                     return True
+                     play_call_start_time = time.time()
+                     print(f"[TimeLog] Calling play_macro at: {play_call_start_time:.3f}")
+                     # --- play_macro 호출 시 base_x, base_y 전달 ---
+                     play_success = self.macro_player.play_macro(events, repeat_count, base_x=base_x, base_y=base_y)
+                     play_call_end_time = time.time()
+                     # --- play_macro 호출 후 로그 추가 --- 
+                     print(f"[TimeLog] Returned from play_macro call at: {play_call_end_time:.3f} (sync part took {play_call_end_time - play_call_start_time:.3f}s - includes thread start request)")
+                     # --- 전달 끝 ---
+                     return play_success
                  except Exception as e:
                      print(f"매크로 실행 중 오류 발생: {e}")
+                     import traceback
+                     traceback.print_exc() # 상세 오류 출력
                      return False
             else:
                  print(f"매크로 데이터가 유효하지 않음: {type(events)}")
