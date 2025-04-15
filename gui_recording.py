@@ -163,6 +163,9 @@ class GuiRecordingMixin:
             self.record_btn.config(state=tk.NORMAL)
         if hasattr(self, 'stop_btn') and self.stop_btn.winfo_exists():
             self.stop_btn.config(state=tk.DISABLED)
+        # 저장 버튼 직접 활성화
+        if hasattr(self, 'save_btn') and self.save_btn.winfo_exists():
+            self.save_btn.config(state=tk.NORMAL)
 
         # Update recording status label
         if hasattr(self, 'record_status') and self.record_status.winfo_exists():
@@ -174,13 +177,27 @@ class GuiRecordingMixin:
         else:
             print("Warning: stop_event_list_updates method not found.")
 
-        # Final update to event list (optional, might be handled by stop_event_list_updates)
-        # if hasattr(self, 'update_event_list'): self.update_event_list()
+        # 단축키로 녹화 종료 시 UI가 즉시 반영되도록 강제 업데이트
+        if hasattr(self, 'root'):
+            # 두 가지 업데이트 메소드 모두 사용하여 강제 업데이트
+            self.root.update_idletasks()
+            self.root.update()  # 더 강력한 업데이트 메소드 추가
+            
+            # 포커스 강제 조정 - 단축키 후 포커스 문제 해결
+            if hasattr(self, 'event_listbox') and self.event_listbox.winfo_exists():
+                self.event_listbox.focus_force()
+            elif hasattr(self, 'save_btn') and self.save_btn.winfo_exists():
+                self.save_btn.focus_force()  # 저장 버튼에 포커스
+            else:
+                self.root.focus_force()
 
         # Auto-save if recording was for a specific gesture
         current_rec_gesture = getattr(self, 'current_gesture', None)
         if current_rec_gesture:
             print(f"Recording finished for gesture '{current_rec_gesture}'. Attempting auto-save...")
+            # 추가 업데이트 강제 적용
+            if hasattr(self, 'root'): self.root.update()
+            
             if hasattr(self, 'save_gesture_macro') and callable(self.save_gesture_macro):
                 self.save_gesture_macro() # This method should handle status updates and clearing current_gesture
             else:
@@ -300,7 +317,27 @@ class GuiRecordingMixin:
     def toggle_recording(self, event=None):
         """녹화 시작/중지 토글 (단축키 등에서 사용)"""
         if hasattr(self, 'recorder') and self.recorder.recording:
+            # 현재 제스처 정보 미리 저장 (녹화 중지 전에)
+            current_rec_gesture = getattr(self, 'current_gesture', None)
+            print(f"녹화 중지 전 현재 제스처: {current_rec_gesture}")
+            
+            # 녹화 중지
             self.stop_recording()
+            
+            # 단축키(F10)를 통한 호출 시 추가 처리
+            if event and hasattr(self, 'root'):
+                print("F10 단축키로 녹화 종료 - 강제 UI 업데이트 및 자동 저장 처리")
+                
+                # UI 즉시 업데이트
+                self.root.update_idletasks()
+                self.root.update()
+                
+                # 자동 저장 처리 (제스처에 대한 녹화인 경우)
+                if current_rec_gesture:
+                    print(f"F10 단축키 사용 후 제스처 '{current_rec_gesture}'에 대한 자동 저장 시도")
+                    
+                    # 지연된 자동 저장 실행
+                    self.root.after(50, lambda: self._force_save_gesture_macro(current_rec_gesture))
         else:
             # 선택된 제스처가 있으면 해당 제스처에 대한 녹화 시작
             if hasattr(self, 'gesture_listbox') and self.gesture_listbox.curselection():
@@ -309,3 +346,49 @@ class GuiRecordingMixin:
                 # 선택된 제스처 없으면 녹화 시작 불가 메시지 표시 (혼란 방지)
                 messagebox.showinfo("Start Recording", "Select a gesture first to start recording.")
                 # 또는 여기서 일반 녹화(self.start_recording())를 시작할 수도 있음 - 정책 결정 필요
+    
+    def _force_save_gesture_macro(self, gesture_key):
+        """F10 단축키 사용 후 제스처 매크로 강제 저장"""
+        print(f"강제 제스처 매크로 저장 시도: {gesture_key}")
+        
+        # 필수 객체 확인
+        if not hasattr(self, 'gesture_manager') or not hasattr(self, 'recorder'):
+            print("저장 실패: 필요한 컴포넌트가 없음")
+            return False
+        
+        # 현재 제스처 설정 (원래 저장하려던 제스처로)
+        self.current_gesture = gesture_key
+        
+        # 이벤트 가져오기
+        events = self.recorder.events
+        
+        # GestureManager를 통해 저장
+        try:
+            if hasattr(self.gesture_manager, 'save_macro_for_gesture'):
+                success = self.gesture_manager.save_macro_for_gesture(gesture_key, events)
+                
+                if success:
+                    event_count = len(events) if events else 0
+                    print(f"강제 저장 성공: 제스처 '{gesture_key}'에 {event_count}개 이벤트 저장")
+                    
+                    # UI 메시지 표시
+                    msg = f"Macro ({event_count} events) saved for gesture '{gesture_key}'."
+                    if hasattr(self, 'update_status'): 
+                        self.update_status(msg)
+                        
+                    # 메시지박스는 방해가 될 수 있으므로 선택적으로 사용
+                    # messagebox.showinfo("Save Complete", msg)
+                else:
+                    print(f"강제 저장 실패: 제스처 '{gesture_key}'")
+            else:
+                print("저장 실패: save_macro_for_gesture 메소드 없음")
+                
+        except Exception as e:
+            print(f"강제 저장 중 예외 발생: {e}")
+        
+        # 현재 제스처 초기화
+        self.current_gesture = None
+        
+        # UI 최종 업데이트
+        if hasattr(self, 'root'):
+            self.root.update()
