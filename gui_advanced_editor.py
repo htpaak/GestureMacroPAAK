@@ -347,15 +347,15 @@ class GuiAdvancedEditorMixin:
         # --- 사용자 입력 대화상자 정의 ---
         dialog = tk.Toplevel(self.root)
         dialog.title("Add Mouse Move Event")
-        dialog.geometry("350x200") # 창 크기 조절
+        dialog.geometry("400x200") # 너비 증가
         dialog.resizable(False, False)
 
-        # 부모 창 중앙에 위치
+        # 부모 창 중앙에 위치 계산 시에도 새 너비 반영
         parent_x = self.root.winfo_x()
         parent_y = self.root.winfo_y()
         parent_width = self.root.winfo_width()
         parent_height = self.root.winfo_height()
-        dialog_x = parent_x + (parent_width - 350) // 2
+        dialog_x = parent_x + (parent_width - 400) // 2 # 너비 400으로 수정
         dialog_y = parent_y + (parent_height - 200) // 2
         dialog.geometry(f"+{dialog_x}+{dialog_y}")
 
