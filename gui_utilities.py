@@ -122,22 +122,35 @@ class GuiUtilitiesMixin:
             self.stop_event_list_updates() # Stop if not recording anymore
 
     def stop_event_list_updates(self):
-        """Stop the real-time event list updates (extracted logic)."""
+        """실시간 이벤트 목록 업데이트 중지"""
         if hasattr(self, 'update_timer') and self.update_timer:
-            timer_id = self.update_timer
-            self.update_timer = None # Clear timer ID first
-            if hasattr(self, 'root') and self.root.winfo_exists(): # Check if root window still exists
-                try:
-                    self.root.after_cancel(timer_id)
-                    print("Event list update timer cancelled.")
-                except Exception as e:
-                    # Ignore errors if timer was already cancelled or root is gone
-                    # print(f"Error cancelling update timer {timer_id}: {e}")
-                    pass
-            else:
-                 print("Root window not available to cancel timer.")
-        # else: print("No active event list update timer to stop.") # Optional log
+            self.root.after_cancel(self.update_timer)
+            self.update_timer = None
 
+    # --- Delete 키 핸들러 추가 ---
+    def handle_delete_key(self):
+        """Delete 키 입력 처리: 포커스에 따라 이벤트 또는 제스처 삭제 (녹화 중에는 비활성화)"""
+        # 녹화 중일 때는 단축키 비활성화
+        if hasattr(self, 'recorder') and self.recorder.recording:
+            print("Recording active, Delete hotkey disabled.")
+            return
+            
+        try:
+            focused_widget = self.root.focus_get()
+            # print(f"[DEBUG handle_delete_key] Focused widget: {focused_widget}") # 디버깅용
+            if focused_widget == getattr(self, 'event_listbox', None):
+                print("Delete key pressed on Event Listbox.")
+                if hasattr(self, 'delete_selected_event') and callable(self.delete_selected_event):
+                    self.delete_selected_event()
+            elif focused_widget == getattr(self, 'gesture_listbox', None):
+                print("Delete key pressed on Gesture Listbox.")
+                if hasattr(self, 'delete_selected_gesture') and callable(self.delete_selected_gesture):
+                    self.delete_selected_gesture()
+            else:
+                 # 다른 위젯에 포커스가 있다면 아무것도 하지 않음 (선택적)
+                 print(f"Delete key pressed, but focus is on other widget: {focused_widget}")
+        except Exception as e:
+            print(f"Error in handle_delete_key: {e}")
 
     # --- 키보드 단축키 ---
     def setup_keyboard_shortcuts(self):
@@ -148,10 +161,11 @@ class GuiUtilitiesMixin:
         # 각 메서드는 해당 믹스인 또는 gui_base에 구현되어 있어야 함
         shortcuts = {
             'f9': getattr(self, 'toggle_recording', None),
-            'f10': getattr(self, 'stop_recording', None), # F10은 중지만 하도록 변경?
+            'f10': getattr(self, 'stop_recording', None),
             'f11': getattr(self, 'start_gesture_recognition', None),
             'f12': getattr(self, 'stop_gesture_recognition', None),
-            'delete': getattr(self, 'delete_selected_event', None),
+            # 'delete': getattr(self, 'delete_selected_event', None), # 이전 방식 주석 처리
+            'delete': self.handle_delete_key, # 새 핸들러 연결
             'ctrl+a': getattr(self, 'select_all_events', None)
         }
 
