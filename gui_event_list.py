@@ -34,7 +34,11 @@ class GuiEventListMixin:
             "on_event_double_click not found"))
         self.event_listbox.bind('<<ListboxSelect>>', on_select_cmd)
         self.event_listbox.bind('<Double-1>', on_double_click_cmd)
-
+        
+        # 추가 이벤트 바인딩 설정
+        if hasattr(self, 'setup_event_listbox_bindings') and callable(self.setup_event_listbox_bindings):
+            self.setup_event_listbox_bindings()
+        
         # 이벤트 목록 아래 버튼 프레임
         event_btn_frame = ttk.Frame(event_list_frame)
         event_btn_frame.pack(fill=tk.X, pady=(5, 0))

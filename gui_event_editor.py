@@ -133,10 +133,42 @@ class GuiEventEditorMixin:
         """이벤트 리스트박스에서 항목 선택 시 호출"""
         if not hasattr(self, 'event_listbox'): return
         if hasattr(self, '_skip_selection') and self._skip_selection: return # 내부 처리 중 스킵
-        if hasattr(self, 'recorder') and self.recorder.recording: return # 녹화 중 선택 무시
+        if hasattr(self, 'recorder') and hasattr(self.recorder, 'recording') and self.recorder.recording: return # 녹화 중 선택 무시
 
-        selected = self.event_listbox.curselection()
-        self.selected_events = list(selected) # 내부 선택 상태 업데이트
+        # 이벤트 리스트박스 크기 확인
+        listbox_size = self.event_listbox.size()
+        if listbox_size == 0: return # 비어있으면 처리 불필요
+
+        # 보다 안정적인 방법으로 현재 선택 가져오기
+        try:
+            selected = list(self.event_listbox.curselection())
+            
+            # 선택이 변경되었는지 확인
+            if hasattr(self, 'selected_events') and set(selected) == set(self.selected_events):
+                return  # 변경 없으면 처리 중단
+                
+            # 드래그 상태의 선택 범위를 확인 - 연속된 범위가 있으면 모든 항목 포함시키기
+            if len(selected) >= 2:
+                min_idx = min(selected)
+                max_idx = max(selected)
+                # 선택 범위가 연속되지 않았다면 모든 범위 포함
+                if max_idx - min_idx + 1 > len(selected):
+                    selected = list(range(min_idx, max_idx + 1))
+                    # 시각적 선택 업데이트
+                    self._skip_selection = True
+                    try:
+                        self.event_listbox.selection_clear(0, tk.END)
+                        for idx in selected:
+                            self.event_listbox.selection_set(idx)
+                    finally:
+                        self._skip_selection = False
+            
+            self.selected_events = selected # 내부 선택 상태 업데이트
+            print(f"Selection updated: {self.selected_events}") # 디버그용
+            
+        except Exception as e:
+            print(f"Error updating selection: {e}")
+            return
 
         # 상태 표시줄 업데이트
         count = len(self.selected_events)
@@ -152,13 +184,34 @@ class GuiEventEditorMixin:
                 elif hasattr(self.editor, 'events'): # Fallback
                     if 0 <= idx < len(self.editor.events):
                         event_type = self.editor.events[idx].get('type', 'Unknown')
-            except Exception: pass # 오류 무시
+            except Exception as e: 
+                print(f"Error getting event type: {e}")
+                pass # 오류 무시
+
             self.update_status(f"Event #{idx+1} selected (Type: {event_type})")
         elif count > 1:
             self.update_status(f"{count} events selected")
-        # else: # 선택 해제 시 (curselection이 비어있으면 호출 안될 수 있음)
-        #     self.update_status("Selection cleared.")
-
+        else:
+            # 선택 해제 시 (curselection이 비어있을 때)
+            self.selected_events = []
+            self.update_status("No events selected.")
+            
+    # 추가 - 리스트박스 이벤트 바인딩 설정을 위한 메서드
+    def setup_event_listbox_bindings(self):
+        """이벤트 리스트박스의 추가 이벤트 바인딩 설정"""
+        if not hasattr(self, 'event_listbox'): return
+        
+        # 이미 바인딩 설정되었는지 확인
+        if hasattr(self, '_listbox_bindings_setup'): return
+        
+        # 마우스 버튼 떼는 이벤트에 대한 바인딩 (드래그 선택 후)
+        self.event_listbox.bind('<ButtonRelease-1>', self.on_event_select)
+        
+        # 키보드 화살표 등의 이벤트에 대한 바인딩
+        self.event_listbox.bind('<KeyRelease>', self.on_event_select)
+        
+        # 바인딩 완료 플래그 설정
+        self._listbox_bindings_setup = True
 
     def clear_selection(self):
         """이벤트 리스트박스 선택 해제 및 내부 상태 초기화"""
@@ -205,14 +258,20 @@ class GuiEventEditorMixin:
 
     def _get_valid_selected_indices(self):
         """현재 선택된 유효한 이벤트 인덱스 목록 반환"""
-        if not hasattr(self, 'selected_events') or not self.selected_events:
-            # 리스트박스 직접 확인 (Fallback)
-            if hasattr(self, 'event_listbox'):
-                selected = self.event_listbox.curselection()
-                if selected: self.selected_events = list(selected)
-                else: return []
-            else: return []
+        # 현재 리스트박스에서 선택된 항목 직접 확인 (가장 정확한 방법)
+        if hasattr(self, 'event_listbox'):
+            try:
+                direct_selection = list(self.event_listbox.curselection())
+                if direct_selection:
+                    self.selected_events = direct_selection  # 내부 상태 업데이트
+                    print(f"Direct selection from listbox: {direct_selection}")
+            except Exception as e:
+                print(f"Error getting direct selection: {e}")
 
+        # 내부 저장된 선택 상태 확인
+        if not hasattr(self, 'selected_events') or not self.selected_events:
+            return []
+            
         # 에디터의 현재 이벤트 수 확인
         event_count = 0
         try:
@@ -222,12 +281,15 @@ class GuiEventEditorMixin:
                 event_count = len(self.editor.get_events() or [])
             elif hasattr(self.editor, 'events'): # Fallback
                 event_count = len(self.editor.events or [])
-        except Exception: pass
+        except Exception as e:
+            print(f"Error getting event count: {e}")
+            return []  # 이벤트 수 확인 실패시 빈 목록 반환
 
         # 유효한 인덱스만 필터링
         valid_indices = [idx for idx in self.selected_events if 0 <= idx < event_count]
+        
         if len(valid_indices) != len(self.selected_events):
-            print(f"Warning: Some selected indices were invalid. Original: {self.selected_events}, Valid: {valid_indices}")
+            print(f"Some selected indices were invalid. Original: {self.selected_events}, Valid: {valid_indices}")
             self.selected_events = valid_indices # 내부 상태 업데이트
 
         return valid_indices
@@ -256,7 +318,7 @@ class GuiEventEditorMixin:
                         deleted_count += 1
             else:
                 messagebox.showerror("Error", "Editor does not support event deletion.")
-            return
+                return
         except Exception as e:
             messagebox.showerror("Error", f"Error deleting events: {e}")
             return
@@ -279,79 +341,103 @@ class GuiEventEditorMixin:
 
         selected = self._get_valid_selected_indices()
         if not selected:
-            messagebox.showwarning("Warning", "Select the event *before* where you want to add delay.")
+            messagebox.showwarning("Warning", "Select event(s) after which to add delay.")
             return
 
-        # 여러 개 선택 시 마지막 선택 위치 기준
-        insert_index = max(selected) + 1
-
+        # 딜레이 시간 입력 받기
         delay_ms = simpledialog.askinteger("Add Delay", "Delay time (ms):",
                                            minvalue=1, maxvalue=600000) # 1ms ~ 10분
         if delay_ms is None: return
 
         delay_sec = delay_ms / 1000.0
-        delay_event = {'type': 'delay', 'delay': delay_sec, 'time': 0} # 시간은 에디터가 처리
-
-        # 에디터에 삽입 요청
-        inserted_idx = -1
-        try:
-            if hasattr(self.editor, 'insert_event') and callable(self.editor.insert_event):
-                inserted_idx = self.editor.insert_event(insert_index, delay_event)
-            elif hasattr(self.editor, 'events'): # Fallback
-                if 0 <= insert_index <= len(self.editor.events):
-                    self.editor.events.insert(insert_index, delay_event)
-                    inserted_idx = insert_index
-            else:
-                messagebox.showerror("Error", "Editor does not support event insertion.")
-            return
-        except Exception as e:
-            messagebox.showerror("Error", f"Error adding delay: {e}")
-            return
-
-        if inserted_idx != -1:
+        
+        # 선택된 이벤트들을 내림차순으로 정렬 (뒤에서부터 삽입)
+        sorted_indices = sorted(selected, reverse=True)
+        inserted_indices = []
+        
+        # 각 선택된 이벤트 뒤에 딜레이 추가
+        for current_index in sorted_indices:
+            insert_index = current_index + 1
+            delay_event = {'type': 'delay', 'delay': delay_sec, 'time': 0}
+            
+            try:
+                if hasattr(self.editor, 'insert_event') and callable(self.editor.insert_event):
+                    # editor.py의 insert_event 함수 호출
+                    result = self.editor.insert_event(insert_index, delay_event)
+                    if result:
+                        inserted_indices.append(insert_index)
+                elif hasattr(self.editor, 'events'): # Fallback
+                    if 0 <= insert_index <= len(self.editor.events):
+                        self.editor.events.insert(insert_index, delay_event)
+                        inserted_indices.append(insert_index)
+            except Exception as e:
+                messagebox.showerror("Error", f"Error adding delay after event #{current_index+1}: {e}")
+                break
+        
+        if inserted_indices:
+            # 작업 완료 후 모든 선택 해제
             self.restore_selection = False
             self.clear_selection()
             self.update_event_list()
-            self.set_single_selection(inserted_idx) # 새로 추가된 딜레이 선택
             self.restore_selection = True
-            self.update_status(f"{delay_ms}ms delay added at position {inserted_idx + 1}.")
+            self.update_status(f"{len(inserted_indices)} delay(s) of {delay_ms}ms added.")
         else:
-            messagebox.showerror("Error", "Failed to add delay.")
+            messagebox.showerror("Error", "Failed to add delays.")
 
 
     def modify_delay_time(self):
         """선택된 딜레이 이벤트의 시간 수정"""
-        if hasattr(self, 'recorder') and self.recorder.recording:
+        if hasattr(self, 'recorder') and hasattr(self.recorder, 'recording') and self.recorder.recording:
             messagebox.showwarning("Warning", "Cannot edit events while recording.")
             return
+
+        # 현재 선택 상태 다시 확인 (드래그 선택 시 정확히 인식하기 위함)
+        if hasattr(self, 'event_listbox'):
+            try:
+                current_selection = list(self.event_listbox.curselection())
+                if current_selection:  # 리스트박스에서 직접 현재 선택 가져오기
+                    self.selected_events = current_selection
+            except Exception as e:
+                print(f"Error getting current selection: {e}")
 
         indices_to_modify = self._get_valid_selected_indices()
         if not indices_to_modify:
             messagebox.showwarning("Warning", "Select delay event(s) to modify.")
             return
 
-        # 선택된 것 중 실제 딜레이 이벤트만 필터링
-        delay_indices = []
+        # 이벤트 목록 가져오기
+        events = []
         try:
-            events = []
             if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
                 events = self.editor.get_events() or []
-            elif hasattr(self.editor, 'events'): # Fallback
+            elif hasattr(self.editor, 'events'):  # Fallback
                 events = self.editor.events or []
+        except Exception as e:
+            print(f"Error getting events: {e}")
+            events = []
 
-            for idx in indices_to_modify:
-                if 0 <= idx < len(events) and events[idx].get('type') == 'delay':
-                    delay_indices.append(idx)
-        except Exception: pass
+        if not events:
+            messagebox.showwarning("Warning", "No events available.")
+            return
+
+        # 선택된 것 중 실제 딜레이 이벤트만 필터링
+        delay_indices = []
+        for idx in indices_to_modify:
+            if 0 <= idx < len(events) and events[idx].get('type') == 'delay':
+                delay_indices.append(idx)
 
         if not delay_indices:
             messagebox.showwarning("Warning", "No delay events selected.")
             return
 
+        # 디버그 정보 출력
+        print(f"Selected indices: {indices_to_modify}")
+        print(f"Delay indices to modify: {delay_indices}")
+
         # 새 딜레이 시간 입력
-        # 첫 번째 선택된 딜레이의 현재 값 보여주기 (선택 사항)
+        # 첫 번째 선택된 딜레이의 현재 값 보여주기
         current_delay_ms = 0
-        if events and 0 <= delay_indices[0] < len(events):
+        if delay_indices:
             current_delay_ms = int(events[delay_indices[0]].get('delay', 0) * 1000)
 
         new_delay_ms = simpledialog.askinteger("Modify Delay", "New delay time (ms):",
@@ -364,27 +450,30 @@ class GuiEventEditorMixin:
         # 에디터에 수정 요청
         modified_count = 0
         try:
-            if hasattr(self.editor, 'modify_delays') and callable(self.editor.modify_delays):
-                modified_count = self.editor.modify_delays(delay_indices, new_delay_sec)
-            elif hasattr(self.editor, 'events'): # Fallback
+            # 함수 이름 수정: set_selected_delays_time 사용
+            if hasattr(self.editor, 'set_selected_delays_time') and callable(self.editor.set_selected_delays_time):
+                result = self.editor.set_selected_delays_time(delay_indices, new_delay_sec)
+                if result:
+                    modified_count = len(delay_indices)
+            elif hasattr(self.editor, 'events'):  # Fallback
                 for idx in delay_indices:
                     if 0 <= idx < len(self.editor.events) and self.editor.events[idx]['type'] == 'delay':
                         self.editor.events[idx]['delay'] = new_delay_sec
-                        # 랜덤 범위가 있다면 제거하거나 유지하는 정책 필요
-                        if 'random_range' in self.editor.events[idx]:
-                            print(f"Warning: Modifying delay at index {idx} might affect existing random range.")
-                            # del self.editor.events[idx]['random_range'] # 예: 랜덤 범위 제거
                         modified_count += 1
             else:
                 messagebox.showerror("Error", "Editor does not support delay modification.")
-            return
+                return
+
         except Exception as e:
             messagebox.showerror("Error", f"Error modifying delays: {e}")
             return
 
         if modified_count > 0:
-            self.restore_selection = True # 수정 후 선택 유지
-            self.update_event_list() # 목록 업데이트 (선택 복원됨)
+            # 수정 후 선택 상태 유지를 위해 현재 선택 기억
+            self.restore_selection = True
+            # 딜레이 인덱스들을 선택 상태로 설정 (기존 선택 대신)
+            self.selected_events = delay_indices
+            self.update_event_list()  # 목록 업데이트
             self.update_status(f"{modified_count} delay event(s) set to {new_delay_ms}ms.")
         else:
             messagebox.showerror("Error", "Failed to modify selected delay events.")
@@ -415,9 +504,9 @@ class GuiEventEditorMixin:
                 if 0 < current_index < len(self.editor.events):
                     self.editor.events.insert(current_index - 1, self.editor.events.pop(current_index))
                     new_index = current_index - 1
-            else:
-                messagebox.showerror("Error", "Editor does not support moving events.")
-            return
+                else:
+                    messagebox.showerror("Error", "Editor does not support moving events.")
+                    return
         except Exception as e:
             messagebox.showerror("Error", f"Error moving event up: {e}")
             return
@@ -472,7 +561,7 @@ class GuiEventEditorMixin:
                     new_index = current_index + 1
             else:
                 messagebox.showerror("Error", "Editor does not support moving events.")
-            return
+                return
         except Exception as e:
             messagebox.showerror("Error", f"Error moving event down: {e}")
             return
