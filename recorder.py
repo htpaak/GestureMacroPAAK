@@ -69,34 +69,64 @@ class MacroRecorder:
             print(f"매크로 녹화가 시작되었습니다. 녹화 설정: {settings_str}")
     
     def stop_recording(self):
-        """매크로 녹화 중지"""
+        """매크로 녹화 중지 및 이벤트 시간 재조정"""
         if self.recording:
             # 특정 콜백만 해제
             try:
-                # 키보드 콜백 해제 - 콜백 함수를 지정하여 해당 콜백만 해제
-                keyboard.unhook(self._keyboard_callback)
-                print("키보드 녹화 콜백만 해제")
+                # 키보드 콜백 해제
+                if self.record_keyboard: # 녹화 설정에 따라 해제 시도
+                    keyboard.unhook(self._keyboard_callback)
+                    print("키보드 녹화 콜백 해제")
             except Exception as e:
                 print(f"키보드 콜백 해제 오류: {e}")
-                # 최후의 수단으로 모든 훅 해제
-                keyboard.unhook_all()
-                print("모든 키보드 훅 해제")
-            
+                try: # 최후의 수단
+                    keyboard.unhook_all()
+                    print("모든 키보드 훅 해제 (예외 발생)")
+                except Exception as e_all:
+                    print(f"모든 키보드 훅 해제 오류: {e_all}")
+
             # 마우스 훅 해제
-            mouse.unhook_all()
-            
+            try:
+                mouse.unhook_all()
+                print("마우스 녹화 콜백 해제")
+            except Exception as e:
+                print(f"마우스 콜백 해제 오류: {e}")
+
             # 상태 업데이트
             self.recording = False
             print("매크로 녹화가 중지되었습니다.")
-            
-            # 녹화 중지 후 단축키 다시 설정
+
+            # --- 이벤트 시간 재조정 로직 추가 ---
+            if self.events:
+                # 첫 이벤트 시간 가져오기
+                first_event_time = self.events[0]['time']
+                print(f"첫 이벤트 시간(조정 전): {first_event_time:.3f}s")
+
+                # 모든 이벤트 시간에서 첫 이벤트 시간 빼기
+                if first_event_time > 0: # 첫 이벤트 시간이 0보다 클 때만 조정
+                    for event in self.events:
+                        event['time'] -= first_event_time
+                        # 혹시 모를 음수 시간 방지 (거의 발생 안 함)
+                        if event['time'] < 0:
+                             event['time'] = 0
+                    print("모든 이벤트 시간 재조정 완료 (첫 이벤트 기준 0초 시작)")
+
+                # 조정된 첫 이벤트 시간 확인 (디버깅용)
+                if self.events:
+                    print(f"조정된 첫 이벤트 시간: {self.events[0]['time']:.3f}s")
+            else:
+                 print("녹화된 이벤트가 없어 시간 재조정을 건너니다.")
+            # --- 로직 추가 끝 ---
+
+            # 녹화 중지 후 단축키 다시 설정 (기존 로직 유지)
             if hasattr(self, 'parent') and hasattr(self.parent, 'setup_keyboard_shortcuts'):
                 try:
                     self.parent.setup_keyboard_shortcuts()
                     print("녹화 중지 후 단축키 재설정 시도")
                 except Exception as e:
                     print(f"단축키 재설정 오류: {e}")
-            
+
+            # 최종 이벤트 목록 반환
             return self.events
         return None
     
