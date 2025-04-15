@@ -600,8 +600,20 @@ class GuiGestureManagerMixin:
         edit_cmd = getattr(self, 'edit_gesture', lambda: print("edit_gesture not found"))
         delete_cmd = getattr(self, 'delete_selected_gesture', lambda: print("delete_selected_gesture not found"))
 
-        ttk.Button(gesture_btn_frame, text="Edit", width=10, command=edit_cmd).pack(side=tk.LEFT, padx=5) # UI 텍스트 영어로
-        ttk.Button(gesture_btn_frame, text="Delete", width=10, command=delete_cmd).pack(side=tk.LEFT, padx=5) # UI 텍스트 영어로
+        tk.Button(gesture_btn_frame, text="Edit", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=edit_cmd).pack(side=tk.LEFT, padx=5) # UI 텍스트 영어로
+        tk.Button(gesture_btn_frame, text="Delete", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=delete_cmd).pack(side=tk.LEFT, padx=5) # UI 텍스트 영어로
 
         # 반복 횟수 설정 프레임
         repeat_frame = ttk.Frame(gesture_frame)
@@ -615,8 +627,20 @@ class GuiGestureManagerMixin:
         move_up_cmd = getattr(self, 'move_gesture_up', lambda: print("move_gesture_up not found"))
         move_down_cmd = getattr(self, 'move_gesture_down', lambda: print("move_gesture_down not found"))
 
-        ttk.Button(repeat_frame, text="↑", width=2, command=move_up_cmd).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(repeat_frame, text="↓", width=2, command=move_down_cmd).pack(side=tk.RIGHT, padx=2)
+        tk.Button(repeat_frame, text="↑", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=move_up_cmd).pack(side=tk.RIGHT, padx=2)
+        tk.Button(repeat_frame, text="↓", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=move_down_cmd).pack(side=tk.RIGHT, padx=2)
 
         # 무한 반복 체크박스 프레임
         infinite_frame = ttk.Frame(gesture_frame)

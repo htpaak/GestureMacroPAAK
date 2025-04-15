@@ -55,20 +55,61 @@ class GuiEventListMixin:
         move_down_cmd = getattr(self, 'move_event_down',
                                 lambda: print("move_event_down not found"))
 
-        ttk.Button(event_btn_frame, text="Select All",
-                   command=select_all_cmd).pack(side=tk.LEFT, padx=5)
-        ttk.Button(event_btn_frame, text="Delete Selected",
-                   command=delete_selected_cmd).pack(side=tk.LEFT, padx=5)
-        ttk.Button(event_btn_frame, text="Add Delay",
-                   command=add_delay_cmd).pack(side=tk.LEFT, padx=5)
-        ttk.Button(event_btn_frame, text="Delete Delay",
-                   command=delete_delay_cmd).pack(side=tk.LEFT, padx=5)
-        ttk.Button(event_btn_frame, text="Modify Delay",
-                   command=modify_delay_cmd).pack(side=tk.LEFT, padx=5)
-        ttk.Button(event_btn_frame, text="↑", width=2,
-                   command=move_up_cmd).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(event_btn_frame, text="↓", width=2,
-                   command=move_down_cmd).pack(side=tk.RIGHT, padx=2)
+        tk.Button(event_btn_frame, text="Select All", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=select_all_cmd).pack(side=tk.LEFT, padx=5)
+                 
+        tk.Button(event_btn_frame, text="Delete Selected", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=delete_selected_cmd).pack(side=tk.LEFT, padx=5)
+                 
+        tk.Button(event_btn_frame, text="Add Delay", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=add_delay_cmd).pack(side=tk.LEFT, padx=5)
+                 
+        tk.Button(event_btn_frame, text="Delete Delay", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=delete_delay_cmd).pack(side=tk.LEFT, padx=5)
+                 
+        tk.Button(event_btn_frame, text="Modify Delay", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=modify_delay_cmd).pack(side=tk.LEFT, padx=5)
+                 
+        tk.Button(event_btn_frame, text="↑", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=move_up_cmd).pack(side=tk.RIGHT, padx=2)
+                 
+        tk.Button(event_btn_frame, text="↓", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=move_down_cmd).pack(side=tk.RIGHT, padx=2)
 
         # 랜덤 기능 버튼 프레임
         random_btn_frame = ttk.Frame(event_list_frame)
@@ -79,10 +120,21 @@ class GuiEventListMixin:
         add_random_delay_cmd = getattr(
             self, 'add_random_delay', lambda: print("add_random_delay not found"))
 
-        ttk.Button(random_btn_frame, text="Add Random Position",
-                   command=add_random_pos_cmd).pack(side=tk.LEFT, padx=5)
-        ttk.Button(random_btn_frame, text="Add Random Delay",
-                   command=add_random_delay_cmd).pack(side=tk.LEFT, padx=5)
+        tk.Button(random_btn_frame, text="Add Random Position", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=add_random_pos_cmd).pack(side=tk.LEFT, padx=5)
+                 
+        tk.Button(random_btn_frame, text="Add Random Delay", 
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 command=add_random_delay_cmd).pack(side=tk.LEFT, padx=5)
 
         # --- 녹화 옵션 프레임 추가 ---
         options_frame = ttk.LabelFrame(event_list_frame, text="Recording Options", padding=10)

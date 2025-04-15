@@ -37,44 +37,112 @@ class GuiControlsMixin:
 
     def _create_macro_controls(self):
         """매크로 제어 관련 버튼 및 상태 레이블 생성"""
-        # 이 메서드는 self.control_frame이 _create_main_layout에서 생성되었다고 가정합니다.
         if not hasattr(self, 'control_frame'):
              print("Error: control_frame not found in GuiControlsMixin._create_macro_controls")
              return
 
-        # 제어 버튼 프레임
-        button_frame = ttk.Frame(self.control_frame)
+        # 버튼 프레임을 일반 tk.Frame으로 생성
+        button_frame = tk.Frame(self.control_frame, bg='#f0f0f0', height=45)
         button_frame.pack(fill=tk.X, pady=10)
+        # 프레임 크기 고정
+        button_frame.pack_propagate(False)
 
-        # 버튼 커맨드에 연결될 메서드들은 다른 믹스인(GuiRecordingMixin 등)에 정의되어야 합니다.
+        # 버튼 커맨드 정의
         start_gesture_rec_cmd = getattr(self, 'start_gesture_recording', lambda: print("Start Gesture Recording method not found"))
         start_macro_rec_cmd = getattr(self, 'start_recording_for_selected_gesture', lambda: print("Start Recording for Selected Gesture method not found"))
         stop_rec_cmd = getattr(self, 'stop_recording', lambda: print("Stop Recording method not found"))
         save_macro_cmd = getattr(self, 'save_macro', lambda: print("Save Macro method not found"))
-
-        # 제스처 녹화 버튼 (GestureManager가 있을 경우)
+        
+        # 레이아웃 계산을 위한 변수
+        btn_count = 4 if hasattr(self, 'gesture_manager') and self.gesture_manager else 3
+        btn_width = 1.0 / btn_count  # 균등 분할
+        
+        # 버튼 생성 - 일반 tk.Button 사용 (ttk와 완전히 분리)
+        # 각 버튼에 고정 크기와 색상, 글꼴 등을 설정
+        
+        btn_idx = 0
+        
+        # 제스처 녹화 버튼
         if hasattr(self, 'gesture_manager') and self.gesture_manager:
-            self.gesture_record_btn = ttk.Button(button_frame, text="Record Gesture", width=15,
-                     command=start_gesture_rec_cmd)
-            self.gesture_record_btn.pack(side=tk.LEFT, padx=10)
-
+            self.gesture_record_btn = tk.Button(
+                button_frame, 
+                text="Record Gesture",
+                font=('Arial', 9),
+                bg='#e8e8e8',  # 배경색
+                relief=tk.RAISED,  # 테두리 스타일
+                borderwidth=2,  # 테두리 두께
+                command=start_gesture_rec_cmd,
+                highlightthickness=0  # 하이라이트 테두리 제거
+            )
+            # place로 절대 위치 지정
+            self.gesture_record_btn.place(
+                relx=btn_width * btn_idx + 0.01,  # 1% 여백
+                rely=0.5,
+                relwidth=btn_width - 0.02,  # 2% 여백
+                relheight=0.8,
+                anchor='w'
+            )
+            btn_idx += 1
+        
         # 매크로 녹화 버튼
-        self.record_btn = ttk.Button(button_frame, text="Record Macro (F9)",
-                                    width=15,
-                                    command=start_macro_rec_cmd)
-        self.record_btn.pack(side=tk.LEFT, padx=10)
-
+        self.record_btn = tk.Button(
+            button_frame, 
+            text="Record Macro (F9)",
+            font=('Arial', 9),
+            bg='#e8e8e8',
+            relief=tk.RAISED,
+            borderwidth=2,
+            command=start_macro_rec_cmd,
+            highlightthickness=0
+        )
+        self.record_btn.place(
+            relx=btn_width * btn_idx + 0.01,
+            rely=0.5,
+            relwidth=btn_width - 0.02,
+            relheight=0.8,
+            anchor='w'
+        )
+        btn_idx += 1
+        
         # 녹화 중지 버튼
-        self.stop_btn = ttk.Button(button_frame, text="Stop Recording (F10)",
-                                  width=15,
-                                  command=stop_rec_cmd, state=tk.DISABLED)
-        self.stop_btn.pack(side=tk.LEFT, padx=10)
-
+        self.stop_btn = tk.Button(
+            button_frame, 
+            text="Stop Recording (F10)",
+            font=('Arial', 9),
+            bg='#e8e8e8',
+            relief=tk.RAISED,
+            borderwidth=2,
+            command=stop_rec_cmd,
+            state=tk.DISABLED,
+            highlightthickness=0
+        )
+        self.stop_btn.place(
+            relx=btn_width * btn_idx + 0.01,
+            rely=0.5,
+            relwidth=btn_width - 0.02,
+            relheight=0.8,
+            anchor='w'
+        )
+        btn_idx += 1
+        
         # 저장 버튼
-        self.save_btn = ttk.Button(button_frame, text="Save Macro",
-                                  width=15,
-                                  command=save_macro_cmd, state=tk.NORMAL) # 저장 버튼은 항상 활성화 가정
-        self.save_btn.pack(side=tk.LEFT, padx=10)
+        self.save_btn = tk.Button(
+            button_frame, 
+            text="Save Macro",
+            font=('Arial', 9),
+            bg='#e8e8e8',
+            relief=tk.RAISED,
+            borderwidth=2,
+            command=save_macro_cmd,
+            highlightthickness=0
+        )
+        self.save_btn.place(
+            relx=btn_width * btn_idx + 0.01,
+            rely=0.5,
+            relwidth=btn_width - 0.02,
+            relheight=0.8,
+            anchor='w'
+        )
 
         # 녹화 상태 표시 레이블
         self.record_status = ttk.Label(self.control_frame, text="Ready", foreground="black", font=('Arial', 9))
