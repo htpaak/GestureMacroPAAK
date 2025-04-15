@@ -469,14 +469,6 @@ class GuiEventListMixin:
         if hasattr(self, 'update_status') and callable(self.update_status):
             self.update_status(f"All {event_count} events selected.")
 
-    def move_event_up(self):
-        # ... (existing placeholder) ...
-        pass  # 임시로 pass 추가
-
-    def move_event_down(self):
-        # ... (existing placeholder) ...
-        pass  # 임시로 pass 추가
-
     def on_event_select(self, event=None):
         # ... (existing code) ...
         pass  # 임시로 pass 추가

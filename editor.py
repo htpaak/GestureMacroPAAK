@@ -323,12 +323,12 @@ class MacroEditor:
         )
         
         self.modified = True
-        return True
+        return index - 1 # 성공 시 새 인덱스 반환
         
     def move_event_down(self, index):
         """선택한 이벤트를 아래로 이동"""
         if index < 0 or index >= len(self.events) - 1:
-            return False
+            return -1 # 실패 시 -1 반환
             
         # 이벤트 교환
         self.events[index], self.events[index+1] = (
@@ -336,4 +336,4 @@ class MacroEditor:
         )
         
         self.modified = True
-        return True 
+        return index + 1 # 성공 시 새 인덱스 반환 

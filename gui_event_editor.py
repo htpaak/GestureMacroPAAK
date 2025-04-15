@@ -228,15 +228,30 @@ class GuiEventEditorMixin:
 
     def set_single_selection(self, index):
         """주어진 인덱스의 이벤트만 선택하고 보이도록 스크롤"""
+        print(f"[DEBUG set_single_selection] Received index: {index}") # 로그 추가
         if not hasattr(self, 'event_listbox'): return False
-        if not (0 <= index < self.event_listbox.size()): return False
-
+        
+        # 인덱스 유효성 검사 강화
+        try:
+            listbox_size = self.event_listbox.size()
+            print(f"[DEBUG set_single_selection] Listbox size: {listbox_size}") # 로그 추가
+            if not (0 <= index < listbox_size):
+                print(f"[DEBUG set_single_selection] Invalid index {index} for listbox size {listbox_size}") # 로그 추가
+                return False
+        except Exception as e:
+            print(f"[DEBUG set_single_selection] Error checking listbox size or index: {e}")
+            return False
+            
         self._skip_selection = True # on_event_select 콜백 방지
         try:
+            print(f"[DEBUG set_single_selection] Clearing selection and setting index: {index}") # 로그 추가
             self.event_listbox.selection_clear(0, tk.END)
             self.event_listbox.selection_set(index)
             self.event_listbox.see(index)
             self.selected_events = [index] # 내부 상태 업데이트
+            print(f"[DEBUG set_single_selection] Selection set to: {self.selected_events}") # 로그 추가
+        except Exception as e:
+            print(f"[DEBUG set_single_selection] Error during selection/see: {e}") # 로그 추가
         finally:
             self._skip_selection = False
         return True
@@ -580,9 +595,11 @@ class GuiEventEditorMixin:
 
         if new_index != -1:
             self.restore_selection = False
-            self.clear_selection()
+            # self.clear_selection() # 선택 해제 제거
             self.update_event_list()
-            self.set_single_selection(new_index) # 이동된 위치 선택
+            print(f"[DEBUG move_event_up] Attempting to select new index: {new_index} via after_idle") # 로그 수정
+            # self.set_single_selection(new_index) # 직접 호출 대신
+            self.root.after_idle(lambda idx=new_index: self.set_single_selection(idx)) # after_idle 사용
             self.restore_selection = True
             self.update_status(f"Event moved up to position {new_index + 1}.")
         else:
@@ -635,9 +652,10 @@ class GuiEventEditorMixin:
 
         if new_index != -1:
             self.restore_selection = False
-            self.clear_selection()
             self.update_event_list()
-            self.set_single_selection(new_index) # 이동된 위치 선택
+            print(f"[DEBUG move_event_down] Attempting to select new index: {new_index} via after_idle") # 로그 추가
+            # self.set_single_selection(new_index) # 직접 호출 대신
+            self.root.after_idle(lambda idx=new_index: self.set_single_selection(idx)) # after_idle 사용
             self.restore_selection = True
             self.update_status(f"Event moved down to position {new_index + 1}.")
         else:
