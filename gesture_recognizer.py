@@ -80,8 +80,8 @@ class GestureRecognizer:
         gesture_name = "unknown"
         
         # 충분한 포인트가 있는지 확인
-        if len(self.points) < 4:
-            print("[Recognizer] 인식 실패: 포인트가 너무 적음 (< 4)")
+        if len(self.points) < 5:
+            print("[Recognizer] 인식 실패: 포인트가 너무 적음 (< 5)")
             gesture_name = f"{self.get_modifier_string()}+tooShort"
         else:
             # 제스처 인식 로직 - 복합 방향 패턴 감지
@@ -106,8 +106,8 @@ class GestureRecognizer:
         complex_dir_start_time = time.time()
         logging.info("[TimeLog][Recognizer] get_complex_direction 시작")
 
-        if len(points) < 4:
-            print("[Recognizer/Direction] 포인트 부족 (< 4) -> •")
+        if len(points) < 5:
+            print("[Recognizer/Direction] 포인트 부족 (< 5) -> •")
             return "•"
         
         segment_size = max(5, len(points) // 10)
