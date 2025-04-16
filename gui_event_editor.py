@@ -664,12 +664,39 @@ class GuiEventEditorMixin:
 
     # --- Event Double Click (Placeholder) ---
     def on_event_double_click(self, event=None):
-        """이벤트 리스트박스 더블클릭 시 동작 (예: 이벤트 수정 창 열기)"""
+        """딜레이 이벤트 더블클릭 시 modify_delay_time 호출"""
         selected = self._get_valid_selected_indices()
         if len(selected) == 1:
             index = selected[0]
-            print(f"Event at index {index} double-clicked. (Placeholder for editing)")
-            # TODO: 이벤트 수정 다이얼로그 열기 로직 추가
-            messagebox.showinfo("Edit Event (Not Implemented)", f"Double-clicked event #{index+1}.\nEditing functionality is not yet implemented in this module.")
+            print(f"Event at index {index} double-clicked.")
+
+            # 이벤트 데이터 가져오기 (에디터 사용)
+            event_data = None
+            try:
+                if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+                    current_events = self.editor.get_events() or []
+                    if 0 <= index < len(current_events):
+                        event_data = current_events[index]
+                elif hasattr(self.editor, 'events'): # Fallback
+                    if 0 <= index < len(self.editor.events):
+                        event_data = self.editor.events[index]
+            except Exception as e:
+                print(f"Error getting event data for double-click: {e}")
+                event_data = None
+
+            # 이벤트 타입 확인
+            if event_data and event_data.get('type') == 'delay':
+                print(f"Delay event double-clicked. Calling modify_delay_time...")
+                # modify_delay_time은 현재 선택된 항목을 기준으로 동작하므로,
+                # 이미 선택된 상태에서 더블클릭했으므로 바로 호출 가능.
+                if hasattr(self, 'modify_delay_time') and callable(self.modify_delay_time):
+                    self.modify_delay_time()
+                else:
+                    print("Error: modify_delay_time method not found.")
+                    messagebox.showerror("Error", "Delay modification function is not available.")
+            else:
+                # 딜레이가 아닌 다른 이벤트는 기존 메시지 표시
+                print(f"Non-delay event double-clicked (type: {event_data.get('type') if event_data else 'N/A'}). Showing placeholder message.")
+                messagebox.showinfo("Edit Event (Not Implemented)", f"Double-clicked event #{index+1}.\nEditing functionality is not yet implemented for this event type.")
         else:
             print("Double-click ignored (no single event selected).")
