@@ -3,6 +3,14 @@ import numpy as np # 디버깅을 위해 추가
 import time # 시간 측정을 위해 time 모듈 임포트
 import logging # 로깅 사용
 
+def calculate_sq_distance(p1, p2):
+    """두 점 사이의 거리 제곱을 계산합니다."""
+    if p1 is None or p2 is None:
+        return float('inf') # 한 점이 없으면 무한대 거리로 처리
+    dx = p1[0] - p2[0]
+    dy = p1[1] - p2[1]
+    return dx*dx + dy*dy
+
 class GestureRecognizer:
     def __init__(self):
         # 제스처 기록 상태
@@ -13,6 +21,11 @@ class GestureRecognizer:
         
         # 현재 제스처 기록 시 모디파이어 키 (정수 타입 사용)
         self.modifiers = 0
+        
+        # --- 샘플링 관련 속성 제거 ---
+        # self.last_added_point = None
+        # self.min_point_distance_sq = 16
+        # --- 속성 제거 끝 ---
         
         # 키보드 모디파이어와 제스처를 구분하기 위한 접두사 (정수 타입으로 변경)
         self.mod_prefixes = {
@@ -30,13 +43,26 @@ class GestureRecognizer:
         self.is_recording = True
         self.points = [point]  # 시작 포인트 추가
         self.modifiers = modifiers
+        # self.last_added_point = point # 샘플링 관련 초기화 제거
         print(f"[Recognizer] 기록 시작: 시작점={point}, 모디파이어={modifiers}") # 디버깅 로그 추가
     
     def add_point(self, point):
-        """마우스 포인트 추가"""
+        """마우스 포인트 추가 (샘플링 제거)""" # 주석 업데이트
         if self.is_recording:
-            # print(f"[Recognizer] 포인트 추가: {point}") # 너무 많은 로그, 필요시 주석 해제
-            self.points.append(point)
+            # --- 샘플링 로직 제거 시작 ---
+            # # 거리 제곱 계산
+            # sq_dist = calculate_sq_distance(point, self.last_added_point)
+            # 
+            # # 거리가 임계값보다 크면 포인트 추가 및 마지막 포인트 업데이트
+            # if sq_dist > self.min_point_distance_sq:
+            #     # logging.debug(f"[Recognizer Sampling] Adding point {point} (sq_dist={sq_dist:.1f} > {self.min_point_distance_sq})" ) # 필요시 활성화
+            #     self.points.append(point) # <<< append 다시 활성화
+            #     self.last_added_point = point
+            # # else:
+            #     # logging.debug(f"[Recognizer Sampling] Skipping point {point} (sq_dist={sq_dist:.1f} <= {self.min_point_distance_sq})") # 필요시 활성화
+            # # pass 제거
+            # --- 샘플링 로직 제거 끝 ---
+            self.points.append(point) # 항상 포인트 추가
     
     def stop_recording(self):
         """제스처 녹화 중지 및 인식 결과 반환"""
@@ -54,8 +80,8 @@ class GestureRecognizer:
         gesture_name = "unknown"
         
         # 충분한 포인트가 있는지 확인
-        if len(self.points) < 5:
-            print("[Recognizer] 인식 실패: 포인트가 너무 적음 (< 5)")
+        if len(self.points) < 4:
+            print("[Recognizer] 인식 실패: 포인트가 너무 적음 (< 4)")
             gesture_name = f"{self.get_modifier_string()}+tooShort"
         else:
             # 제스처 인식 로직 - 복합 방향 패턴 감지
@@ -80,8 +106,8 @@ class GestureRecognizer:
         complex_dir_start_time = time.time()
         logging.info("[TimeLog][Recognizer] get_complex_direction 시작")
 
-        if len(points) < 5:
-            print("[Recognizer/Direction] 포인트 부족 (< 5) -> •")
+        if len(points) < 4:
+            print("[Recognizer/Direction] 포인트 부족 (< 4) -> •")
             return "•"
         
         segment_size = max(5, len(points) // 10)

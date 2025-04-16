@@ -30,7 +30,10 @@ def absolute_to_relative(x, y, monitor):
     """절대 좌표 (x, y)를 주어진 모니터의 상대 좌표로 변환합니다."""
     if not monitor:
         raise ValueError("유효한 모니터 객체를 제공해야 합니다.")
-    return (x - monitor.x, y - monitor.y)
+    # 간단한 연산이지만 확인 차원에서 프로파일링
+    rel_x = x - monitor.x
+    rel_y = y - monitor.y
+    return (rel_x, rel_y)
 
 def relative_to_absolute(rel_x, rel_y, monitor):
     """주어진 모니터의 상대 좌표 (rel_x, rel_y)를 절대 좌표로 변환합니다."""

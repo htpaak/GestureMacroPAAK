@@ -41,7 +41,7 @@ class GestureManager:
         # 제스처 인식기 초기화
         self.gesture_recognizer = GestureRecognizer()
         
-        # 전역 제스처 리스너 초기화
+        # 전역 제스처 리스너 초기화 (root 전달 제거)
         self.gesture_listener = GlobalGestureListener()
         
         # 콜백 설정
@@ -57,13 +57,47 @@ class GestureManager:
         self.canvas_window = None
         
     def start(self):
-        """제스처 인식 시작"""
-        self.gesture_listener.start()
-        
+        """제스처 인식 시작 (키보드 리스너 시작 포함)"""
+        # self.gesture_listener.start() # 기존 호출은 키보드 리스너를 시작하지 않음
+        logging.info("Starting gesture recognition and keyboard listener...")
+        # is_running 플래그 설정 및 키보드 리스너 시작 요청
+        if hasattr(self.gesture_listener, 'is_running'): self.gesture_listener.is_running = True 
+        success = self.gesture_listener.start_keyboard_listener()
+        if success:
+             logging.info("Gesture recognition fully started.")
+        else:
+             logging.error("Failed to start keyboard listener for gesture recognition.")
+             # 에러 처리 필요 시 추가
+             if hasattr(self.gesture_listener, 'is_running'): self.gesture_listener.is_running = False
+
     def stop(self):
-        """제스처 인식 중지"""
-        self.gesture_listener.stop()
+        """제스처 인식 중지 (키보드 리스너 중지 포함)"""
+        # self.gesture_listener.stop() # 기존 stop은 이제 키보드 리스너만 중지하지 않음
+        logging.info("Stopping gesture recognition and keyboard listener...")
+        # 키보드 리스너 중지 요청
+        stopped_kb = self.gesture_listener.stop_keyboard_listener()
+        # 마우스 리스너도 확실히 중지 (stop 내부 로직 재확인) -> 멀티프로세싱으로 변경되어 제거
+        # stopped_mouse = True
+        # if self.gesture_listener.mouse_listener and self.gesture_listener.mouse_listener.is_alive():
+        #      try:
+        #          logging.info("Stopping mouse listener from GestureManager.stop...")
+        #          self.gesture_listener.mouse_listener.stop()
+        #          self.gesture_listener.mouse_listener.join()
+        #          logging.info("Mouse listener stopped and joined from GestureManager.stop.")
+        #          self.gesture_listener.mouse_listener = None
+        #      except Exception as e_mouse:
+        #          logging.error(f"Error stopping mouse listener from GestureManager.stop: {e_mouse}", exc_info=True)
+        #          stopped_mouse = False
         
+        # is_running 플래그 업데이트 (GlobalGestureListener 내부에서 처리되도록 변경 고려)
+        if hasattr(self.gesture_listener, 'is_running'): self.gesture_listener.is_running = False
+        
+        # stopped_mouse 제거 후 조건 수정
+        if stopped_kb:
+             logging.info("Gesture recognition fully stopped.")
+        else:
+             logging.warning("Gesture recognition stopped, but there might have been issues stopping keyboard listener.")
+
     def on_gesture_started(self, rel_pos, monitor, modifiers):
         """제스처 시작 콜백 - 시작 시 절대 좌표 저장"""
         print(f"GestureManager 시작: 상대좌표 {rel_pos}, 모니터 {monitor.name}, 모디파이어 {modifiers}")

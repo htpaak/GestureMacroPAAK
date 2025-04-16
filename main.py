@@ -4,6 +4,10 @@ import sys
 import time
 import ctypes
 import logging # 로깅 모듈 추가
+# import cProfile # 프로파일링 추가 - 제거
+# import pstats   # 프로파일링 결과 분석 추가 - 제거
+# import io       # 프로파일링 결과 출력을 위해 추가 - 제거
+# import tracemalloc # 메모리 추적 추가 - 제거
 from recorder import MacroRecorder
 from player import MacroPlayer
 from editor import MacroEditor
@@ -274,7 +278,7 @@ def main():
         # Recorder 먼저 생성 (GUI 없이)
         recorder = MacroRecorder()
         
-        # GestureManager 생성 (log_timer_delay 콜백 전달)
+        # GestureManager 생성 (root_window 전달 제거)
         gesture_manager = GestureManager(player, storage, recorder, timer_log_callback=log_timer_delay)
         
         # 이제 GUI 생성 (모든 필요한 컴포넌트 전달)
@@ -362,4 +366,31 @@ def main():
         logging.info("Application cleanup finished.")
 
 if __name__ == "__main__":
-    main()
+    # --- tracemalloc 시작 --- 제거
+    # tracemalloc.start()
+    # logging.info("Tracemalloc started.")
+    # --- tracemalloc 시작 끝 --- 제거
+
+    # --- 프로파일링 설정 시작 --- 제거
+    # profiler = cProfile.Profile()
+    # profiler.enable()
+    # logging.info("Profiler enabled.")
+    # --- 프로파일링 설정 끝 --- 제거
+
+    main() # 기존 메인 함수 호출
+
+    # --- 프로파일링 결과 저장 및 출력 시작 --- 제거
+    # profiler.disable()
+    # logging.info("Profiler disabled.")
+    #
+    # # 결과 파일 저장
+    # stats_file = "profile_stats.prof"
+    # profiler.dump_stats(stats_file)
+    # logging.info(f"Profiling stats saved to {stats_file}")
+    # s = io.StringIO()
+    # ps = pstats.Stats(profiler, stream=s).sort_stats('cumulative')
+    # ps.print_stats(30)
+    # print("\n--- Profiling Summary (Top 30 cumulative time) ---")
+    # print(s.getvalue())
+    # print("--- End of Profiling Summary ---")
+    # --- 제거 끝 ---
