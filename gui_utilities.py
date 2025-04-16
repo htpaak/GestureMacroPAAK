@@ -96,8 +96,10 @@ class GuiUtilitiesMixin:
 
     def _periodic_update_event_list(self):
         """Periodically update the event list (only while recording)."""
+        print("[DEBUG _periodic_update_event_list] Periodic update check...") # 주기적 호출 확인 로그
         # Check if still recording
         is_recording = hasattr(self, 'recorder') and self.recorder.recording
+        print(f"[DEBUG _periodic_update_event_list] Recording state: {is_recording}") # 녹화 상태 확인 로그
 
         if is_recording:
             if hasattr(self, 'update_event_list') and callable(self.update_event_list):
@@ -117,9 +119,9 @@ class GuiUtilitiesMixin:
             except Exception as e:
                  print(f"Error rescheduling event list update: {e}")
                  self.update_timer = None
-        else:
-            print("Recording stopped, halting periodic event list updates.")
-            self.stop_event_list_updates() # Stop if not recording anymore
+        # else: # 녹화 중이 아니면 아무것도 하지 않음 (다음 업데이트 예약 안 함)
+        #     print("Recording stopped, halting periodic event list updates.")
+        #     self.stop_event_list_updates() # 여기서 호출 제거
 
     def stop_event_list_updates(self):
         """실시간 이벤트 목록 업데이트 중지"""
