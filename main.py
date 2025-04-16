@@ -97,11 +97,21 @@ def set_taskbar_icon(root, icon_path):
         except Exception as e:
             print(f"작업표시줄 아이콘 설정 실패: {e}")
 
-def auto_enable_gesture():
+def auto_enable_gesture(scheduled_time):
     """자동으로 제스처 인식 활성화"""
+    current_time = time.time()
+    delay_ms = (current_time - scheduled_time) * 1000
+    logging.info(f"자동 제스처 인식 활성화 실행 시작. 스케줄 후 실제 지연: {delay_ms:.2f}ms")
     print("제스처 인식 자동 활성화")
     if gui:
         gui.start_gesture_recognition()
+    logging.info("자동 제스처 인식 활성화 실행 완료.")
+
+def log_timer_delay(scheduled_time):
+    """타이머의 실제 실행 지연 시간을 로깅하는 함수"""
+    current_time = time.time()
+    delay_ms = (current_time - scheduled_time) * 1000
+    logging.info(f"[Timer Delay Check] 스케줄 후 실제 지연: {delay_ms:.2f}ms")
 
 def graceful_exit():
     """애플리케이션 종료 로직 (TrayManager 콜백)"""
@@ -235,6 +245,7 @@ def main():
     # 작업표시줄 아이콘 설정 (윈도우 표시 후)
     # set_taskbar_icon 함수는 AppUserModelID 설정으로 대체 가능성 있음 (테스트 필요)
     # if root_window and icon_path_global and os.path.exists(icon_path_global):
+    #     logging.info("작업표시줄 아이콘 설정 타이머 스케줄링 (100ms)...") # 디버깅 로그 추가
     #     root_window.after(100, lambda: set_taskbar_icon(root_window, icon_path_global))
 
     # --- TrayManager 초기화 및 시작 ---
@@ -263,8 +274,8 @@ def main():
         # Recorder 먼저 생성 (GUI 없이)
         recorder = MacroRecorder()
         
-        # GestureManager 생성
-        gesture_manager = GestureManager(player, storage, recorder)
+        # GestureManager 생성 (log_timer_delay 콜백 전달)
+        gesture_manager = GestureManager(player, storage, recorder, timer_log_callback=log_timer_delay)
         
         # 이제 GUI 생성 (모든 필요한 컴포넌트 전달)
         gui = GuiBase(root_window, recorder, player, editor, storage, gesture_manager)
@@ -302,7 +313,9 @@ def main():
 
     # 자동으로 제스처 인식 활성화
     if root_window:
-        root_window.after(500, auto_enable_gesture)
+        scheduled_time = time.time()
+        logging.info(f"자동 제스처 인식 활성화 타이머 스케줄링 (500ms)... 스케줄 시점: {scheduled_time}")
+        root_window.after(500, lambda: auto_enable_gesture(scheduled_time))
 
     # 메인 루프 시작
     try:

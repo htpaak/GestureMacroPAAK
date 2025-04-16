@@ -3,6 +3,17 @@ import mouse
 import time
 import threading
 import random
+import logging # 로깅 추가
+import psutil # 메모리 사용량 측정을 위해 psutil 임포트
+import os     # 현재 프로세스 ID 얻기 위해 os 임포트
+import gc     # 가비지 컬렉션 임포트
+
+# --- 메모리 로깅 함수 추가 (gesture_manager.py와 동일) ---
+def log_memory_usage(label):
+    process = psutil.Process(os.getpid())
+    memory_mb = process.memory_info().rss / (1024 * 1024) # RSS를 MB 단위로
+    logging.info(f"[Memory Check][{label}] 사용량: {memory_mb:.2f} MB")
+# --- 함수 추가 끝 ---
 
 class MacroPlayer:
     def __init__(self):
@@ -32,9 +43,18 @@ class MacroPlayer:
         self.stop_requested = False
         thread_start_req_time = time.time()
         print(f"[TimeLog] Requesting thread start at: {thread_start_req_time:.3f}")
+
+        # --- 이전 스레드 종료 대기 --- (추가)
+        if self.play_thread and self.play_thread.is_alive():
+            logging.info(f"[Thread Check] 이전 매크로 재생 스레드({self.play_thread.ident}) 종료 대기 중...")
+            self.play_thread.join() # 이전 스레드가 끝날 때까지 기다림
+            logging.info(f"[Thread Check] 이전 매크로 재생 스레드 종료 완료.")
+        # --- 대기 끝 ---
+
         # 스레드에 이벤트와 반복 횟수 전달
         self.play_thread = threading.Thread(target=self._play_events, args=(events, repeat_count))
-        self.play_thread.daemon = True
+        # self.play_thread.daemon = True # 데몬 스레드 설정 제거
+        logging.info(f"[Thread Check] 스레드 시작 전 활성 스레드 수: {threading.active_count()}") # 스레드 수 로그
         self.play_thread.start()
         thread_started_time = time.time() # 스레드 start() 호출 직후
         print(f"[TimeLog] Thread start method returned at: {thread_started_time:.3f} (overhead: {thread_started_time - thread_start_req_time:.3f}s)")
@@ -58,6 +78,7 @@ class MacroPlayer:
         """실제 이벤트 실행 (내부 메소드)"""
         thread_actual_start_time = time.time()
         self.playing = True
+        logging.info(f"[Thread Check] 매크로 재생 스레드 시작. 활성 스레드 수: {threading.active_count()}") # 스레드 수 로그
         print(f"[TimeLog] Play thread actually started execution at: {thread_actual_start_time:.3f}")
         print(f"매크로 실행 시작 (반복 횟수: {repeat_count if repeat_count > 0 else '무한'})")
         # 스레드 시작 시 사용될 기준 좌표 로깅
@@ -140,6 +161,11 @@ class MacroPlayer:
             traceback.print_exc()
         finally:
             self.playing = False # 종료 시 상태 확실히 변경
+            logging.info(f"[Thread Check] 매크로 재생 스레드 종료. 활성 스레드 수: {threading.active_count()}") # 스레드 수 로그
+            self.play_thread = None # 스레드 참조 제거
+            log_memory_usage("Play Thread Ended") # 메모리 로그 추가
+            gc.collect() # 가비지 컬렉션 강제 수행
+            logging.info("[GC] 가비지 컬렉션 수행 완료.") # GC 로그 추가
     
     def _play_keyboard_event(self, event):
         """키보드 이벤트 실행"""

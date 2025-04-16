@@ -3,6 +3,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import sys  # For platform check
 import monitor_utils # 모니터 유틸리티 임포트
+import time    # 시간 측정
+import logging # 로깅
 
 
 class GuiEventListMixin:

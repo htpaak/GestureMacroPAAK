@@ -7,15 +7,25 @@ import tkinter as tk
 from tkinter import messagebox
 import mouse # mouse 모듈 임포트 추가
 import time
+import psutil # 메모리 사용량 측정을 위해 psutil 임포트
+import logging # 로깅을 위해 logging 임포트
+
+# --- 메모리 로깅 함수 추가 ---
+def log_memory_usage(label):
+    process = psutil.Process(os.getpid())
+    memory_mb = process.memory_info().rss / (1024 * 1024) # RSS를 MB 단위로
+    logging.info(f"[Memory Check][{label}] 사용량: {memory_mb:.2f} MB")
+# --- 함수 추가 끝 ---
 
 class GestureManager:
-    def __init__(self, macro_player, storage, recorder=None):
+    def __init__(self, macro_player, storage, recorder=None, timer_log_callback=None):
         """제스처 관리자 초기화"""
         self.macro_player = macro_player
         self.storage = storage # 이제 MacroStorage는 macros.json을 관리
         self.recorder = recorder
         self.gesture_start_x = 0 # 제스처 시작 시 절대 X 좌표
         self.gesture_start_y = 0 # 제스처 시작 시 절대 Y 좌표
+        self.timer_log_callback = timer_log_callback # 콜백 저장
         
         # 콜백 함수
         self.on_update_gesture_list = None
@@ -93,6 +103,7 @@ class GestureManager:
             )
         
     def on_gesture_ended(self):
+        log_memory_usage("Gesture Ended - Start Processing") # 메모리 로그 추가
         gesture_end_time = time.time()
         print(f"[TimeLog] Gesture ended at: {gesture_end_time:.3f}")
 
@@ -135,6 +146,7 @@ class GestureManager:
         # 일반 모드인 경우 매크로 실행
         print(f"제스처 실행 시도: {gesture}")
         execution_start_time = time.time()
+        log_memory_usage("Before Execute Action") # 메모리 로그 추가
         print(f"[TimeLog] Starting gesture action execution at: {execution_start_time:.3f}")
         self.execute_gesture_action(gesture, self.gesture_start_x, self.gesture_start_y)
         # execution_end_time = time.time() # 이 로그는 execute_gesture_action 내부로 이동
@@ -248,9 +260,14 @@ class GestureManager:
                      # --- play_macro 호출 시 base_x, base_y 전달 ---
                      play_success = self.macro_player.play_macro(events, repeat_count, base_x=base_x, base_y=base_y)
                      play_call_end_time = time.time()
-                     # --- play_macro 호출 후 로그 추가 --- 
                      print(f"[TimeLog] Returned from play_macro call at: {play_call_end_time:.3f} (sync part took {play_call_end_time - play_call_start_time:.3f}s - includes thread start request)")
-                     # --- 전달 끝 ---
+
+                     # --- 타이머 지연 체크 로그 추가 ---
+                     if self.gui_callback and hasattr(self.gui_callback, 'root') and self.timer_log_callback:
+                         scheduled_time = time.time()
+                         self.gui_callback.root.after(1, lambda: self.timer_log_callback(scheduled_time)) # self.timer_log_callback 사용
+                     # --- 로그 추가 끝 ---
+
                      return play_success
                  except Exception as e:
                      print(f"매크로 실행 중 오류 발생: {e}")

@@ -4,6 +4,8 @@ from tkinter import messagebox, simpledialog, ttk
 import os
 import copy
 import json
+import time    # 시간 측정을 위해 추가
+import logging # 로깅을 위해 추가
 
 class GuiGestureManagerMixin:
     """GUI의 제스처 목록 관리(업데이트, 선택, 편집, 삭제, 이동) 및 이벤트 목록 연동을 담당하는 믹스인 클래스"""
@@ -44,6 +46,9 @@ class GuiGestureManagerMixin:
 
     def update_gesture_list(self):
         """제스처 목록 리스트박스를 현재 제스처 매핑으로 업데이트"""
+        update_start_time = time.time() # 시간 측정 시작
+        logging.info("[TimeLog][GUI Update] update_gesture_list 시작")
+
         if not hasattr(self, 'gesture_listbox') or not hasattr(self, 'gesture_manager'): return
 
         # 현재 선택된 제스처 (내부 키 기준) 기억
@@ -81,6 +86,10 @@ class GuiGestureManagerMixin:
             # 이벤트 목록도 비우기
             if hasattr(self, 'event_listbox'): self.event_listbox.delete(0, tk.END)
             if hasattr(self, 'editor') and hasattr(self.editor, 'events'): self.editor.events = []
+
+        update_end_time = time.time() # 시간 측정 종료
+        elapsed_ms = (update_end_time - update_start_time) * 1000
+        logging.info(f"[TimeLog][GUI Update] update_gesture_list 완료. 처리 시간: {elapsed_ms:.2f}ms")
 
     def on_gesture_select(self, event=None):
         """제스처 리스트박스에서 항목 선택 시 호출"""
@@ -129,6 +138,9 @@ class GuiGestureManagerMixin:
 
     def update_event_list_for_gesture(self, gesture_internal_key):
         """주어진 제스처(내부 키)에 해당하는 이벤트 목록을 로드하고 표시"""
+        update_start_time = time.time() # 시간 측정 시작
+        logging.info(f"[TimeLog][GUI Update] update_event_list_for_gesture 시작 (Gesture: {gesture_internal_key})")
+
         # storage 객체 확인
         if not hasattr(self, 'storage'):
              print("Error: storage object not found.")
@@ -197,6 +209,10 @@ class GuiGestureManagerMixin:
                 self.update_status(f"Loaded {len(events)} events for gesture '{display_name}'.")
         else:
             print("Warning: event_listbox not found for displaying events.")
+
+        update_end_time = time.time() # 시간 측정 종료
+        elapsed_ms = (update_end_time - update_start_time) * 1000
+        logging.info(f"[TimeLog][GUI Update] update_event_list_for_gesture 완료. 처리 시간: {elapsed_ms:.2f}ms")
 
     def delete_selected_gesture(self):
         """선택된 제스처(들) 삭제"""

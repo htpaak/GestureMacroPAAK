@@ -1,5 +1,7 @@
 from gesture_processor import process_gesture
 import numpy as np # 디버깅을 위해 추가
+import time # 시간 측정을 위해 time 모듈 임포트
+import logging # 로깅 사용
 
 class GestureRecognizer:
     def __init__(self):
@@ -38,6 +40,9 @@ class GestureRecognizer:
     
     def stop_recording(self):
         """제스처 녹화 중지 및 인식 결과 반환"""
+        stop_record_start_time = time.time() # 처리 시작 시간
+        logging.info("[TimeLog][Recognizer] stop_recording 시작")
+
         print(f"[Recognizer] 녹화 중지 - 총 포인트 수: {len(self.points)}")
         # 디버깅: 입력된 포인트 전체 출력 (너무 길면 일부만 출력하도록 수정 가능)
         if len(self.points) > 0:
@@ -61,13 +66,20 @@ class GestureRecognizer:
         
         # 녹화 상태 초기화
         self.is_recording = False
+        self.points = [] # 포인트 리스트 명시적 초기화 추가
         
         # 결과 반환
         print(f"[Recognizer] 최종 인식 결과: {gesture_name}")
+        stop_record_end_time = time.time() # 처리 종료 시간
+        elapsed_ms = (stop_record_end_time - stop_record_start_time) * 1000
+        logging.info(f"[TimeLog][Recognizer] stop_recording 완료. 총 처리 시간: {elapsed_ms:.2f}ms")
         return gesture_name
     
     def get_complex_direction(self, points):
         """제스처 포인트를 분석하여 주요 방향 변화를 감지하고 복합 패턴으로 반환"""
+        complex_dir_start_time = time.time()
+        logging.info("[TimeLog][Recognizer] get_complex_direction 시작")
+
         if len(points) < 5:
             print("[Recognizer/Direction] 포인트 부족 (< 5) -> •")
             return "•"
@@ -170,6 +182,9 @@ class GestureRecognizer:
         
         final_pattern = "".join(simplified_directions)
         print(f"[Recognizer/Direction] 최종 반환 패턴: {final_pattern}")
+        complex_dir_end_time = time.time()
+        elapsed_ms = (complex_dir_end_time - complex_dir_start_time) * 1000
+        logging.info(f"[TimeLog][Recognizer] get_complex_direction 완료. 처리 시간: {elapsed_ms:.2f}ms")
         return final_pattern
     
     def get_direction_from_delta(self, dx, dy):

@@ -2,6 +2,7 @@ import tkinter as tk
 import pyautogui
 import time
 from pynput import keyboard, mouse
+from pynput.mouse import Controller as MouseController # Controller 임포트
 import monitor_utils  # monitor_utils 모듈 임포트
 
 class GlobalGestureListener:
@@ -31,7 +32,7 @@ class GlobalGestureListener:
         
         # 키보드/마우스 리스너
         self.keyboard_listener = None
-        self.mouse_listener = None
+        self.mouse_listener = None # None으로 초기화
     
     def set_callbacks(self, started_cb, moved_cb, ended_cb):
         """콜백 함수 설정 (변경된 시그니처에 맞춰 사용해야 함)"""
@@ -47,29 +48,21 @@ class GlobalGestureListener:
             return
             
         self.is_running = True
-        print("제스처 리스너 시작")
+        print("제스처 리스너 시작 (키보드 리스너만)")
         
         try:
-            # 키보드 리스너 설정
+            # 키보드 리스너 설정 및 시작
             self.keyboard_listener = keyboard.Listener(
                 on_press=self.on_key_press,
                 on_release=self.on_key_release
             )
-            
-            # 마우스 리스너 설정 - 이벤트 필터링 없이 모든 마우스 이벤트 수신
-            self.mouse_listener = mouse.Listener(
-                on_move=self.on_mouse_move,
-                on_click=lambda x, y, button, pressed: None,  # 클릭 이벤트 무시
-                on_scroll=lambda x, y, dx, dy: None  # 스크롤 이벤트 무시
-            )
-            
-            # 리스너 시작
             self.keyboard_listener.start()
-            self.mouse_listener.start()
-            
-            print("Global gesture listener started successfully")
+            print("Keyboard listener started successfully")
+
+            # 마우스 리스너는 여기서 시작하지 않음
+
         except Exception as e:
-            print(f"Error starting listeners: {e}")
+            print(f"Error starting keyboard listener: {e}")
             self.is_running = False
     
     def stop(self):
@@ -97,12 +90,19 @@ class GlobalGestureListener:
                 self.keyboard_listener.join()
                 print("Keyboard listener stopped and joined.")
                 
+            # --- 마우스 리스너 중지 (조건부) ---
             if self.mouse_listener:
-                self.mouse_listener.stop()
-                # 마우스 리스너 스레드가 종료될 때까지 대기
-                self.mouse_listener.join()
-                print("Mouse listener stopped and joined.")
-                
+                try:
+                    print("Stopping mouse listener...")
+                    self.mouse_listener.stop()
+                    self.mouse_listener.join() # 스레드 종료 대기
+                    print("Mouse listener stopped and joined.")
+                except Exception as e_mouse:
+                    print(f"Error stopping mouse listener: {e_mouse}")
+                finally:
+                    self.mouse_listener = None # 참조 제거
+            # --- 마우스 리스너 중지 끝 ---
+
             print("Global gesture listener stopped successfully")
         except Exception as e:
             print(f"Error stopping listeners: {e}")
@@ -144,7 +144,14 @@ class GlobalGestureListener:
                 
                 # 모디파이어 키가 처음 눌렸고, 아직 제스처 기록 중이 아닐 때 제스처 시작
                 if not self.is_recording:
-                    abs_x, abs_y = pyautogui.position()
+                    # abs_x, abs_y = pyautogui.position() # pyautogui 대신 pynput 사용
+                    try:
+                        with MouseController() as mc:
+                            abs_x, abs_y = mc.position
+                    except Exception as e_pos:
+                         print(f"Error getting mouse position using pynput: {e_pos}")
+                         return # 위치 얻기 실패 시 중단
+                    
                     current_monitor = monitor_utils.get_monitor_from_point(abs_x, abs_y)
 
                     if current_monitor:
@@ -152,6 +159,28 @@ class GlobalGestureListener:
                         self.start_monitor = current_monitor # 시작 모니터 저장
                         rel_x, rel_y = monitor_utils.absolute_to_relative(abs_x, abs_y, current_monitor)
                         print(f"제스처 시작: 모니터 {monitor_utils.get_monitors().index(current_monitor)} 상대좌표 ({rel_x}, {rel_y}), 절대좌표 ({abs_x}, {abs_y}), 모디파이어: {self.current_modifiers}")
+                        
+                        # --- 마우스 리스너 시작 (조건부) ---
+                        if not self.mouse_listener or not self.mouse_listener.is_alive():
+                            try:
+                                print("Starting mouse listener...")
+                                self.mouse_listener = mouse.Listener(
+                                    on_move=self.on_mouse_move,
+                                    on_click=lambda x, y, button, pressed: None,
+                                    on_scroll=lambda x, y, dx, dy: None
+                                )
+                                self.mouse_listener.start()
+                                print("Mouse listener started successfully.")
+                            except Exception as e_mouse_start:
+                                 print(f"Error starting mouse listener: {e_mouse_start}")
+                                 # 마우스 리스너 시작 실패 시 제스처 중단?
+                                 self.is_recording = False
+                                 self.start_monitor = None
+                                 self.reset_modifiers()
+                                 # 에러 콜백이나 로깅 추가 가능
+                                 return # on_key_press 종료
+                        # --- 마우스 리스너 시작 끝 ---
+
                         if self.on_gesture_started:
                             self.on_gesture_started((rel_x, rel_y), current_monitor, self.current_modifiers)
                         else:
@@ -195,6 +224,20 @@ class GlobalGestureListener:
                     self.is_recording = False
                     self.start_monitor = None # 시작 모니터 초기화
                     print("제스처 종료 - 모든 모디파이어 키 해제됨")
+
+                    # --- 마우스 리스너 중지 (조건부) ---
+                    if self.mouse_listener and self.mouse_listener.is_alive():
+                         try:
+                            print("Stopping mouse listener...")
+                            self.mouse_listener.stop()
+                            self.mouse_listener.join() # 스레드 종료 대기 중요
+                            print("Mouse listener stopped and joined.")
+                         except Exception as e_mouse_stop:
+                              print(f"Error stopping mouse listener: {e_mouse_stop}")
+                         finally:
+                              self.mouse_listener = None # 참조 제거
+                    # --- 마우스 리스너 중지 끝 ---
+
                     if self.on_gesture_ended:
                         self.on_gesture_ended()
                     else:
