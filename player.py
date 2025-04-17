@@ -183,39 +183,26 @@ class MacroPlayer:
             print(f"키보드 이벤트 실행 중 오류: {e}")
     
     def _play_mouse_event(self, event, base_x, base_y):
-        """마우스 이벤트 실행 (좌표 모드 처리 추가)"""
+        """마우스 이벤트 실행 (좌표 모드 처리 추가 -> is_relative 사용으로 복원)"""
         try:
             event_type = event['event_type']
             target_pos_orig = list(event['position']) # 원본 상대/절대 좌표
-            coord_mode = event.get('coord_mode', 'absolute') # 기본값: 절대
+            # coord_mode = event.get('coord_mode', 'absolute') # <<< 이 방식 대신 is_relative 사용
+            is_relative = event.get('is_relative', False) # is_relative 플래그 가져오기 (기본값 False)
             
-            # --- 좌표 모드에 따라 기준 좌표(base_target) 결정 --- 
+            # --- is_relative 값에 따라 기준 좌표(base_target) 결정 --- 
             base_target_x, base_target_y = 0, 0
             
-            if coord_mode == 'absolute':
-                # 절대 좌표 사용
-                base_target_x, base_target_y = target_pos_orig[0], target_pos_orig[1]
-                print(f"마우스 절대 이동 처리: Target({base_target_x}, {base_target_y})")
-            elif coord_mode == 'gesture_relative':
-                # 제스처 시작 위치(base_x, base_y) 기준 상대 좌표
+            if is_relative:
+                # 상대 좌표: 제스처 시작 위치(base_x, base_y) 기준 상대 좌표
                 base_target_x = base_x + target_pos_orig[0]
                 base_target_y = base_y + target_pos_orig[1]
-                print(f"마우스 제스처 상대 이동: Base({base_x}, {base_y}) + Rel({target_pos_orig[0]}, {target_pos_orig[1]}) -> Target({base_target_x}, {base_target_y})")
-            elif coord_mode == 'playback_relative':
-                # 현재 마우스 위치 기준 상대 좌표
-                try:
-                    current_x, current_y = mouse.get_position()
-                    base_target_x = current_x + target_pos_orig[0]
-                    base_target_y = current_y + target_pos_orig[1]
-                    print(f"마우스 재생 상대 이동: Current({current_x}, {current_y}) + Rel({target_pos_orig[0]}, {target_pos_orig[1]}) -> Target({base_target_x}, {base_target_y})")
-                except Exception as e:
-                    print(f"Error getting current mouse pos for playback relative: {e}. Using gesture base.")
-                    # 오류 시 제스처 기준으로 fallback?
-                    base_target_x = base_x + target_pos_orig[0]
-                    base_target_y = base_y + target_pos_orig[1]
-            else: # 알 수 없는 모드
-                print(f"경고: 알 수 없는 좌표 모드 '{coord_mode}'. 절대 좌표로 처리합니다.")
+                print(f"마우스 상대 이동: Base({base_x}, {base_y}) + Rel({target_pos_orig[0]}, {target_pos_orig[1]}) -> Target({base_target_x}, {base_target_y})")
+            else:
+                # 절대 좌표 사용
                 base_target_x, base_target_y = target_pos_orig[0], target_pos_orig[1]
+                print(f"마우스 절대 이동: Target({base_target_x}, {base_target_y})")
+
             # --- 기준 좌표 결정 끝 --- 
             
             # 랜덤 좌표 범위 처리 (결정된 기준 위치(base_target)에 적용)
