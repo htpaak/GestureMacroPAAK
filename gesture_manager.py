@@ -18,7 +18,7 @@ def log_memory_usage(label):
 # --- 함수 추가 끝 ---
 
 class GestureManager:
-    def __init__(self, macro_player, storage, recorder=None, timer_log_callback=None):
+    def __init__(self, macro_player, storage, recorder=None, timer_log_callback=None, monitors=None):
         """제스처 관리자 초기화"""
         self.macro_player = macro_player
         self.storage = storage # 이제 MacroStorage는 macros.json을 관리
@@ -41,8 +41,8 @@ class GestureManager:
         # 제스처 인식기 초기화
         self.gesture_recognizer = GestureRecognizer()
         
-        # 전역 제스처 리스너 초기화 (root 전달 제거)
-        self.gesture_listener = GlobalGestureListener()
+        # GlobalGestureListener 초기화 (monitors 전달)
+        self.gesture_listener = GlobalGestureListener(monitors)
         
         # 콜백 설정
         self.gesture_listener.set_callbacks(

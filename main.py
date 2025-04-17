@@ -16,6 +16,7 @@ from storage import MacroStorage
 from gui_base import GuiBase      # GuiBase 임포트
 from gesture_manager import GestureManager
 from tray_manager import TrayManager
+import monitor_utils # monitor_utils 임포트 추가
 
 # 로깅 설정
 log_format = '%(asctime)s - PID:%(process)d - %(levelname)s - %(message)s'
@@ -187,6 +188,17 @@ def main():
     # 전역 변수 사용 선언
     global root_window, gui, recorder, player, editor, storage, gesture_manager, tray_manager, icon_path_global
 
+    # --- Tkinter 생성 전 모니터 정보 미리 로드 --- 
+    monitors = None
+    try:
+        logging.info("Pre-loading monitor info...")
+        monitors = monitor_utils.get_monitors()
+        logging.info(f"Pre-loaded {len(monitors)} monitors.")
+    except Exception as e:
+        logging.error(f"Failed to pre-load monitor info: {e}", exc_info=True)
+        monitors = [] # 오류 시 빈 리스트 사용
+    # --- 로드 끝 ---
+
     # 루트 윈도우 생성
     try:
         root_window = tk.Tk()
@@ -252,7 +264,7 @@ def main():
     #     logging.info("작업표시줄 아이콘 설정 타이머 스케줄링 (100ms)...") # 디버깅 로그 추가
     #     root_window.after(100, lambda: set_taskbar_icon(root_window, icon_path_global))
 
-    # --- TrayManager 초기화 및 시작 ---
+    # --- TrayManager 초기화 및 시작 주석 해제 ---
     try:
         logging.info("Initializing TrayManager...")
         tray_manager = TrayManager(root_window, icon_path_global, app_name, graceful_exit)
@@ -265,61 +277,59 @@ def main():
     except Exception as e:
         logging.error("Failed to initialize or start TrayManager:", exc_info=True)
         tray_manager = None # 실패 시 None 처리
+    # --- 주석 해제 끝 ---
 
     # 디버깅 정보 출력
     logging.info(f"System: {sys.platform}, CWD: {os.getcwd()}")
 
-    # 인스턴스 생성
+    # --- 인스턴스 생성 (monitors 전달 추가) ---
     try:
         storage = MacroStorage()
         player = MacroPlayer()
         editor = MacroEditor(storage)
-        
-        # Recorder 먼저 생성 (GUI 없이)
         recorder = MacroRecorder()
+        # GestureManager 생성 시 monitors 전달
+        gesture_manager = GestureManager(player, storage, recorder, timer_log_callback=log_timer_delay, monitors=monitors)
         
-        # GestureManager 생성 (root_window 전달 제거)
-        gesture_manager = GestureManager(player, storage, recorder, timer_log_callback=log_timer_delay)
-        
-        # 이제 GUI 생성 (모든 필요한 컴포넌트 전달)
+        # GUI 생성
         gui = GuiBase(root_window, recorder, player, editor, storage, gesture_manager)
-        
-        # Recorder에 부모 설정
         recorder.parent = gui
         
-        # --- 디버깅 코드 추가 --- 
-        print(f"[DEBUG main.py] gesture_manager 생성됨: {gesture_manager}")
-        if hasattr(gesture_manager, 'storage'):
-            print(f"[DEBUG main.py] gesture_manager.storage: {gesture_manager.storage}")
-            print(f"[DEBUG main.py] type(gesture_manager.storage): {type(gesture_manager.storage)}")
-        else:
-            print("[DEBUG main.py] gesture_manager에 storage 속성 없음!")
-        # --- 디버깅 코드 끝 --- 
-        logging.info("Core components initialized.")
+        # --- 디버깅 코드 확인 (이미 주석 해제됨) ---
+        # print(f"[DEBUG main.py] gesture_manager 생성됨: {gesture_manager}")
+        # ...
+        logging.info("Core components initialized (including GUI).")
     except Exception as e:
         logging.error("Failed to initialize core components:", exc_info=True)
         graceful_exit() # 초기화 실패 시 정리 및 종료 시도
         return
+    # --- 주석 해제 끝 ---
 
     # 윈도우 표시
     if root_window:
         root_window.deiconify()
         logging.info("Root window shown.")
 
-    # 닫기(X) 버튼 클릭 시 동작 설정
+    # --- 닫기(X) 버튼 클릭 시 동작 설정 주석 해제 ---
     if root_window:
         if tray_manager and tray_manager.is_running(): # 트레이 매니저가 성공적으로 시작되었는지 확인
             root_window.protocol("WM_DELETE_WINDOW", tray_manager.hide_window)
             logging.info("WM_DELETE_WINDOW bound to hide_window.")
         else:
+            # 트레이 매니저 없으면 그냥 종료
             root_window.protocol("WM_DELETE_WINDOW", graceful_exit)
-            logging.info("WM_DELETE_WINDOW bound to graceful_exit.")
+            logging.info("WM_DELETE_WINDOW bound to graceful_exit (default).")
+    # --- 주석 해제 끝 ---
 
-    # 자동으로 제스처 인식 활성화
+    # --- 자동으로 제스처 인식 활성화 주석 해제 ---
     if root_window:
-        scheduled_time = time.time()
-        logging.info(f"자동 제스처 인식 활성화 타이머 스케줄링 (500ms)... 스케줄 시점: {scheduled_time}")
-        root_window.after(500, lambda: auto_enable_gesture(scheduled_time))
+        if gui: # gui 변수가 생성되었는지 확인
+            scheduled_time = time.time()
+            logging.info(f"자동 제스처 인식 활성화 타이머 스케줄링 (500ms)... 스케줄 시점: {scheduled_time}")
+            # auto_enable_gesture 함수가 gui.start_gesture_recognition()을 호출하도록 수정 필요할 수 있음
+            root_window.after(500, lambda: auto_enable_gesture(scheduled_time))
+        # pass 제거
+    # --- 주석 해제 끝 ---
 
     # 메인 루프 시작
     try:

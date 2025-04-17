@@ -59,7 +59,7 @@ def mouse_hook_process_target(queue, stop_event):
 # --- 별도 프로세스 함수 끝 ---
 
 class GlobalGestureListener:
-    def __init__(self):
+    def __init__(self, monitors):
         # self.root = root # 제거
         # 상태 플래그
         self.is_running = False
@@ -93,13 +93,12 @@ class GlobalGestureListener:
         self.last_move_time = 0
         self.min_move_interval = 0.015 # 초 단위 (15ms)
         
-        # --- 모니터 정보 캐싱 ---
-        try:
-            self._cached_monitors = monitor_utils.get_monitors() # 초기화 시 모니터 정보 캐싱
-            logging.info(f"Cached {len(self._cached_monitors)} monitors.")
-        except Exception as e:
-            logging.error(f"Failed to cache monitors during initialization: {e}", exc_info=True)
-            self._cached_monitors = [] # 실패 시 빈 리스트로 초기화
+        # --- 모니터 정보 (생성 시 주입) ---
+        self._cached_monitors = monitors if monitors is not None else []
+        if monitors is not None:
+            logging.info(f"Received and cached {len(self._cached_monitors)} monitors.")
+        else:
+             logging.warning("Received None for monitors, caching empty list.")
         # --- 캐싱 끝 ---
         
         # --- 멀티프로세싱 관련 속성 --- 
@@ -296,6 +295,10 @@ class GlobalGestureListener:
 
     def _get_monitor_from_point_cached(self, x, y):
         """캐싱된 모니터 정보(_cached_monitors)를 사용하여 좌표가 속한 모니터를 찾습니다."""
+        # --- 지연 로딩 로직 제거됨 ---
+        # if self._cached_monitors is None:
+        #     ...
+        
         for m in self._cached_monitors:
             if m.x <= x < m.x + m.width and m.y <= y < m.y + m.height:
                 return m
