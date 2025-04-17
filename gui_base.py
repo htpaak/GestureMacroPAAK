@@ -49,6 +49,7 @@ class GuiBase(
         self.record_keyboard = tk.BooleanVar(value=True)
         # 좌표 선택 라디오 버튼용 변수 (기본값 'absolute')
         self.coord_selection_var = tk.StringVar(value="absolute")
+        self.coord_mode_var = tk.StringVar(value='absolute')
 
         # 재생 설정
         self.infinite_repeat = tk.BooleanVar(value=False)

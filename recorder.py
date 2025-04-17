@@ -15,9 +15,11 @@ class MacroRecorder:
         
         # 녹화 설정
         self.record_mouse_move = False
-        self.use_relative_coords = False
+        self.use_relative_coords = False # <<< 이 속성은 더 이상 사용되지 않음
         self.record_keyboard = True
         self.record_delay = True  # 딜레이 녹화 설정 기본값을 True로 변경
+        self.recording_coord_mode = "absolute" # <<< 추가: 현재 녹화 좌표 모드
+        self.last_mouse_pos = None # <<< 추가: Mouse Relative 모드용 마지막 위치
         
         # 좌표 기준점 (상대좌표 사용 시)
         self.base_x = 0
@@ -48,16 +50,26 @@ class MacroRecorder:
             # 이렇게 하지 않으면 녹화 중에 마우스 이동 설정을 변경할 수 없음
             mouse.hook(self._mouse_callback)
             
-            # 상대좌표 사용 시 시작 위치 기록
-            if self.use_relative_coords:
-                pos = mouse.get_position()
-                self.base_x, self.base_y = pos
-                print(f"Relative coordinate base set to: ({self.base_x}, {self.base_y})")
-            else:
-                self.base_x, self.base_y = 0, 0 # 절대 좌표 모드 시 초기화
+            # --- 좌표 모드에 따른 초기 설정 --- 
+            current_pos = mouse.get_position()
+            if self.recording_coord_mode == 'gesture_relative':
+                # 기존 'relative' 모드와 동일하게 동작
+                self.base_x, self.base_y = current_pos
+                self.last_mouse_pos = None # 사용 안 함
+                print(f"Gesture Relative 모드 시작. 기준 좌표: ({self.base_x}, {self.base_y})")
+            elif self.recording_coord_mode == 'playback_relative':
+                # Mouse Relative 모드: 현재 위치를 마지막 위치로 저장
+                self.last_mouse_pos = current_pos
+                self.base_x, self.base_y = None, None # 사용 안 함
+                print(f"Mouse Relative 모드 시작. 첫 위치: {self.last_mouse_pos}")
+            else: # 'absolute' 모드 (기본값)
+                self.base_x, self.base_y = None, None # 사용 안 함
+                self.last_mouse_pos = None # 사용 안 함
+                print("Absolute 모드 시작.")
+            # --- 초기 설정 끝 --- 
             
             # 녹화 설정 정보 출력
-            settings = []
+            settings = [f"좌표모드({self.recording_coord_mode})"] # 좌표 모드 표시 추가
             if self.record_delay:
                 settings.append("딜레이")
             if self.record_mouse_move:
@@ -236,87 +248,119 @@ class MacroRecorder:
                     self.events.append(event_data)
     
     def _mouse_callback(self, event):
-        """마우스 이벤트 콜백"""
+        """마우스 이벤트 콜백 함수 (3가지 좌표 모드 지원)"""
         if not self.recording:
             return
-            
-        current_time = time.time() - self.start_time
+
+        current_time = time.time() # 이벤트 발생 시간 기록
+        event_time_relative = current_time - self.start_time # 녹화 시작 기준 시간
+
+        event_data = None
+        current_pos = None # 현재 위치 저장용
         
-        # 이벤트 타입에 따라 다르게 처리
-        if isinstance(event, mouse.MoveEvent):
-            # 마우스 이동 이벤트는 설정에 따라 필터링
-            if not self.record_mouse_move:
-                return
-            
-            # 딜레이 체크 및 필요 시 딜레이 이벤트 추가
-            self._add_delay_event_if_needed(current_time)
-                
+        # --- 이벤트 타입별 처리 ---
+        if isinstance(event, mouse.ButtonEvent):
+            # 버튼/휠 이벤트는 딜레이 체크 먼저
+            self._add_delay_event_if_needed(event_time_relative) 
+            current_pos = mouse.get_position() # 버튼/휠 이벤트 발생 시 위치 가져오기
+            # print(f"Mouse Button: {event.event_type} {event.button} at {current_pos}") # 디버깅
+
+            # 좌표 계산
+            position_to_save, coord_mode_to_save = self._calculate_coordinates(current_pos)
+
+            event_data = {
+                'type': 'mouse',
+                'event_type': event.event_type,
+                'button': event.button,
+                'position': position_to_save, # 계산된 좌표
+                'coord_mode': coord_mode_to_save, # 저장된 모드
+                'time': event_time_relative
+            }
+
+        elif isinstance(event, mouse.MoveEvent):
+            if not self.record_mouse_move or (current_time - getattr(self, 'last_move_time', 0) < self.mouse_move_interval):
+                 return # 이동 녹화 비활성화 또는 너무 짧은 간격이면 무시
+
+            # Move 이벤트는 딜레이 추가 안 함
+            current_pos = (event.x, event.y)
+            # print(f"Mouse Move to {current_pos}") # 디버깅
+
+            # 좌표 계산
+            position_to_save, coord_mode_to_save = self._calculate_coordinates(current_pos)
+
             event_data = {
                 'type': 'mouse',
                 'event_type': 'move',
-                'time': current_time
+                'button': 'move', # 구분용
+                'position': position_to_save,
+                'coord_mode': coord_mode_to_save,
+                'time': event_time_relative
             }
-            
-            # 상대좌표 또는 절대좌표
-            if self.use_relative_coords:
-                rel_x = event.x - self.base_x
-                rel_y = event.y - self.base_y
-                event_data['position'] = (rel_x, rel_y)
-                event_data['is_relative'] = True
-            else:
-                event_data['position'] = (event.x, event.y)
-                event_data['is_relative'] = False
-            
-            self.events.append(event_data)
-                
-        elif isinstance(event, mouse.ButtonEvent):
-            # 딜레이 체크 및 필요 시 딜레이 이벤트 추가
-            self._add_delay_event_if_needed(current_time)
-            
-            event_data = {
-                'type': 'mouse',
-                'event_type': event.event_type,  # 'up', 'down', 'double'
-                'button': event.button,
-                'time': current_time
-            }
-            
-            # 상대좌표 또는 절대좌표
-            pos = mouse.get_position()
-            if self.use_relative_coords:
-                rel_x = pos[0] - self.base_x
-                rel_y = pos[1] - self.base_y
-                event_data['position'] = (rel_x, rel_y)
-                event_data['is_relative'] = True
-            else:
-                event_data['position'] = pos
-                event_data['is_relative'] = False
-            
-            self.events.append(event_data)
-                
+            self.last_move_time = current_time # 마지막 *이동* 시간 업데이트
+
         elif isinstance(event, mouse.WheelEvent):
-            # 딜레이 체크 및 필요 시 딜레이 이벤트 추가
-            self._add_delay_event_if_needed(current_time)
-            
+            # 버튼/휠 이벤트는 딜레이 체크 먼저
+            self._add_delay_event_if_needed(event_time_relative) 
+            current_pos = mouse.get_position()
+            # print(f"Mouse Wheel: Delta {event.delta} at {current_pos}") # 디버깅
+
+            # 좌표 계산
+            position_to_save, coord_mode_to_save = self._calculate_coordinates(current_pos)
+
             event_data = {
                 'type': 'mouse',
-                'event_type': 'scroll',
+                'event_type': 'wheel',
                 'delta': event.delta,
-                'time': current_time
+                'position': position_to_save, # 계산된 좌표
+                'coord_mode': coord_mode_to_save, # 저장된 모드
+                'time': event_time_relative
             }
-            
-            # 상대좌표 또는 절대좌표
-            pos = mouse.get_position()
-            if self.use_relative_coords:
-                rel_x = pos[0] - self.base_x
-                rel_y = pos[1] - self.base_y
-                event_data['position'] = (rel_x, rel_y)
-                event_data['is_relative'] = True
-            else:
-                event_data['position'] = pos
-                event_data['is_relative'] = False
-            
+
+        # 이벤트 기록 및 상태 업데이트
+        if event_data:
             self.events.append(event_data)
-    
+            # 마지막 이벤트 시간 업데이트 (다음 Button/Wheel/Keyboard 딜레이 계산용)
+            self.last_event_time = event_time_relative
+            
+            # 현재 마우스 위치 업데이트 (Mouse Relative 다음 계산 및 다른 모드 시작 시 사용 위함)
+            if current_pos:
+                 self.last_mouse_pos = current_pos # 모든 마우스 이벤트 후 업데이트
+                 
+    def _calculate_coordinates(self, current_pos):
+        """현재 위치와 녹화 모드에 따라 저장할 좌표와 모드를 계산하여 반환"""
+        position_to_save = [0, 0]
+        # 현재 설정된 녹화 모드를 가져옴 (이 함수 내에서 변경될 수 있음)
+        coord_mode_to_save = self.recording_coord_mode 
+
+        if coord_mode_to_save == 'absolute':
+            position_to_save = list(current_pos)
+        elif coord_mode_to_save == 'gesture_relative':
+            if self.base_x is not None and self.base_y is not None:
+                 position_to_save = [current_pos[0] - self.base_x, current_pos[1] - self.base_y]
+            else:
+                # 기준점 없으면 경고 후 절대 좌표로 저장
+                print("Warning: Gesture relative mode selected but base coords not set. Recording absolute for this event.")
+                position_to_save = list(current_pos)
+                coord_mode_to_save = 'absolute' # 이 이벤트만 모드 변경
+        elif coord_mode_to_save == 'playback_relative':
+            if self.last_mouse_pos:
+                # 이전 위치와의 차이 계산
+                delta_x = current_pos[0] - self.last_mouse_pos[0]
+                delta_y = current_pos[1] - self.last_mouse_pos[1]
+                position_to_save = [delta_x, delta_y]
+            else:
+                # 첫 이벤트면 이동량 (0,0) 또는 절대 좌표 기록 (여기선 절대 좌표 선택)
+                print("Warning: Mouse relative mode - first event? Recording absolute for this event.")
+                position_to_save = list(current_pos)
+                coord_mode_to_save = 'absolute' # 이 이벤트만 모드 변경
+        else: # 알 수 없는 모드
+            print(f"Warning: Unknown recording coord mode '{coord_mode_to_save}'. Recording absolute.")
+            position_to_save = list(current_pos)
+            coord_mode_to_save = 'absolute' # 폴백
+
+        # 계산된 좌표와 실제 저장될 모드 반환
+        return position_to_save, coord_mode_to_save
+
     def get_recorded_events(self):
         """녹화된 이벤트 반환"""
         return self.events

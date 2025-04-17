@@ -173,31 +173,40 @@ class GuiEventListMixin:
         keyboard_frame.pack(side=tk.LEFT, padx=10, pady=2)
         ttk.Checkbutton(keyboard_frame, text="Record Keyboard", variable=getattr(self, 'record_keyboard', tk.BooleanVar(value=True))).pack(anchor=tk.W)
 
-        # 좌표 옵션 프레임 (절대/상대 라디오 버튼)
+        # 좌표 옵션 프레임 (3가지 모드 라디오 버튼)
         coord_frame = ttk.Frame(options_inner_frame)
         coord_frame.pack(side=tk.LEFT, padx=10, pady=2)
 
-        # 라디오 버튼 선택 시 BooleanVar 업데이트하는 콜백
-        def update_coord_booleans():
-            selected_coord = self.coord_selection_var.get()
-            is_relative = (selected_coord == "relative")
-            self.use_absolute_coords.set(not is_relative)
-            self.use_relative_coords.set(is_relative)
+        # 라디오 버튼 선택 시 recorder의 recording_coord_mode 업데이트하는 콜백
+        def update_recorder_coord_mode():
+            selected_mode = self.coord_mode_var.get() # 수정: coord_selection_var -> coord_mode_var 사용
 
             # Recorder 설정 업데이트
             if hasattr(self, 'recorder') and self.recorder:
-                self.recorder.use_relative_coords = is_relative
-                print(f"Recorder coord mode set to: {'Relative' if is_relative else 'Absolute'}") # 디버깅 로그
+                # recorder 객체에 새로운 속성 설정
+                self.recorder.recording_coord_mode = selected_mode 
+                print(f"Recorder coord mode set to: {selected_mode}") # 디버깅 로그
+                
+                # --- 기존 BooleanVar 업데이트 로직 제거 ---
+                # is_relative = (selected_mode != "absolute")
+                # self.use_absolute_coords.set(not is_relative) 
+                # self.use_relative_coords.set(is_relative) # 기존 변수 업데이트 중지
+                # self.recorder.use_relative_coords = is_relative # 기존 속성 업데이트 중지
             else:
                 print("Warning: Recorder object not found to update settings.")
 
-        # GuiBase의 StringVar 사용
-        ttk.Radiobutton(coord_frame, text="Absolute Coords",
-                        variable=self.coord_selection_var, value="absolute",
-                        command=update_coord_booleans).pack(anchor=tk.W)
-        ttk.Radiobutton(coord_frame, text="Relative Coords",
-                        variable=self.coord_selection_var, value="relative",
-                        command=update_coord_booleans).pack(anchor=tk.W)
+        # GuiBase의 coord_mode_var 사용 (StringVar)
+        ttk.Radiobutton(coord_frame, text="Absolute",
+                        variable=self.coord_mode_var, value="absolute",
+                        command=update_recorder_coord_mode).pack(anchor=tk.W)
+        # 현재 "Relative Coords" 로직은 "Gesture Relative"로 연결
+        ttk.Radiobutton(coord_frame, text="Gesture Relative", 
+                        variable=self.coord_mode_var, value="gesture_relative",
+                        command=update_recorder_coord_mode).pack(anchor=tk.W)
+        # "Mouse Relative" 옵션 추가 (내부 값은 "playback_relative")
+        ttk.Radiobutton(coord_frame, text="Mouse Relative",
+                        variable=self.coord_mode_var, value="playback_relative", 
+                        command=update_recorder_coord_mode).pack(anchor=tk.W)
 
     def update_event_list(self):
         """이벤트 목록 업데이트. 녹화 중이면 recorder에서, 아니면 editor에서 이벤트를 가져와 표시합니다."""
