@@ -4,6 +4,8 @@ from tkinter import messagebox, simpledialog
 import os # update_event_list에서 사용될 수 있음
 import copy # update_event_list에서 사용될 수 있음
 import json # update_event_list에서 사용될 수 있음
+import time # add_mouse_move_event 에서 사용
+from gui_utilities import ask_coordinates # 좌표 입력 함수 임포트
 
 class GuiEventEditorMixin:
     """GUI의 이벤트 목록 업데이트, 표시, 선택, 편집(추가, 삭제, 수정, 이동)을 담당하는 믹스인 클래스"""
@@ -700,3 +702,64 @@ class GuiEventEditorMixin:
                 messagebox.showinfo("Edit Event (Not Implemented)", f"Double-clicked event #{index+1}.\nEditing functionality is not yet implemented for this event type.")
         else:
             print("Double-click ignored (no single event selected).")
+
+    def add_mouse_move_event(self):
+        """새 마우스 이동 이벤트를 추가합니다 (좌표 모드 선택 포함)."""
+        print("add_mouse_move_event called")
+        # 녹화 중 추가 불가
+        if hasattr(self, 'recorder') and self.recorder.recording:
+            messagebox.showwarning("Recording Active", "Cannot add events while recording.")
+            return
+
+        # 에디터 확인
+        if not hasattr(self, 'editor'):
+            messagebox.showerror("Error", "Editor object not found.")
+            return
+
+        # 현재 선택된 이벤트가 있는지 확인 (새 이벤트 삽입 위치 결정)
+        selected_index = -1 # 기본값: 맨 뒤에 추가
+        if hasattr(self, 'selected_events') and self.selected_events:
+            selected_index = self.selected_events[-1] # 마지막 선택 항목 뒤에 삽입
+
+        # --- 좌표 및 모드 입력 대화 상자 호출 ---
+        result = ask_coordinates(self.root, title="Add Mouse Move Event", show_mode_options=True)
+
+        if result is not None:
+            x, y, mode = result
+            # --- 이벤트 데이터 생성 --- 
+            new_event = {
+                'time': 0, # 시간은 나중에 editor에서 계산/설정 가정
+                'type': 'mouse',
+                'event_type': 'move',
+                'position': [x, y],
+                'button': 'move', # 이전 형식 유지
+                'coord_mode': mode # 좌표 모드 정보 추가
+            }
+            
+            # is_relative 플래그는 coord_mode 로 대체 (이전 형식 호환성 위해 유지 가능)
+            if mode == 'absolute':
+                 new_event['is_relative'] = False 
+            else:
+                 new_event['is_relative'] = True # gesture_relative 또는 playback_relative
+            
+            print(f"Adding event: {new_event}")
+            
+            # 에디터에 이벤트 추가 요청
+            try:
+                if hasattr(self.editor, 'insert_event') and callable(self.editor.insert_event):
+                    # 삽입 위치 전달 (기본값은 맨 뒤 -> insert_event는 index < 0 이면 맨 뒤에 추가)
+                    insert_pos = selected_index + 1 if selected_index != -1 else -1 # 맨 뒤는 -1
+                    inserted_idx = self.editor.insert_event(insert_pos, new_event)
+                    
+                    if inserted_idx != -1: # insert_event 성공 시 반환된 인덱스 확인
+                        print(f"Event added at index: {inserted_idx}")
+                        self.update_event_list() # 목록 갱신
+                        # 새로 추가된 이벤트 선택
+                        self.set_single_selection(inserted_idx)
+                    else:
+                         messagebox.showerror("Error", "Failed to insert event (editor returned -1).")
+                else:
+                    # 이제 insert_event 가 없으면 에러 발생
+                    messagebox.showerror("Error", "Editor does not support inserting events (insert_event missing).")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to add event: {e}")

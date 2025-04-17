@@ -183,29 +183,44 @@ class MacroPlayer:
             print(f"키보드 이벤트 실행 중 오류: {e}")
     
     def _play_mouse_event(self, event, base_x, base_y):
-        """마우스 이벤트 실행 (기준 좌표 사용)"""
+        """마우스 이벤트 실행 (좌표 모드 처리 추가)"""
         try:
             event_type = event['event_type']
-            target_pos_orig = list(event['position']) # 원본 좌표 (튜플을 리스트로)
-            target_pos = list(target_pos_orig) # 수정될 좌표
+            target_pos_orig = list(event['position']) # 원본 상대/절대 좌표
+            coord_mode = event.get('coord_mode', 'absolute') # 기본값: 절대
             
-            # 상대 좌표 처리 먼저 수행하여 기준 위치 결정
-            is_relative = event.get('is_relative', False)
+            # --- 좌표 모드에 따라 기준 좌표(base_target) 결정 --- 
             base_target_x, base_target_y = 0, 0
             
-            if is_relative:
-                # 기준 좌표에 상대 좌표 더하기
-                base_target_x = base_x + target_pos[0]
-                base_target_y = base_y + target_pos[1]
-                print(f"마우스 상대 이동 처리: Base({base_x}, {base_y}) + Rel({target_pos[0]}, {target_pos[1]}) -> BaseTarget({base_target_x}, {base_target_y})")
-            else:
+            if coord_mode == 'absolute':
                 # 절대 좌표 사용
-                base_target_x, base_target_y = target_pos[0], target_pos[1]
-                print(f"마우스 절대 이동 처리: BaseTarget({base_target_x}, {base_target_y})")
+                base_target_x, base_target_y = target_pos_orig[0], target_pos_orig[1]
+                print(f"마우스 절대 이동 처리: Target({base_target_x}, {base_target_y})")
+            elif coord_mode == 'gesture_relative':
+                # 제스처 시작 위치(base_x, base_y) 기준 상대 좌표
+                base_target_x = base_x + target_pos_orig[0]
+                base_target_y = base_y + target_pos_orig[1]
+                print(f"마우스 제스처 상대 이동: Base({base_x}, {base_y}) + Rel({target_pos_orig[0]}, {target_pos_orig[1]}) -> Target({base_target_x}, {base_target_y})")
+            elif coord_mode == 'playback_relative':
+                # 현재 마우스 위치 기준 상대 좌표
+                try:
+                    current_x, current_y = mouse.get_position()
+                    base_target_x = current_x + target_pos_orig[0]
+                    base_target_y = current_y + target_pos_orig[1]
+                    print(f"마우스 재생 상대 이동: Current({current_x}, {current_y}) + Rel({target_pos_orig[0]}, {target_pos_orig[1]}) -> Target({base_target_x}, {base_target_y})")
+                except Exception as e:
+                    print(f"Error getting current mouse pos for playback relative: {e}. Using gesture base.")
+                    # 오류 시 제스처 기준으로 fallback?
+                    base_target_x = base_x + target_pos_orig[0]
+                    base_target_y = base_y + target_pos_orig[1]
+            else: # 알 수 없는 모드
+                print(f"경고: 알 수 없는 좌표 모드 '{coord_mode}'. 절대 좌표로 처리합니다.")
+                base_target_x, base_target_y = target_pos_orig[0], target_pos_orig[1]
+            # --- 기준 좌표 결정 끝 --- 
             
-            # 랜덤 좌표 범위 처리 (결정된 기준 위치에 적용)
+            # 랜덤 좌표 범위 처리 (결정된 기준 위치(base_target)에 적용)
             final_x, final_y = base_target_x, base_target_y
-            if 'random_range' in event and event_type != 'scroll': # 스크롤에는 랜덤 좌표 무의미
+            if 'random_range' in event and event_type != 'scroll':
                 range_px = event['random_range']
                 # 정수로 변환 보장
                 range_px_int = int(range_px) if isinstance(range_px, (int, float)) else 0
@@ -218,7 +233,6 @@ class MacroPlayer:
             # 마우스 액션 수행 (계산된 final_x, final_y 사용)
             if event_type == 'move':
                 mouse.move(final_x, final_y)
-                # print(f"마우스 이동: ({final_x}, {final_y})") # 로그는 위에서 출력
             elif event_type == 'down':
                 button = event['button']
                 mouse.move(final_x, final_y) # 이동 후 클릭

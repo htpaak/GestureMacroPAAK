@@ -1,13 +1,102 @@
 # gui_utilities.py
 import tkinter as tk
-from tkinter import messagebox
-try:
-    import keyboard # Optional dependency
-except ImportError:
-    keyboard = None
-    print("Warning: 'keyboard' library not found. Hotkeys will be disabled.")
+from tkinter import messagebox, ttk
+# try: # keyboard import 부분 주석 처리 또는 삭제
+#     import keyboard # Optional dependency
+# except ImportError:
+#     keyboard = None
+#     print("Warning: 'keyboard' library not found. Hotkeys will be disabled.")
+import keyboard # 단축키 설정용
 
-# Class definition moved outside the try-except block
+# --- 좌표 입력 대화 상자 클래스 추가 ---
+class CoordinateDialog(tk.Toplevel):
+    """X, Y 좌표 및 좌표 모드를 입력받는 모달 대화 상자"""
+    def __init__(self, parent, title="Enter Coordinates", initial_x=0, initial_y=0, show_mode_options=False):
+        super().__init__(parent)
+        self.parent = parent # 부모 창 저장
+        self.title(title)
+        dialog_width = 330 if show_mode_options else 250 # 폭은 유지
+        dialog_height = 260 if show_mode_options else 120 # 높이 증가 (240 -> 260)
+        # self.geometry("280x180" if show_mode_options else "250x120") # 이전 코드 주석 처리
+
+        # --- 창 중앙 정렬 로직 추가 ---
+        parent_x = parent.winfo_x()
+        parent_y = parent.winfo_y()
+        parent_width = parent.winfo_width()
+        parent_height = parent.winfo_height()
+        x = parent_x + (parent_width // 2) - (dialog_width // 2)
+        y = parent_y + (parent_height // 2) - (dialog_height // 2)
+        self.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+        # --- 중앙 정렬 로직 끝 ---
+
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+
+        self.result = None # 결과: (x, y, mode) 튜플 또는 None
+        self.coord_mode_var = tk.StringVar(value="absolute") # 기본값: 절대좌표
+
+        frame = ttk.Frame(self, padding="10 10 10 10")
+        frame.pack(expand=True, fill=tk.BOTH)
+
+        # 좌표 입력 필드
+        coord_frame = ttk.Frame(frame)
+        coord_frame.pack(pady=5)
+        ttk.Label(coord_frame, text="X:").grid(column=0, row=0, sticky=tk.W, padx=5)
+        self.x_entry = ttk.Entry(coord_frame, width=10)
+        self.x_entry.grid(column=1, row=0, padx=5)
+        self.x_entry.insert(0, str(initial_x))
+        ttk.Label(coord_frame, text="Y:").grid(column=2, row=0, sticky=tk.W, padx=5)
+        self.y_entry = ttk.Entry(coord_frame, width=10)
+        self.y_entry.grid(column=3, row=0, padx=5)
+        self.y_entry.insert(0, str(initial_y))
+
+        # 좌표 모드 선택 (옵션 활성화 시 표시)
+        if show_mode_options:
+            mode_frame = ttk.LabelFrame(frame, text="Coordinate Mode", padding=5)
+            mode_frame.pack(pady=5, fill=tk.X)
+            ttk.Radiobutton(mode_frame, text="Absolute", variable=self.coord_mode_var, value="absolute").pack(anchor=tk.W)
+            ttk.Radiobutton(mode_frame, text="Gesture Relative", variable=self.coord_mode_var, value="gesture_relative").pack(anchor=tk.W)
+            # --- Mouse Relative 라디오 버튼 확인 및 추가 ---
+            ttk.Radiobutton(mode_frame, text="Mouse Relative", variable=self.coord_mode_var, value="playback_relative").pack(anchor=tk.W)
+
+        # OK/Cancel 버튼
+        button_frame = ttk.Frame(frame)
+        button_frame.pack(side=tk.BOTTOM, pady=10)
+        ok_button = ttk.Button(button_frame, text="OK", command=self.on_ok, width=8)
+        ok_button.pack(side=tk.LEFT, padx=5)
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=self.on_cancel, width=8)
+        cancel_button.pack(side=tk.LEFT, padx=5)
+
+        self.bind('<Return>', self.on_ok)
+        self.bind('<Escape>', self.on_cancel)
+        self.x_entry.focus_set()
+        self.x_entry.selection_range(0, tk.END)
+        self.wait_window(self)
+
+    def on_ok(self, event=None):
+        try:
+            x = int(self.x_entry.get())
+            y = int(self.y_entry.get())
+            mode = self.coord_mode_var.get()
+            self.result = (x, y, mode) # 결과를 튜플로 반환
+            self.destroy()
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Please enter valid integers for X and Y.", parent=self)
+            self.x_entry.focus_set()
+            self.x_entry.selection_range(0, tk.END)
+
+    def on_cancel(self, event=None):
+        self.result = None
+        self.destroy()
+
+# --- 좌표 입력 대화 상자 호출 함수 ---
+def ask_coordinates(parent, title="Enter Coordinates", initial_x=0, initial_y=0, show_mode_options=False):
+    """좌표 입력 대화 상자를 표시하고 (x, y, mode) 튜플 또는 None을 반환"""
+    dialog = CoordinateDialog(parent, title, initial_x, initial_y, show_mode_options)
+    return dialog.result
+
+# --- 기존 GuiUtilitiesMixin 클래스 ---
 class GuiUtilitiesMixin:
     """GUI의 기타 유틸리티 기능(녹화 설정, 실시간 업데이트, 단축키)을 담당하는 믹스인 클래스"""
 
