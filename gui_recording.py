@@ -317,78 +317,27 @@ class GuiRecordingMixin:
     def toggle_recording(self, event=None):
         """녹화 시작/중지 토글 (단축키 등에서 사용)"""
         if hasattr(self, 'recorder') and self.recorder.recording:
-            # 현재 제스처 정보 미리 저장 (녹화 중지 전에)
-            current_rec_gesture = getattr(self, 'current_gesture', None)
-            print(f"녹화 중지 전 현재 제스처: {current_rec_gesture}")
-            
+            print("Toggle Recording: Stopping...") # 로그 추가
             # 녹화 중지
             self.stop_recording()
-            
-            # 단축키(F10)를 통한 호출 시 추가 처리
-            if event and hasattr(self, 'root'):
-                print("F10 단축키로 녹화 종료 - 강제 UI 업데이트 및 자동 저장 처리")
-                
-                # UI 즉시 업데이트
-                self.root.update_idletasks()
-                self.root.update()
-                
-                # 자동 저장 처리 (제스처에 대한 녹화인 경우)
-                if current_rec_gesture:
-                    print(f"F10 단축키 사용 후 제스처 '{current_rec_gesture}'에 대한 자동 저장 시도")
-                    
-                    # 지연된 자동 저장 실행
-                    self.root.after(50, lambda: self._force_save_gesture_macro(current_rec_gesture))
+            # --- 버튼 텍스트 업데이트 추가 --- 
+            if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
+                self.record_btn.config(text="Record/Stop (F9)")
+                # stop_recording에서 이미 state=NORMAL 로 설정됨
+            # --- 업데이트 끝 --- 
         else:
+            print("Toggle Recording: Starting...") # 로그 추가
             # 선택된 제스처가 있으면 해당 제스처에 대한 녹화 시작
             if hasattr(self, 'gesture_listbox') and self.gesture_listbox.curselection():
-                self.start_recording_for_selected_gesture()
+                success = self.start_recording_for_selected_gesture() # 시작 함수의 성공 여부 확인 (가정)
+                if success:
+                    # --- 버튼 텍스트 업데이트 추가 --- 
+                    if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
+                        self.record_btn.config(text="Recording... (F9)")
+                        # start_recording_for_selected_gesture -> start_recording 에서 state=DISABLED 로 설정됨
+                    # --- 업데이트 끝 --- 
             else:
                 # 선택된 제스처 없으면 녹화 시작 불가 메시지 표시 (혼란 방지)
                 messagebox.showinfo("Start Recording", "Select a gesture first to start recording.")
                 # 또는 여기서 일반 녹화(self.start_recording())를 시작할 수도 있음 - 정책 결정 필요
-    
-    def _force_save_gesture_macro(self, gesture_key):
-        """F10 단축키 사용 후 제스처 매크로 강제 저장"""
-        print(f"강제 제스처 매크로 저장 시도: {gesture_key}")
-        
-        # 필수 객체 확인
-        if not hasattr(self, 'gesture_manager') or not hasattr(self, 'recorder'):
-            print("저장 실패: 필요한 컴포넌트가 없음")
-            return False
-        
-        # 현재 제스처 설정 (원래 저장하려던 제스처로)
-        self.current_gesture = gesture_key
-        
-        # 이벤트 가져오기
-        events = self.recorder.events
-        
-        # GestureManager를 통해 저장
-        try:
-            if hasattr(self.gesture_manager, 'save_macro_for_gesture'):
-                success = self.gesture_manager.save_macro_for_gesture(gesture_key, events)
-                
-                if success:
-                    event_count = len(events) if events else 0
-                    print(f"강제 저장 성공: 제스처 '{gesture_key}'에 {event_count}개 이벤트 저장")
-                    
-                    # UI 메시지 표시
-                    msg = f"Macro ({event_count} events) saved for gesture '{gesture_key}'."
-                    if hasattr(self, 'update_status'): 
-                        self.update_status(msg)
-                        
-                    # 메시지박스는 방해가 될 수 있으므로 선택적으로 사용
-                    # messagebox.showinfo("Save Complete", msg)
-                else:
-                    print(f"강제 저장 실패: 제스처 '{gesture_key}'")
-            else:
-                print("저장 실패: save_macro_for_gesture 메소드 없음")
-                
-        except Exception as e:
-            print(f"강제 저장 중 예외 발생: {e}")
-        
-        # 현재 제스처 초기화
-        self.current_gesture = None
-        
-        # UI 최종 업데이트
-        if hasattr(self, 'root'):
-            self.root.update()
+                # 만약 일반 녹화를 시작한다면, 여기에도 버튼 텍스트 변경 코드 필요

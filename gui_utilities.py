@@ -249,14 +249,11 @@ class GuiUtilitiesMixin:
         if keyboard is None: return # 라이브러리 없으면 설정 불가
 
         # 단축키와 연결될 메서드 목록
-        # 각 메서드는 해당 믹스인 또는 gui_base에 구현되어 있어야 함
         shortcuts = {
             'f9': getattr(self, 'toggle_recording', None),
-            'f10': getattr(self, 'stop_recording', None),
             'f11': getattr(self, 'start_gesture_recognition', None),
             'f12': getattr(self, 'stop_gesture_recognition', None),
-            # 'delete': getattr(self, 'delete_selected_event', None), # 이전 방식 주석 처리
-            'delete': self.handle_delete_key, # 새 핸들러 연결
+            'delete': self.handle_delete_key,
             'ctrl+a': getattr(self, 'select_all_events', None)
         }
 

@@ -49,8 +49,7 @@ class GuiControlsMixin:
 
         # 버튼 커맨드 정의
         start_gesture_rec_cmd = getattr(self, 'start_gesture_recording', lambda: print("Start Gesture Recording method not found"))
-        start_macro_rec_cmd = getattr(self, 'start_recording_for_selected_gesture', lambda: print("Start Recording for Selected Gesture method not found"))
-        stop_rec_cmd = getattr(self, 'stop_recording', lambda: print("Stop Recording method not found"))
+        toggle_rec_cmd = getattr(self, 'toggle_recording', lambda: print("Toggle Recording method not found"))
         save_macro_cmd = getattr(self, 'save_macro', lambda: print("Save Macro method not found"))
         
         # 레이아웃 계산을 위한 변수
@@ -87,36 +86,15 @@ class GuiControlsMixin:
         # 매크로 녹화 버튼
         self.record_btn = tk.Button(
             button_frame, 
-            text="Record Macro (F9)",
+            text="Record/Stop (F9)",
             font=('Arial', 9),
             bg='#e8e8e8',
             relief=tk.RAISED,
             borderwidth=2,
-            command=start_macro_rec_cmd,
+            command=toggle_rec_cmd,
             highlightthickness=0
         )
         self.record_btn.place(
-            relx=btn_width * btn_idx + 0.01,
-            rely=0.5,
-            relwidth=btn_width - 0.02,
-            relheight=0.8,
-            anchor='w'
-        )
-        btn_idx += 1
-        
-        # 녹화 중지 버튼
-        self.stop_btn = tk.Button(
-            button_frame, 
-            text="Stop Recording (F10)",
-            font=('Arial', 9),
-            bg='#e8e8e8',
-            relief=tk.RAISED,
-            borderwidth=2,
-            command=stop_rec_cmd,
-            state=tk.DISABLED,
-            highlightthickness=0
-        )
-        self.stop_btn.place(
             relx=btn_width * btn_idx + 0.01,
             rely=0.5,
             relwidth=btn_width - 0.02,
