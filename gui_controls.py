@@ -86,7 +86,7 @@ class GuiControlsMixin:
         # 매크로 녹화 버튼
         self.record_btn = tk.Button(
             button_frame, 
-            text="Record/Stop (F9)",
+            text="Start Recording Macro (F9)",
             font=('Arial', 9),
             bg='#e8e8e8',
             relief=tk.RAISED,
