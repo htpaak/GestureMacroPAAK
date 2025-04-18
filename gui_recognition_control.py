@@ -1,6 +1,7 @@
 # gui_recognition_control.py
 import tkinter as tk
 from tkinter import messagebox
+import logging # 로깅 추가
 
 class GuiRecognitionControlMixin:
     """GUI의 제스처 인식 시작/중지 제어 로직을 담당하는 믹스인 클래스"""
@@ -11,6 +12,7 @@ class GuiRecognitionControlMixin:
 
     def start_gesture_recognition(self):
         """제스처 인식 시작"""
+        logging.info("start_gesture_recognition callback triggered.")
         if not hasattr(self, 'gesture_manager') or not self.gesture_manager:
             messagebox.showerror("Error", "Gesture Manager not initialized.")
             return
@@ -36,15 +38,18 @@ class GuiRecognitionControlMixin:
                 messagebox.showerror("Error", "Gesture Manager does not support start method.")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to start gesture recognition: {e}")
+            logging.exception(f"!!! Exception in start_gesture_recognition callback: {e}")
             self.gesture_enabled.set(False) # 실패 시 상태 복원
             # 버튼 상태도 복원
             if hasattr(self, 'gesture_start_btn'): self.gesture_start_btn.config(state=tk.NORMAL)
             if hasattr(self, 'gesture_stop_btn'): self.gesture_stop_btn.config(state=tk.DISABLED)
+        finally:
+            logging.info("start_gesture_recognition callback finished.")
 
 
     def stop_gesture_recognition(self):
         """제스처 인식 중지"""
+        logging.info("stop_gesture_recognition callback triggered.")
         if not hasattr(self, 'gesture_manager') or not self.gesture_manager:
             messagebox.showerror("Error", "Gesture Manager not initialized.")
             return
@@ -73,12 +78,14 @@ class GuiRecognitionControlMixin:
             if hasattr(self, 'gesture_stop_btn'): self.gesture_stop_btn.config(state=tk.DISABLED)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to stop gesture recognition or macro playback: {e}") # 오류 메시지 수정
+            logging.exception(f"!!! Exception in stop_gesture_recognition callback: {e}")
             # 실패 시 상태는? 일단 False로 유지? 아니면 True로 복원? -> False 유지
             self.gesture_enabled.set(False)
             # 버튼 상태는? -> 중지 시도했으므로 비활성화 상태 유지?
             if hasattr(self, 'gesture_start_btn'): self.gesture_start_btn.config(state=tk.NORMAL)
             if hasattr(self, 'gesture_stop_btn'): self.gesture_stop_btn.config(state=tk.DISABLED)
+        finally:
+            logging.info("stop_gesture_recognition callback finished.")
 
 
     def toggle_gesture_recognition(self):

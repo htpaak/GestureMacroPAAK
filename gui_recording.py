@@ -1,6 +1,7 @@
 # gui_recording.py
 import tkinter as tk
 from tkinter import messagebox, ttk
+import logging # 로깅 임포트 추가
 
 class GuiRecordingMixin:
     """GUI의 매크로 및 제스처 녹화 관련 액션(시작, 중지, 저장) 처리를 담당하는 믹스인 클래스"""
@@ -317,28 +318,34 @@ class GuiRecordingMixin:
 
     def toggle_recording(self, event=None):
         """녹화 시작/중지 토글 (단축키 등에서 사용)"""
-        if hasattr(self, 'recorder') and self.recorder.recording:
-            print("Toggle Recording: Stopping...") # 로그 추가
-            # 녹화 중지
-            self.stop_recording()
-            # --- 버튼 텍스트 업데이트 추가 --- 
-            if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
-                self.record_btn.config(text="Record/Stop (F9)")
-                # stop_recording에서 이미 state=NORMAL 로 설정됨
-            # --- 업데이트 끝 --- 
-        else:
-            print("Toggle Recording: Starting...") # 로그 추가
-            # 선택된 제스처가 있으면 해당 제스처에 대한 녹화 시작
-            if hasattr(self, 'gesture_listbox') and self.gesture_listbox.curselection():
-                success = self.start_recording_for_selected_gesture() # 시작 함수의 성공 여부 확인 (가정)
-                if success:
-                    # --- 버튼 텍스트 업데이트 추가 --- 
-                    if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
-                        self.record_btn.config(text="Recording... (F9)")
-                        # start_recording_for_selected_gesture -> start_recording 에서 state=DISABLED 로 설정됨
-                    # --- 업데이트 끝 --- 
+        logging.info("toggle_recording callback triggered.") # 콜백 시작 로그
+        try:
+            if hasattr(self, 'recorder') and self.recorder.recording:
+                print("Toggle Recording: Stopping...") # 로그 추가
+                # 녹화 중지
+                self.stop_recording()
+                # --- 버튼 텍스트 업데이트 추가 --- 
+                if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
+                    self.record_btn.config(text="Record/Stop (F9)")
+                    # stop_recording에서 이미 state=NORMAL 로 설정됨
+                # --- 업데이트 끝 --- 
             else:
-                # 선택된 제스처 없으면 녹화 시작 불가 메시지 표시 (혼란 방지)
-                messagebox.showinfo("Start Recording", "Select a gesture first to start recording.")
-                # 또는 여기서 일반 녹화(self.start_recording())를 시작할 수도 있음 - 정책 결정 필요
-                # 만약 일반 녹화를 시작한다면, 여기에도 버튼 텍스트 변경 코드 필요
+                print("Toggle Recording: Starting...") # 로그 추가
+                # 선택된 제스처가 있으면 해당 제스처에 대한 녹화 시작
+                if hasattr(self, 'gesture_listbox') and self.gesture_listbox.curselection():
+                    success = self.start_recording_for_selected_gesture() # 시작 함수의 성공 여부 확인 (가정)
+                    if success:
+                        # --- 버튼 텍스트 업데이트 추가 --- 
+                        if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
+                            self.record_btn.config(text="Recording... (F9)")
+                            # start_recording_for_selected_gesture -> start_recording 에서 state=DISABLED 로 설정됨 (주석처리됨)
+                        # --- 업데이트 끝 --- 
+                else:
+                    # 선택된 제스처 없으면 녹화 시작 불가 메시지 표시 (혼란 방지)
+                    messagebox.showinfo("Start Recording", "Select a gesture first to start recording.")
+                    # 또는 여기서 일반 녹화(self.start_recording())를 시작할 수도 있음 - 정책 결정 필요
+                    # 만약 일반 녹화를 시작한다면, 여기에도 버튼 텍스트 변경 코드 필요
+        except Exception as e:
+            logging.exception(f"!!! Exception in toggle_recording callback: {e}") # 예외 발생 시 로그 기록
+        finally:
+            logging.info("toggle_recording callback finished.") # 콜백 종료 로그

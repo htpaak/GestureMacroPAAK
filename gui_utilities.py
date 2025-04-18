@@ -6,7 +6,20 @@ from tkinter import messagebox, ttk
 # except ImportError:
 #     keyboard = None
 #     print("Warning: 'keyboard' library not found. Hotkeys will be disabled.")
-import keyboard # 단축키 설정용
+# import keyboard # 단축키 설정용
+import logging # 로깅 추가
+
+# --- pynput import 추가 ---
+try:
+    from pynput import keyboard as pynput_keyboard
+except ImportError:
+    pynput_keyboard = None
+    print("Warning: 'pynput' library not found. Hotkeys will be disabled.")
+    messagebox.showwarning(
+        "Dependency Error",
+        "The 'pynput' library is required for hotkey functionality.\n" +
+        "Please install it using: pip install pynput"
+    )
 
 # --- 좌표 입력 대화 상자 클래스 추가 ---
 class CoordinateDialog(tk.Toplevel):
@@ -104,6 +117,7 @@ class GuiUtilitiesMixin:
     def update_status(self, message): raise NotImplementedError
     # recorder, gesture_manager, root 등 객체
     # record_mouse_move, record_delay, use_absolute_coords, use_relative_coords, record_keyboard 등 tk.BooleanVar
+    hotkey_listener = None # pynput 리스너 객체 저장용
 
     # --- 녹화 설정 ---
     def update_record_settings(self):
@@ -226,6 +240,7 @@ class GuiUtilitiesMixin:
             print("Recording active, Delete hotkey disabled.")
             return
             
+        logging.info("handle_delete_key callback triggered.")
         try:
             focused_widget = self.root.focus_get()
             # print(f"[DEBUG handle_delete_key] Focused widget: {focused_widget}") # 디버깅용
@@ -241,46 +256,77 @@ class GuiUtilitiesMixin:
                  # 다른 위젯에 포커스가 있다면 아무것도 하지 않음 (선택적)
                  print(f"Delete key pressed, but focus is on other widget: {focused_widget}")
         except Exception as e:
+            logging.exception(f"!!! Exception in handle_delete_key callback: {e}")
             print(f"Error in handle_delete_key: {e}")
+        finally:
+            logging.info("handle_delete_key callback finished.")
 
-    # --- 키보드 단축키 ---
+    # --- 키보드 단축키 (pynput 사용) ---
     def setup_keyboard_shortcuts(self):
-        """키보드 단축키 설정"""
-        if keyboard is None: return # 라이브러리 없으면 설정 불가
+        """키보드 단축키 설정 (pynput 사용, F1으로 재등록 기능 포함)"""
+        if pynput_keyboard is None:
+            logging.warning("pynput library not found, skipping hotkey setup.")
+            return
 
-        # 단축키와 연결될 메서드 목록
-        shortcuts = {
-            'f9': getattr(self, 'toggle_recording', None),
-            'f11': getattr(self, 'start_gesture_recognition', None),
-            'f12': getattr(self, 'stop_gesture_recognition', None),
-            'delete': self.handle_delete_key,
-            'ctrl+a': getattr(self, 'select_all_events', None)
-        }
+        logging.info("Setting up keyboard shortcuts using pynput...")
 
-        print("Setting up keyboard shortcuts...")
+        # --- 기존 리스너 중지 --- (unhook 대신)
+        self.unhook_keyboard_shortcuts() # 기존 리스너가 있다면 중지
+
         try:
-            # 기존 단축키 제거 시도
-            for hotkey in shortcuts.keys():
-                try: keyboard.remove_hotkey(hotkey)
-                except Exception: pass # 제거 실패 무시
+            # --- pynput 형식의 단축키 매핑 --- 
+            # <ctrl>+a, <alt>+f, <cmd>+k 등, 특수키는 <> 사용
+            # 일반 문자 키는 그냥 'a', 'b' 등
+            # 함수 키는 '<f1>', '<f9>' 등
+            shortcuts = {
+                '<f9>': getattr(self, 'toggle_recording', None),
+                '<f11>': getattr(self, 'start_gesture_recognition', None),
+                '<f12>': getattr(self, 'stop_gesture_recognition', None),
+                '<delete>': getattr(self, 'handle_delete_key', None), # delete 키 핸들러 확인 필요
+                '<ctrl>+a': getattr(self, 'select_all_events', None),
+                # '<f1>': self.setup_keyboard_shortcuts # F1으로 재등록 기능 제거
+            }
 
-            # 새 단축키 등록
+            # 유효한 콜백 함수만 필터링
+            valid_shortcuts = {}
             for hotkey, func in shortcuts.items():
                 if func and callable(func):
-                    # 제스처 인식 단축키는 gesture_manager가 있을 때만 등록
-                    if hotkey in ['f11', 'f12'] and not hasattr(self, 'gesture_manager'):
+                    # 제스처 관련 핫키는 gesture_manager 확인
+                    if hotkey in ['<f11>', '<f12>'] and not hasattr(self, 'gesture_manager'):
+                        logging.warning(f"Gesture manager not found, skipping hotkey '{hotkey}'.")
                         continue
-                    keyboard.add_hotkey(hotkey, func)
-                    print(f"Hotkey '{hotkey}' registered to function '{func.__name__}'.")
+                    valid_shortcuts[hotkey] = func
+                    # 로그는 리스너 시작 시 한 번에 기록 (개별 등록 로그 제거)
                 else:
-                    print(f"Warning: Function for hotkey '{hotkey}' not found or not callable.")
+                    # F1 제거했으므로, 다른 함수가 None이거나 callable하지 않은 경우 경고
+                    logging.warning(f"Function for hotkey '{hotkey}' not found or not callable.")
+
+            if not valid_shortcuts:
+                logging.warning("No valid hotkeys to register.")
+                return
+
+            # --- GlobalHotKeys 리스너 생성 및 시작 --- 
+            logging.info(f"Registering hotkeys: {list(valid_shortcuts.keys())}")
+            # GlobalHotKeys는 데몬 스레드에서 실행됨
+            self.hotkey_listener = pynput_keyboard.GlobalHotKeys(valid_shortcuts)
+            self.hotkey_listener.start()
+            logging.info("pynput GlobalHotKeys listener started.")
 
         except Exception as e:
-            print(f"Error setting up keyboard shortcuts: {e}")
-            messagebox.showwarning("Hotkey Error", f"Failed to set up keyboard shortcuts.\n{e}")
+            logging.exception(f"!!! Error during pynput setup_keyboard_shortcuts: {e}")
+            messagebox.showerror("Hotkey Error", f"An unexpected error occurred while setting up pynput hotkeys.\n{e}")
+            self.hotkey_listener = None # 실패 시 리스너 참조 제거
 
-    # 애플리케이션 종료 시 단축키 해제 (선택 사항, graceful_exit 등에서 호출)
+    # 애플리케이션 종료 시 단축키 해제 (pynput 용)
     def unhook_keyboard_shortcuts(self):
-        if keyboard is None: return
-        print("Unhooking all keyboard shortcuts...")
-        keyboard.unhook_all()
+        """pynput 핫키 리스너 중지"""
+        if hasattr(self, 'hotkey_listener') and self.hotkey_listener:
+            logging.info("Stopping pynput GlobalHotKeys listener...")
+            try:
+                self.hotkey_listener.stop()
+                self.hotkey_listener = None # 리스너 참조 제거
+                logging.info("pynput listener stopped.")
+            except Exception as e:
+                logging.exception(f"Error stopping pynput listener: {e}")
+        # else:
+        #     logging.info("No active pynput listener found to stop.")
