@@ -111,7 +111,8 @@ class GuiRecordingMixin:
         # --- Update GUI States ---
         # Update button states
         if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
-            self.record_btn.config(state=tk.DISABLED)
+            # self.record_btn.config(state=tk.DISABLED) # <<< 이 줄을 주석 처리 또는 삭제
+            pass # 버튼 상태 변경 안 함
         if hasattr(self, 'stop_btn') and self.stop_btn.winfo_exists():
             self.stop_btn.config(state=tk.NORMAL)
         # save_btn state remains unchanged
