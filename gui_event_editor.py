@@ -400,50 +400,76 @@ class GuiEventEditorMixin:
 
         delay_sec = delay_ms / 1000.0
 
-        # 삽입 위치 결정
-        insert_index = -1 # 기본값: 맨 끝에 추가
+        # 삽입 위치 결정 및 처리
         selected_indices = self._get_valid_selected_indices()
+        inserted_count = 0
+        last_inserted_idx = -1 # 마지막 삽입된 인덱스 추적용
 
-        if selected_indices:
-            # 선택된 항목이 있으면, 가장 마지막 선택된 항목 다음에 삽입
-            insert_index = max(selected_indices) + 1
-            print(f"Adding delay after selected index {max(selected_indices)} (at index {insert_index}).")
-        else:
-            # 선택된 항목이 없으면 맨 끝에 삽입
-            print("No selection, adding delay at the end.")
-            # insert_index는 이미 -1 (맨 끝)로 설정됨
-
-        # 딜레이 이벤트 생성
-        delay_event = {'type': 'delay', 'delay': delay_sec, 'time': 0} # 시간은 insert_event에서 계산
-
-        # 에디터에 삽입 요청
         try:
-            inserted_idx = -1
-            if hasattr(self.editor, 'insert_event') and callable(self.editor.insert_event):
-                inserted_idx = self.editor.insert_event(insert_index, delay_event)
-            elif hasattr(self.editor, 'events') and insert_index != -1: # Fallback (직접 삽입 - 특정 위치)
-                self.editor.events.insert(insert_index, delay_event)
-                inserted_idx = insert_index
-            elif hasattr(self.editor, 'events'): # Fallback (직접 삽입 - 맨 끝)
-                self.editor.events.append(delay_event)
-                inserted_idx = len(self.editor.events) - 1
-            else:
-                 messagebox.showerror("Error", "Editor does not support event insertion.")
-                 return
+            if selected_indices:
+                # --- 여러 이벤트 사이에 딜레이 추가 로직 ---
+                # 인덱스 변경 문제를 피하기 위해 내림차순 정렬 후 처리
+                sorted_indices = sorted(selected_indices, reverse=True)
+                print(f"Adding delay after indices (reverse order): {sorted_indices}")
 
-            if inserted_idx != -1:
+                for idx in sorted_indices:
+                    insert_index = idx + 1
+                    delay_event = {'type': 'delay', 'delay': delay_sec, 'time': 0} # 시간은 insert_event에서 계산
+
+                    # 에디터에 삽입 요청
+                    inserted_idx_current = -1
+                    if hasattr(self.editor, 'insert_event') and callable(self.editor.insert_event):
+                        inserted_idx_current = self.editor.insert_event(insert_index, delay_event)
+                    elif hasattr(self.editor, 'events'): # Fallback (직접 삽입)
+                        self.editor.events.insert(insert_index, delay_event)
+                        inserted_idx_current = insert_index
+                    else:
+                        messagebox.showerror("Error", "Editor does not support event insertion.")
+                        raise Exception("Editor does not support event insertion.") # 루프 중단
+
+                    if inserted_idx_current != -1:
+                        inserted_count += 1
+                        if last_inserted_idx == -1: # 첫 삽입 위치 기록
+                            last_inserted_idx = inserted_idx_current
+                    else:
+                        # 개별 삽입 실패 시 경고 (선택적)
+                        logging.warning(f"Failed to insert delay event at index {insert_index}.")
+
+            else:
+                # --- 선택된 항목이 없을 때: 맨 끝에 추가 --- 
+                print("No selection, adding delay at the end.")
+                insert_index = -1 # 맨 끝
+                delay_event = {'type': 'delay', 'delay': delay_sec, 'time': 0}
+                
+                inserted_idx_current = -1
+                if hasattr(self.editor, 'insert_event') and callable(self.editor.insert_event):
+                    inserted_idx_current = self.editor.insert_event(insert_index, delay_event)
+                elif hasattr(self.editor, 'events'): # Fallback (직접 삽입)
+                    self.editor.events.append(delay_event)
+                    inserted_idx_current = len(self.editor.events) - 1
+                else:
+                    messagebox.showerror("Error", "Editor does not support event insertion.")
+                    return
+                
+                if inserted_idx_current != -1:
+                    inserted_count = 1
+                    last_inserted_idx = inserted_idx_current
+
+            # --- 결과 처리 --- 
+            if inserted_count > 0:
                 self.restore_selection = False
                 self.clear_selection()
                 self.update_event_list()
-                # 새로 추가된 딜레이를 선택하고 보이도록 함
-                self.set_single_selection(inserted_idx)
+                # 여러 개 추가 시 마지막 것만 선택 (선택적)
+                # if last_inserted_idx != -1:
+                #     self.set_single_selection(last_inserted_idx)
                 self.restore_selection = True
-                self.update_status(f"Delay of {delay_ms}ms added at index {inserted_idx + 1}.")
+                self.update_status(f"{inserted_count} delay(s) of {delay_ms}ms added.")
             else:
-                messagebox.showerror("Error", "Failed to add delay event.")
+                messagebox.showerror("Error", "Failed to add any delay events.")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error adding delay event: {e}")
+            messagebox.showerror("Error", f"Error adding delay event(s): {e}")
             import traceback
             traceback.print_exc()
 
