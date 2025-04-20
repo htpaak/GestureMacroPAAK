@@ -208,18 +208,20 @@ class GuiSetupMixin:
         
         # 제스처 녹화 버튼
         if hasattr(self, 'gesture_manager'):
-            self.gesture_record_btn = tk.Button(
+            self.record_gesture_btn = tk.Button(
                 button_frame, 
-                text="Record Gesture",
+                text="Start Recording Gesture",
                 font=('Arial', 9),
                 bg='#e8e8e8',  # 배경색
                 relief=tk.RAISED,  # 테두리 스타일
                 borderwidth=2,  # 테두리 두께
-                command=start_gesture_rec_cmd,
+                command=lambda: self.gui_gesture_manager.prompt_start_gesture_recording(
+                    is_user_initiated=True
+                ),
                 highlightthickness=0  # 하이라이트 테두리 제거
             )
             # place로 절대 위치 지정
-            self.gesture_record_btn.place(
+            self.record_gesture_btn.place(
                 relx=btn_width * btn_idx + 0.01,  # 1% 여백
                 rely=0.5,
                 relwidth=btn_width - 0.02,  # 2% 여백
