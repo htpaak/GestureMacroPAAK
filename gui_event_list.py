@@ -4,7 +4,7 @@ from tkinter import ttk, messagebox
 import sys  # For platform check
 import monitor_utils # 모니터 유틸리티 임포트
 import time    # 시간 측정
-import logging # 로깅
+import logging # 로깅 임포트 주석 제거
 
 
 class GuiEventListMixin:
@@ -212,42 +212,48 @@ class GuiEventListMixin:
 
     def update_event_list(self):
         """이벤트 목록 업데이트. 녹화 중이면 recorder에서, 아니면 editor에서 이벤트를 가져와 표시합니다."""
+        # <<< 디버그 로그 제거 1 >>>
+        # logging.debug("[GUI DEBUG] update_event_list started.")
+
         if not hasattr(self, 'event_listbox'):
-            print("Error: event_listbox not found in update_event_list.")
+            logging.error("Error: event_listbox not found in update_event_list.")
             return
 
         events = []
-        source = None # 이벤트 소스 추적 (디버깅용)
+        source = None
         is_recording = False
 
-        # 1. 이벤트 소스 확인
         if hasattr(self, 'recorder') and self.recorder and getattr(self.recorder, 'recording', False):
-            # 녹화 중이면 recorder에서 가져옴
             try:
                 if hasattr(self.recorder, 'events'):
                     events = self.recorder.events or []
                     source = "recorder"
                     is_recording = True
+                    # <<< 디버그 로그 제거 >>>
+                    # logging.debug(f"[GUI DEBUG] Getting events from recorder. Recording: {is_recording}")
                 else:
-                    print("Warning: recorder found but has no 'events' attribute.")
+                    logging.warning("Warning: recorder found but has no 'events' attribute.")
             except Exception as e:
-                print(f"Error getting events from recorder: {e}")
-                # 오류 발생 시 빈 목록으로 처리하거나 다른 로직 추가 가능
-
+                logging.error(f"Error getting events from recorder: {e}", exc_info=True)
         elif hasattr(self, 'editor') and self.editor:
-             # 녹화 중이 아니면 editor에서 가져옴
              try:
                  if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
                      events = self.editor.get_events() or []
                      source = "editor (get_events)"
+                     # <<< 디버그 로그 제거 >>>
+                     # logging.debug(f"[GUI DEBUG] Getting events from editor (get_events). Recording: {is_recording}")
                  elif hasattr(self.editor, 'events'): # Fallback
                      events = self.editor.events or []
                      source = "editor (events)"
+                     # logging.debug(f"[GUI DEBUG] Getting events from editor (events attribute). Recording: {is_recording}")
                  else:
-                      print("Warning: editor found but has no way to get events.")
+                      logging.warning("Warning: editor found but has no way to get events.")
              except Exception as e:
-                 print(f"Error getting events from editor: {e}")
-                 events = [] # 오류 시 빈 목록
+                 logging.error(f"Error getting events from editor: {e}", exc_info=True)
+                 events = []
+
+        # <<< 디버그 로그 제거 2 >>>
+        # logging.debug(f"[GUI DEBUG] Fetched {len(events)} events from {source}.")
 
         # 2. 목록 초기화
         try:
@@ -258,23 +264,27 @@ class GuiEventListMixin:
 
             self.event_listbox.delete(0, tk.END)
         except tk.TclError:
-             print("Error clearing event_listbox (likely destroyed).")
+             logging.error("Error clearing event_listbox (likely destroyed).")
              return # 리스트박스 오류 시 더 이상 진행 불가
         except Exception as e:
-             print(f"Unexpected error clearing listbox: {e}")
+             logging.error(f"Unexpected error clearing listbox: {e}", exc_info=True)
              return
 
         # 3. 이벤트 표시
         if not events:
-            # print(f"update_event_list: No events found from {source if source else 'any source'}.")
-            pass # 빈 목록이면 아무것도 안 함
+            # <<< 디버그 로그 제거 >>>
+            # logging.debug("[GUI DEBUG] No events to display.")
+            pass
         else:
-            # print(f"update_event_list: Displaying {len(events)} events from {source}.")
             for i, event in enumerate(events):
                 try:
+                    # <<< 디버그 로그 제거 3 >>>
+                    # logging.debug(f"[GUI DEBUG] Processing event {i}: {event}")
+                    # if event.get('type') == 'mouse' and event.get('event_type') == 'wheel':
+                    #      logging.debug(f"[GUI DEBUG] >>> Calling display_event for WHEEL event {i}")
                     self.display_event(event, i)
                 except Exception as e:
-                    print(f"Error displaying event {i} in update_event_list: {e}")
+                    logging.error(f"Error displaying event {i} in update_event_list: {e}", exc_info=True)
                     # 에러 발생 시 리스트박스에 에러 메시지 표시 시도
                     try:
                         self.event_listbox.insert(
@@ -289,7 +299,7 @@ class GuiEventListMixin:
              try:
                  self.event_listbox.see(tk.END)
              except tk.TclError: pass # 위젯 파괴 시 무시
-             except Exception as e: print(f"Error scrolling to end: {e}")
+             except Exception as e: logging.error(f"Error scrolling to end: {e}", exc_info=True)
         # else:
         #     # 녹화 중 아닐 때 스크롤 위치와 선택 복원 시도
         #     try:
@@ -305,10 +315,20 @@ class GuiEventListMixin:
         #     except tk.TclError: pass # 위젯 파괴 시 무시
         #     except Exception as e: print(f"Error restoring scroll/selection: {e}")
 
+        # <<< Tkinter 업데이트 요청 추가 >>>
+        if hasattr(self, 'root') and self.root and self.root.winfo_exists():
+             self.root.update_idletasks()
+
+        # <<< 디버그 로그 제거 >>>
+        # logging.debug("[GUI DEBUG] update_event_list finished.")
+
     def display_event(self, event, index):
         """이벤트 목록 표시 형식 변경: 키/버튼 값 우선, 시간 정보 제거"""
+        # <<< 디버그 로그 제거 4 >>>
+        # logging.debug(f"[GUI DEBUG] display_event started for index {index}, event: {event}")
+
         if not hasattr(self, 'event_listbox'):
-            print("Error: event_listbox not found in display_event.")
+            logging.error("Error: event_listbox not found in display_event.")
             return
 
         event_type = event.get('type', 'unknown')
@@ -323,6 +343,8 @@ class GuiEventListMixin:
                 key_part = f"Key: {key}"
                 display_str += f"{key_part.ljust(20)} {event_type_str.upper()}"
             elif event_type == 'mouse':
+                # <<< 디버그 로그 제거 5 >>>
+                # logging.debug(f"[GUI DEBUG] Processing mouse event in display_event: {event}")
                 event_type_str = event.get('event_type', 'unknown')
 
                 if event_type_str == 'move':
@@ -363,18 +385,15 @@ class GuiEventListMixin:
                     if 'random_range' in event:
                         range_px = event.get('random_range', 0)
                         display_str += f" +/-{range_px:<3}px"
-                elif event_type_str == 'wheel': # 'wheel' 이벤트 명시적 처리
-                    delta = event.get('delta', 0)
-                    # delta 값에 따라 소문자 'up'/'down' 결정
-                    direction_str = "up" if delta > 0 else "down" if delta < 0 else ""
-                    # display_str += f"Wheel {direction} Delta: {delta:>4}" # 이전 코드
-                    # 요청한 형식으로 변경: "Mouse: wheel [up/down] [delta]"
-                    # ljust를 사용하여 다른 마우스 이벤트와 정렬 맞춤
-                    wheel_part = "Mouse: wheel"
-                    display_str += f"{wheel_part.ljust(20)} {direction_str.ljust(6)} {delta}"
+                elif event_type_str == 'wheel':
+                     # <<< 디버그 로그 제거 6 >>>
+                     # logging.debug(f"[GUI DEBUG] >>> Handling 'wheel' event type string in display_event")
+                     delta = event.get('delta', 0)
+                     direction_str = "up" if delta > 0 else "down" if delta < 0 else ""
+                     wheel_part = "Mouse: wheel"
+                     display_str += f"{wheel_part.ljust(20)} {direction_str.ljust(6)} {delta}"
                 else:
                      # 알 수 없는 마우스 액션 (wheel은 이제 처리됨)
-                     # display_str += f"? Mouse Action: {event_type_str}" # 이전 코드
                      display_str += f"Mouse Action: {event_type_str}" # 맨 앞 '?' 제거
             elif event_type == 'delay':
                 delay_sec = event.get('delay', 0)
@@ -391,6 +410,9 @@ class GuiEventListMixin:
             else:
                 # 시간 정보 제거
                 display_str += f"? Unknown event type: {event_type}"
+
+            # <<< 디버그 로그 제거 7 >>>
+            # logging.debug(f"[GUI DEBUG] Final display_str for index {index}: '{display_str}'")
 
             # 리스트박스에 추가
             self.event_listbox.insert(tk.END, display_str)
@@ -414,9 +436,9 @@ class GuiEventListMixin:
                     pass
 
         except tk.TclError:
-            print("Error adding item to event_listbox (likely destroyed).")
+            logging.error("Error adding item to event_listbox (likely destroyed).")
         except Exception as e:
-            print(f"Error formatting/displaying event {index}: {e}")
+            logging.error(f"Error formatting/displaying event {index}: {e}", exc_info=True)
             try:
                 # Add error message to listbox if possible
                 self.event_listbox.insert(

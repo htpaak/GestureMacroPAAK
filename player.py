@@ -250,13 +250,20 @@ class MacroPlayer:
                 button = event['button']
                 mouse.move(final_x, final_y) # 이동 후 더블클릭
                 mouse.double_click(button=button)
-                print(f"마우스 {button} 더블 클릭: ({final_x}, {final_y})")
+                print(f"마우스 {button} 더블클릭: ({final_x}, {final_y})")
             elif event_type == 'scroll':
                 delta = event['delta']
                 # 스크롤은 특정 위치에서 발생해야 하는 경우가 많음
                 mouse.move(final_x, final_y)
                 mouse.wheel(delta=delta)
                 print(f"마우스 스크롤: Delta {delta} at ({final_x}, {final_y})")
+            elif event_type == 'wheel':
+                delta = event.get('delta', 0)
+                if delta != 0:
+                    mouse.wheel(delta=delta)
+                    print(f"마우스 휠 스크롤: Delta={delta}")
+                else:
+                    print("마우스 휠 이벤트 감지 (Delta=0), 스크롤하지 않음")
             
         except Exception as e:
             print(f"마우스 이벤트 실행 중 오류: {e}")

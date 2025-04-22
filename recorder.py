@@ -249,7 +249,12 @@ class MacroRecorder:
     
     def _mouse_callback(self, event):
         """마우스 이벤트 콜백 함수 (3가지 좌표 모드 지원)"""
+        # <<< 디버그 로그 제거 1 >>>
+        # print(f"[DEBUG] _mouse_callback called with event: {type(event)}")
+
         if not self.recording:
+            # <<< 디버그 로그 제거 >>>
+            # print("[DEBUG] Not recording, ignoring event.")
             return
 
         current_time = time.time() # 이벤트 발생 시간 기록
@@ -299,10 +304,13 @@ class MacroRecorder:
             self.last_move_time = current_time # 마지막 *이동* 시간 업데이트
 
         elif isinstance(event, mouse.WheelEvent):
+            # <<< 디버그 로그 제거 2 >>>
+            # print(f"[DEBUG] WheelEvent detected: delta={event.delta}")
+
             # 버튼/휠 이벤트는 딜레이 체크 먼저
             self._add_delay_event_if_needed(event_time_relative) 
             current_pos = mouse.get_position()
-            # print(f"Mouse Wheel: Delta {event.delta} at {current_pos}") # 디버깅
+            # print(f"Mouse Wheel: Delta {event.delta} at {current_pos}") # 기존 디버깅 주석 유지
 
             # 좌표 계산
             position_to_save, coord_mode_to_save = self._calculate_coordinates(current_pos)
@@ -315,9 +323,17 @@ class MacroRecorder:
                 'coord_mode': coord_mode_to_save, # 저장된 모드
                 'time': event_time_relative
             }
+            # <<< 디버그 로그 제거 3 >>>
+            # print(f"[DEBUG] Created wheel event_data: {event_data}")
 
         # 이벤트 기록 및 상태 업데이트
         if event_data:
+            # <<< 디버그 로그 제거 4 >>>
+            # if event_data.get('event_type') == 'wheel':
+            #     print(f"[DEBUG] Appending wheel event_data to self.events")
+            # else: # 다른 이벤트 타입 로그 (필요시 주석 해제)
+            #    print(f"[DEBUG] Appending {event_data.get('event_type')} event_data to self.events")
+
             self.events.append(event_data)
             # 마지막 이벤트 시간 업데이트 (다음 Button/Wheel/Keyboard 딜레이 계산용)
             self.last_event_time = event_time_relative
@@ -325,7 +341,11 @@ class MacroRecorder:
             # 현재 마우스 위치 업데이트 (Mouse Relative 다음 계산 및 다른 모드 시작 시 사용 위함)
             if current_pos:
                  self.last_mouse_pos = current_pos # 모든 마우스 이벤트 후 업데이트
-                 
+        # <<< 디버그 로그 제거 5 >>>
+        # else:
+        #     if not isinstance(event, mouse.MoveEvent) or self.record_mouse_move: # 이동 이벤트가 아니거나 이동 녹화가 켜져 있을 때만 로그
+        #         print(f"[DEBUG] No event_data created for event: {type(event)}")
+
     def _calculate_coordinates(self, current_pos):
         """현재 위치와 녹화 모드에 따라 저장할 좌표와 모드를 계산하여 반환"""
         position_to_save = [0, 0]

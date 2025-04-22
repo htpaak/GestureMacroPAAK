@@ -30,14 +30,16 @@ os.makedirs(temp_dir, exist_ok=True)
 # 파일 핸들러 설정 (덮어쓰기 모드 'w', UTF-8 인코딩)
 log_file_path = os.path.join(temp_dir, 'debug.log')
 file_handler = logging.FileHandler(log_file_path, mode='w', encoding='utf-8')
-file_handler.setLevel(logging.INFO) # 파일 로그 레벨 설정 (필요에 따라 DEBUG 등으로 변경 가능)
+file_handler.setLevel(logging.DEBUG) # 파일 로그 레벨을 DEBUG로 변경
 
 # 포맷터 설정 (기존 포맷 사용)
 formatter = logging.Formatter(log_format)
 file_handler.setFormatter(formatter)
 
-# 루트 로거에 파일 핸들러 추가
-logging.getLogger().addHandler(file_handler)
+# 루트 로거 가져오기 및 레벨 설정
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.DEBUG) # 루트 로거 레벨을 DEBUG로 변경
+root_logger.addHandler(file_handler) # 핸들러 추가
 # --- 파일 로깅 설정 끝 ---
 
 # --- 표준 출력/오류 리디렉션 설정 ---
