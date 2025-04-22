@@ -363,11 +363,19 @@ class GuiEventListMixin:
                     if 'random_range' in event:
                         range_px = event.get('random_range', 0)
                         display_str += f" +/-{range_px:<3}px"
-                elif event_type_str == 'scroll':
+                elif event_type_str == 'wheel': # 'wheel' 이벤트 명시적 처리
                     delta = event.get('delta', 0)
-                    display_str += f"Scroll   Delta: {delta:>4}"
+                    # delta 값에 따라 소문자 'up'/'down' 결정
+                    direction_str = "up" if delta > 0 else "down" if delta < 0 else ""
+                    # display_str += f"Wheel {direction} Delta: {delta:>4}" # 이전 코드
+                    # 요청한 형식으로 변경: "Mouse: wheel [up/down] [delta]"
+                    # ljust를 사용하여 다른 마우스 이벤트와 정렬 맞춤
+                    wheel_part = "Mouse: wheel"
+                    display_str += f"{wheel_part.ljust(20)} {direction_str.ljust(6)} {delta}"
                 else:
-                     display_str += f"? Unknown mouse: {event_type_str}"
+                     # 알 수 없는 마우스 액션 (wheel은 이제 처리됨)
+                     # display_str += f"? Mouse Action: {event_type_str}" # 이전 코드
+                     display_str += f"Mouse Action: {event_type_str}" # 맨 앞 '?' 제거
             elif event_type == 'delay':
                 delay_sec = event.get('delay', 0)
                 delay_ms = int(delay_sec * 1000)
