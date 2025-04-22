@@ -232,7 +232,7 @@ class GuiEventEditorMixin:
         """주어진 인덱스의 이벤트만 선택하고 보이도록 스크롤"""
         print(f"[DEBUG set_single_selection] Received index: {index}") # 로그 추가
         if not hasattr(self, 'event_listbox'): return False
-        
+
         # 인덱스 유효성 검사 강화
         try:
             listbox_size = self.event_listbox.size()
@@ -243,19 +243,29 @@ class GuiEventEditorMixin:
         except Exception as e:
             print(f"[DEBUG set_single_selection] Error checking listbox size or index: {e}")
             return False
-            
+
         self._skip_selection = True # on_event_select 콜백 방지
         try:
             print(f"[DEBUG set_single_selection] Clearing selection and setting index: {index}") # 로그 추가
             self.event_listbox.selection_clear(0, tk.END)
             self.event_listbox.selection_set(index)
-            self.event_listbox.see(index)
-            self.selected_events = [index] # 내부 상태 업데이트
-            print(f"[DEBUG set_single_selection] Selection set to: {self.selected_events}") # 로그 추가
+            self.event_listbox.activate(index) # 활성 항목도 설정
+            self.event_listbox.see(index)      # 해당 항목 보이게 스크롤
+            # 선택 상태 즉시 반영 (선택 사항)
+            self.selected_events = [index]
+            print(f"[DEBUG set_single_selection] Selection set internally: {self.selected_events}") # 로그 추가
+            # 상태 표시줄 업데이트
+            self.on_event_select()
+        except tk.TclError as e:
+            print(f"[DEBUG set_single_selection] TclError setting selection: {e}") # 로그 추가
+            return False
         except Exception as e:
-            print(f"[DEBUG set_single_selection] Error during selection/see: {e}") # 로그 추가
+            print(f"[DEBUG set_single_selection] Generic error setting selection: {e}") # 로그 추가
+            return False
         finally:
             self._skip_selection = False
+            # 선택 후 리스트박스에 포커스 주기 (필요시)
+            # self.event_listbox.focus_set()
         return True
 
     def select_all_events(self):
@@ -281,109 +291,69 @@ class GuiEventEditorMixin:
     # --- Event Modification ---
 
     def _get_valid_selected_indices(self):
-        """현재 선택된 유효한 이벤트 인덱스 목록 반환"""
-        # 항상 리스트박스에서 직접 현재 선택 상태 가져오기 (가장 정확한 방법)
-        direct_selection = []
-        if hasattr(self, 'event_listbox'):
-            try:
-                direct_selection = list(self.event_listbox.curselection())
-                if direct_selection:
-                    # 내부 상태 업데이트 (UI에 표시된 선택으로 항상 동기화)
-                    self.selected_events = direct_selection
-                    print(f"Direct selection from listbox: {direct_selection}")
-            except Exception as e:
-                print(f"Error getting direct selection: {e}")
-
-        # 만약 리스트박스에서 직접 선택을 가져오지 못했다면 내부 저장된 선택 사용
-        if not direct_selection and hasattr(self, 'selected_events'):
-            direct_selection = self.selected_events
-            
-        # 선택이 없으면 빈 리스트 반환
-        if not direct_selection:
-            return []
-            
-        # 에디터의 현재 이벤트 수 확인
+        """현재 선택된 이벤트 리스트박스 인덱스 중 유효한 것들만 반환"""
+        if not hasattr(self, 'event_listbox'): return []
+        
+        # 현재 선택된 모든 인덱스 가져오기
+        selected_indices = list(self.event_listbox.curselection())
+        
+        # 에디터에서 실제 이벤트 수 가져오기
         event_count = 0
-        try:
+        if hasattr(self, 'editor'):
             if hasattr(self.editor, 'get_event_count') and callable(self.editor.get_event_count):
-                event_count = self.editor.get_event_count()
-            elif hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
-                event_count = len(self.editor.get_events() or [])
+                try: event_count = self.editor.get_event_count()
+                except Exception as e: print(f"Error getting event count: {e}")
             elif hasattr(self.editor, 'events'): # Fallback
                 event_count = len(self.editor.events or [])
-        except Exception as e:
-            print(f"Error getting event count: {e}")
-            return []  # 이벤트 수 확인 실패시 빈 목록 반환
-
-        # 유효한 인덱스만 필터링
-        valid_indices = [idx for idx in direct_selection if 0 <= idx < event_count]
+                
+        # 유효한 인덱스만 필터링 (0 이상이고 실제 이벤트 수보다 작은 인덱스)
+        valid_indices = [idx for idx in selected_indices if 0 <= idx < event_count]
         
-        if len(valid_indices) != len(direct_selection):
-            print(f"Some selected indices were invalid. Original: {direct_selection}, Valid: {valid_indices}")
+        if not valid_indices:
+            print("No valid events selected.") # 디버그 메시지
             
-            # 리스트박스 선택 업데이트 (유효한 항목만 선택)
-            if hasattr(self, 'event_listbox') and valid_indices != direct_selection:
-                self._skip_selection = True
-                try:
-                    self.event_listbox.selection_clear(0, tk.END)
-                    for idx in valid_indices:
-                        self.event_listbox.selection_set(idx)
-                finally:
-                    self._skip_selection = False
-            
-            # 내부 상태도 업데이트
-            self.selected_events = valid_indices
-
         return valid_indices
 
     def delete_selected_event(self):
-        """선택된 이벤트 삭제 (내부 함수 _get_valid_selected_indices 사용)"""
-        if hasattr(self, 'recorder') and self.recorder.recording:
-            messagebox.showwarning("Warning", "Cannot edit events while recording.")
+        """선택된 이벤트를 삭제"""
+        selected_indices = self._get_valid_selected_indices() # 유효한 인덱스만 사용
+        if not selected_indices:
+            messagebox.showwarning("Warning", "No event selected to delete.")
             return
 
-        # --- _get_valid_selected_indices() 사용하여 현재 유효한 선택 가져오기 ---
-        indices_to_delete = self._get_valid_selected_indices() # 수정된 부분
-        print(f"Delete request: Using _get_valid_selected_indices(): {indices_to_delete}") # 로그 수정
-        # --- 가져오기 끝 ---
-
-        if not indices_to_delete:
-            messagebox.showwarning("Warning", "Select event(s) to delete.")
+        # 확인 메시지 (여러 개 선택 시)
+        confirm_msg = f"Are you sure you want to delete the selected {len(selected_indices)} event(s)?"
+        if not messagebox.askyesno("Confirm Deletion", confirm_msg):
             return
 
-        # 에디터에게 삭제 요청
+        # 인덱스를 내림차순으로 정렬하여 삭제 (뒤에서부터 삭제해야 인덱스 꼬임 방지)
+        selected_indices.sort(reverse=True)
+
         deleted_count = 0
         try:
-            if hasattr(self.editor, 'delete_events') and callable(self.editor.delete_events):
-                # *** 가져온 indices_to_delete 사용 ***
-                print(f"Calling editor.delete_events with: {indices_to_delete}") # 디버깅 로그 추가
-                deleted_count = self.editor.delete_events(indices_to_delete)
-                # editor.delete_events가 삭제된 개수를 반환하는지 확인 필요
-            elif hasattr(self.editor, 'events'): # Fallback
-                print(f"Using fallback direct deletion with: {indices_to_delete}") # 디버깅 로그 추가
-                initial_len = len(self.editor.events)
-                for idx in sorted(indices_to_delete, reverse=True):
-                    if 0 <= idx < len(self.editor.events):
-                        del self.editor.events[idx]
-                deleted_count = initial_len - len(self.editor.events) # 직접 계산
+            if hasattr(self.editor, 'delete_event') and callable(self.editor.delete_event):
+                for index in selected_indices:
+                    if self.editor.delete_event(index):
+                        deleted_count += 1
+                    else:
+                        # 삭제 실패 시 경고 (필요시)
+                        print(f"Failed to delete event at index {index}")
             else:
-                messagebox.showerror("Error", "Editor does not support event deletion.")
-                return
+                 messagebox.showerror("Error", "Delete event functionality not available.")
+                 return # 기능 없으면 중단
+
+            if deleted_count > 0:
+                self.update_status(f"{deleted_count} event(s) deleted.")
+                self.update_event_list() # 목록 갱신
+                self.clear_selection() # 삭제 후 선택 해제
+            else:
+                 self.update_status("Deletion failed or no events were actually deleted.")
+
         except Exception as e:
-            messagebox.showerror("Error", f"Error deleting events: {e}")
-            return
-
-        if deleted_count > 0:
-            self.restore_selection = False
-            self.clear_selection() # 내부 self.selected_events도 여기서 초기화됨
+            messagebox.showerror("Error", f"An error occurred during deletion: {e}")
+            print(f"Error deleting events: {e}") # 콘솔에도 에러 출력
+            # 실패 시에도 목록 갱신 시도
             self.update_event_list()
-            self.restore_selection = True
-            self.update_status(f"{deleted_count} event(s) deleted.")
-        else:
-            # 삭제된 것이 없는 경우 (선택은 있었으나 에디터가 삭제하지 못함)
-            print(f"No events were deleted by the editor for indices: {indices_to_delete}")
-            messagebox.showerror("Error", "Failed to delete selected events (editor reported no deletion or error).")
-
 
     def add_delay_to_event(self):
         """선택된 이벤트 바로 뒤 또는 목록 끝에 딜레이 추가"""
@@ -472,6 +442,68 @@ class GuiEventEditorMixin:
             messagebox.showerror("Error", f"Error adding delay event(s): {e}")
             import traceback
             traceback.print_exc()
+
+
+    def delete_delay_event(self):
+        """선택된 지연(delay) 이벤트를 삭제"""
+        selected_indices = self._get_valid_selected_indices()
+        if not selected_indices:
+            messagebox.showwarning("Warning", "Select a delay event to delete.")
+            return
+
+        # 에디터에서 실제 이벤트 가져오기
+        events = []
+        if hasattr(self.editor, 'get_events') and callable(self.editor.get_events):
+            try: events = self.editor.get_events() or []
+            except Exception as e:
+                print(f"Error getting events: {e}")
+                messagebox.showerror("Error", "Could not retrieve events.")
+                return
+        elif hasattr(self.editor, 'events'): # Fallback
+            events = self.editor.events or []
+
+        # 선택된 인덱스 중 실제 'delay' 타입인 것만 필터링
+        delay_indices_to_delete = []
+        for index in selected_indices:
+            if 0 <= index < len(events) and events[index].get('type') == 'delay':
+                delay_indices_to_delete.append(index)
+
+        if not delay_indices_to_delete:
+            messagebox.showwarning("Warning", "No delay events selected.")
+            return
+
+        # 확인 메시지
+        confirm_msg = f"Are you sure you want to delete the selected {len(delay_indices_to_delete)} delay event(s)?"
+        if not messagebox.askyesno("Confirm Deletion", confirm_msg):
+            return
+
+        # 인덱스를 내림차순으로 정렬하여 삭제
+        delay_indices_to_delete.sort(reverse=True)
+
+        deleted_count = 0
+        try:
+            if hasattr(self.editor, 'delete_event') and callable(self.editor.delete_event):
+                for index in delay_indices_to_delete:
+                    if self.editor.delete_event(index):
+                        deleted_count += 1
+                    else:
+                        print(f"Failed to delete delay event at index {index}")
+            else:
+                 messagebox.showerror("Error", "Delete event functionality not available.")
+                 return
+
+            if deleted_count > 0:
+                self.update_status(f"{deleted_count} delay event(s) deleted.")
+                self.update_event_list()
+                self.clear_selection()
+            else:
+                 self.update_status("Deletion failed or no delay events were actually deleted.")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred during deletion: {e}")
+            print(f"Error deleting delay events: {e}")
+            # 실패 시에도 목록 갱신 시도
+            self.update_event_list()
 
 
     def modify_delay_time(self):

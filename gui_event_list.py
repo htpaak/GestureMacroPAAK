@@ -46,111 +46,115 @@ class GuiEventListMixin:
         event_btn_frame.pack(fill=tk.X, pady=(5, 0))
 
         # 버튼 콜백 가져오기 (존재하지 않으면 경고 출력)
-        select_all_cmd = getattr(
-            self, 'select_all_events', lambda: print("select_all_events not found"))
         delete_selected_cmd = getattr(self, 'delete_selected_event', lambda: print(
             "delete_selected_event not found"))
         add_delay_cmd = getattr(self, 'add_delay_to_event', lambda: print(
             "add_delay_to_event not found"))
         delete_delay_cmd = getattr(
-            self, 'delete_delay_events', lambda: print("delete_delay_events not found"))
+            self, 'delete_delay_event', lambda: print("delete_delay_event not found"))
         modify_delay_cmd = getattr(
             self, 'modify_delay_time', lambda: print("modify_delay_time not found"))
+        add_random_pos_cmd = getattr(self, 'add_random_position', lambda: print("add_random_position not found"))
+        add_random_delay_cmd = getattr(self, 'add_random_delay', lambda: print("add_random_delay not found"))
+        add_mouse_move_cmd = getattr(self, 'add_mouse_move_event', lambda: print("add_mouse_move_event not found"))
         move_up_cmd = getattr(self, 'move_event_up',
                               lambda: print("move_event_up not found"))
         move_down_cmd = getattr(self, 'move_event_down',
                                 lambda: print("move_event_down not found"))
 
-        tk.Button(event_btn_frame, text="Select All", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=select_all_cmd).pack(side=tk.LEFT, padx=5)
-                 
-        tk.Button(event_btn_frame, text="Delete Selected", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=delete_selected_cmd).pack(side=tk.LEFT, padx=5)
-                 
-        tk.Button(event_btn_frame, text="Add Delay", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=add_delay_cmd).pack(side=tk.LEFT, padx=5)
-                 
-        tk.Button(event_btn_frame, text="Delete Delay", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=delete_delay_cmd).pack(side=tk.LEFT, padx=5)
-                 
-        tk.Button(event_btn_frame, text="Modify Delay", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=modify_delay_cmd).pack(side=tk.LEFT, padx=5)
-                 
-        tk.Button(event_btn_frame, text="↑", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=move_up_cmd).pack(side=tk.RIGHT, padx=2)
-                 
-        tk.Button(event_btn_frame, text="↓", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=move_down_cmd).pack(side=tk.RIGHT, padx=2)
+        # 버튼 크기 및 패딩 통일
+        btn_width = 18 # 너비 유지
+        btn_padx = 2
 
-        # 랜덤 기능 버튼 프레임
-        random_btn_frame = ttk.Frame(event_list_frame)
-        random_btn_frame.pack(fill=tk.X, pady=(5, 0))
-
-        add_random_pos_cmd = getattr(
-            self, 'add_random_position', lambda: print("add_random_position not found"))
-        add_random_delay_cmd = getattr(
-            self, 'add_random_delay', lambda: print("add_random_delay not found"))
-        add_mouse_move_cmd = getattr(
-            self, 'add_mouse_move_event', lambda: print("add_mouse_move_event not found"))
-
-        tk.Button(random_btn_frame, text="Add Random Position", 
+        # --- 첫 번째 줄 버튼 --- 
+        tk.Button(event_btn_frame, text="Delete",
                  font=('Arial', 9),
                  bg='#e8e8e8',
                  relief=tk.RAISED,
                  borderwidth=2,
                  highlightthickness=0,
-                 command=add_random_pos_cmd).pack(side=tk.LEFT, padx=5)
-                 
-        tk.Button(random_btn_frame, text="Add Random Delay", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=add_random_delay_cmd).pack(side=tk.LEFT, padx=5)
+                 width=btn_width, # 너비 설정
+                 command=delete_selected_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
 
-        tk.Button(random_btn_frame, text="Add Mouse Move",
+        tk.Button(event_btn_frame, text="Add Delay",
                  font=('Arial', 9),
                  bg='#e8e8e8',
                  relief=tk.RAISED,
                  borderwidth=2,
                  highlightthickness=0,
-                 command=add_mouse_move_cmd).pack(side=tk.LEFT, padx=5)
+                 width=btn_width, # 너비 설정
+                 command=add_delay_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
+
+        tk.Button(event_btn_frame, text="Delete Delay",
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=btn_width, # 너비 설정
+                 command=delete_delay_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
+
+        tk.Button(event_btn_frame, text="Modify Delay",
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=btn_width, # 너비 설정
+                 command=modify_delay_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
+
+        # --- 두 번째 줄 버튼 프레임 --- 
+        event_btn_frame2 = ttk.Frame(event_list_frame)
+        event_btn_frame2.pack(fill=tk.X, pady=(5, 0))
+
+        # 버튼 콜백 가져오기 (두 번째 줄 - 랜덤/마우스 이동)
+        tk.Button(event_btn_frame2, text="Add Random Position",
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=btn_width, # 너비 설정
+                 command=add_random_pos_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
+
+        tk.Button(event_btn_frame2, text="Add Random Delay",
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=btn_width, # 너비 설정
+                 command=add_random_delay_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
+
+        tk.Button(event_btn_frame2, text="Add Mouse Move",
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=btn_width, # 너비 설정
+                 command=add_mouse_move_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
+
+        # --- 위/아래 이동 버튼을 두 번째 프레임 오른쪽에 추가 ---
+        # ↓ 버튼 먼저 pack (오른쪽 끝에 위치)
+        tk.Button(event_btn_frame2, text="↓",
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=3, # 화살표 버튼 너비
+                 command=move_down_cmd).pack(side=tk.RIGHT, padx=btn_padx)
+
+        # ↑ 버튼 다음에 pack (↓ 버튼 왼쪽에 위치)
+        tk.Button(event_btn_frame2, text="↑",
+                 font=('Arial', 9),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=3, # 화살표 버튼 너비
+                 command=move_up_cmd).pack(side=tk.RIGHT, padx=btn_padx)
 
         # --- 녹화 옵션 프레임 추가 ---
         options_frame = ttk.LabelFrame(event_list_frame, text="Recording Options", padding=10)
@@ -199,13 +203,11 @@ class GuiEventListMixin:
         ttk.Radiobutton(coord_frame, text="Absolute",
                         variable=self.coord_mode_var, value="absolute",
                         command=update_recorder_coord_mode).pack(anchor=tk.W)
-        # 현재 "Relative Coords" 로직은 "Gesture Relative"로 연결
-        ttk.Radiobutton(coord_frame, text="Gesture Relative", 
-                        variable=self.coord_mode_var, value="gesture_relative",
+        ttk.Radiobutton(coord_frame, text="Relative",
+                        variable=self.coord_mode_var, value="relative",
                         command=update_recorder_coord_mode).pack(anchor=tk.W)
-        # "Mouse Relative" 옵션 추가 (내부 값은 "playback_relative")
-        ttk.Radiobutton(coord_frame, text="Mouse Relative",
-                        variable=self.coord_mode_var, value="playback_relative", 
+        ttk.Radiobutton(coord_frame, text="Monitor Center",
+                        variable=self.coord_mode_var, value="monitor_center",
                         command=update_recorder_coord_mode).pack(anchor=tk.W)
 
     def update_event_list(self):
@@ -275,7 +277,8 @@ class GuiEventListMixin:
                     print(f"Error displaying event {i} in update_event_list: {e}")
                     # 에러 발생 시 리스트박스에 에러 메시지 표시 시도
                     try:
-                        self.event_listbox.insert(tk.END, f"{i+1:<4} ! Error: {e}")
+                        self.event_listbox.insert(
+                            tk.END, f"{i+1:<4} ! Error: {e}")
                         self.event_listbox.itemconfig(tk.END, {'fg': 'red'})
                     except:
                         pass # 리스트박스도 문제 있으면 무시

@@ -6,6 +6,7 @@ from tkinter import ttk, messagebox
 from gui_setup import GuiSetupMixin
 from gui_controls import GuiControlsMixin
 from gui_event_list import GuiEventListMixin
+from gui_gesture_list import GuiGestureListMixin
 from gui_recording import GuiRecordingMixin
 from gui_playback import GuiPlaybackMixin
 from gui_event_editor import GuiEventEditorMixin
@@ -18,6 +19,7 @@ class GuiBase(
     GuiSetupMixin,
     GuiControlsMixin,
     GuiEventListMixin,
+    GuiGestureListMixin,
     GuiRecordingMixin,
     GuiPlaybackMixin,
     GuiEventEditorMixin,

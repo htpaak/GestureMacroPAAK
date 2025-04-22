@@ -579,90 +579,9 @@ class GuiGestureManagerMixin:
                     self._skip_selection = False
             except tk.TclError: pass
 
-    def _create_gesture_list_widgets(self, parent_frame):
-        """제스처 목록 관련 위젯 생성 (추출된 코드)"""
-        # 제스처 목록 프레임 (parent_frame은 gui_setup에서 전달된 left_frame)
-        gesture_frame = ttk.LabelFrame(parent_frame, text="Gesture List", padding=10) # UI 텍스트 영어로
-        gesture_frame.pack(fill=tk.BOTH, expand=True)
-
-        # 제스처 리스트박스 및 스크롤바
-        gesture_scrollbar = ttk.Scrollbar(gesture_frame)
-        gesture_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # 필요한 속성 확인 및 초기화
-        if not hasattr(self, 'gesture_listbox'): self.gesture_listbox = None
-        if not hasattr(self, 'repeat_count'): self.repeat_count = tk.StringVar(value="1")
-        if not hasattr(self, 'infinite_repeat'): self.infinite_repeat = tk.BooleanVar(value=False)
-
-        self.gesture_listbox = tk.Listbox(gesture_frame, font=('Consolas', 11), height=15,
-                                         selectmode=tk.EXTENDED,
-                                         exportselection=False)
-        self.gesture_listbox.pack(fill=tk.BOTH, expand=True)
-        self.gesture_listbox.config(yscrollcommand=gesture_scrollbar.set,
-                                   selectbackground='#4a6cd4',
-                                   selectforeground='white')
-        gesture_scrollbar.config(command=self.gesture_listbox.yview)
-
-        # 이벤트 바인딩 (콜백은 이 Mixin 또는 GuiBase에 있어야 함)
-        on_select_cmd = getattr(self, 'on_gesture_select', lambda e: print("on_gesture_select not found"))
-        maintain_selection_cmd = getattr(self, 'maintain_gesture_selection', lambda e: print("maintain_gesture_selection not found"))
-        self.gesture_listbox.bind('<<ListboxSelect>>', on_select_cmd)
-        self.gesture_listbox.bind('<FocusOut>', maintain_selection_cmd)
-
-        # 제스처 목록 아래 버튼 프레임
-        gesture_btn_frame = ttk.Frame(gesture_frame)
-        gesture_btn_frame.pack(fill=tk.X, pady=(10, 0))
-
-        edit_cmd = getattr(self, 'edit_gesture', lambda: print("edit_gesture not found"))
-        delete_cmd = getattr(self, 'delete_selected_gesture', lambda: print("delete_selected_gesture not found"))
-
-        tk.Button(gesture_btn_frame, text="Edit", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=edit_cmd).pack(side=tk.LEFT, padx=5) # UI 텍스트 영어로
-        tk.Button(gesture_btn_frame, text="Delete", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=delete_cmd).pack(side=tk.LEFT, padx=5) # UI 텍스트 영어로
-
-        # 반복 횟수 설정 프레임
-        repeat_frame = ttk.Frame(gesture_frame)
-        repeat_frame.pack(fill=tk.X, pady=(5, 0))
-
-        ttk.Label(repeat_frame, text="Repeat Count:").pack(side=tk.LEFT, padx=5) # UI 텍스트 영어로
-
-        self.repeat_count_entry = ttk.Entry(repeat_frame, textvariable=self.repeat_count, width=5)
-        self.repeat_count_entry.pack(side=tk.LEFT, padx=5)
-
-        move_up_cmd = getattr(self, 'move_gesture_up', lambda: print("move_gesture_up not found"))
-        move_down_cmd = getattr(self, 'move_gesture_down', lambda: print("move_gesture_down not found"))
-
-        tk.Button(repeat_frame, text="↑", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=move_up_cmd).pack(side=tk.RIGHT, padx=2)
-        tk.Button(repeat_frame, text="↓", 
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 command=move_down_cmd).pack(side=tk.RIGHT, padx=2)
-
-        # 무한 반복 체크박스 프레임
-        infinite_frame = ttk.Frame(gesture_frame)
-        infinite_frame.pack(fill=tk.X, pady=(5, 0))
-
-        toggle_infinite_cmd = getattr(self, 'toggle_infinite_repeat', lambda: print("toggle_infinite_repeat not found"))
-
-        self.infinite_checkbox = ttk.Checkbutton(infinite_frame, text="Infinite Repeat", variable=self.infinite_repeat, command=toggle_infinite_cmd) # UI 텍스트 영어로
-        self.infinite_checkbox.pack(side=tk.LEFT, padx=5)
+    def update_gesture_status(self, status_text):
+        """상태 표시줄 업데이트"""
+        if hasattr(self, 'update_status') and callable(self.update_status):
+            self.update_status(status_text)
+        else:
+            print(f"Status: {status_text}") # Fallback

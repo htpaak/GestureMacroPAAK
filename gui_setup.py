@@ -74,7 +74,8 @@ class GuiSetupMixin:
 
         # 왼쪽 프레임 (제스처 목록)
         self.left_frame = ttk.Frame(self.content_frame, width=350)
-        self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
+        self.left_frame.pack_propagate(False)
 
         # 오른쪽 프레임 (이벤트 목록)
         self.right_frame = ttk.Frame(self.content_frame)
@@ -215,9 +216,7 @@ class GuiSetupMixin:
                 bg='#e8e8e8',  # 배경색
                 relief=tk.RAISED,  # 테두리 스타일
                 borderwidth=2,  # 테두리 두께
-                command=lambda: self.gui_gesture_manager.prompt_start_gesture_recording(
-                    is_user_initiated=True
-                ),
+                command=lambda: self.gesture_manager.start_gesture_recording(), # gesture_manager의 start_gesture_recording 직접 호출
                 highlightthickness=0  # 하이라이트 테두리 제거
             )
             # place로 절대 위치 지정
@@ -277,17 +276,18 @@ class GuiSetupMixin:
         content_frame = ttk.Frame(main_frame)
         content_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 왼쪽 프레임 - 제스처 목록 (이제 세로로 확장되도록 변경)
-        self.left_frame = ttk.Frame(content_frame, width=350) # Make left_frame an instance variable
-        self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
-        # pack_propagate(False)를 제거하여 내부 컨텐츠가 프레임을 확장할 수 있도록 함
+        # 왼쪽 프레임 - 제스처 목록 (가로 크기 고정 -> 400으로 변경)
+        self.left_frame = ttk.Frame(content_frame, width=400) # width=350 -> 400으로 변경
+        self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5)) # expand=False 유지
+        self.left_frame.pack_propagate(False) # 프레임 크기가 자식 위젯에 따라 변하지 않도록 설정
 
-        # 오른쪽 프레임 - 이벤트 목록
+        # 오른쪽 프레임 - 이벤트 목록 (남은 공간 확장)
         self.right_frame = ttk.Frame(content_frame) # Make right_frame an instance variable
         self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
         # --- 각 영역 위젯 생성 호출 --- (다른 믹스인에서 구현)
         if hasattr(self, '_create_gesture_list_widgets') and callable(self._create_gesture_list_widgets):
+            # print("DEBUG: Calling _create_gesture_list_widgets...") # 디버깅 제거
             self._create_gesture_list_widgets(self.left_frame)
         else:
              print("Warning: _create_gesture_list_widgets method not found.")
