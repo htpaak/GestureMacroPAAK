@@ -2,6 +2,15 @@ import keyboard
 import mouse
 import time
 from datetime import datetime
+import threading
+import logging
+
+# --- pynput import 추가 ---
+try:
+    from pynput import mouse as pynput_mouse
+except ImportError:
+    pynput_mouse = None
+    print("Warning: 'pynput' library not found for mouse recording. Install it: pip install pynput")
 
 class MacroRecorder:
     def __init__(self, parent=None):
@@ -30,41 +39,60 @@ class MacroRecorder:
         
         # 현재 눌려있는 키를 추적하기 위한 딕셔너리 추가
         self.pressed_keys = {}
+        
+        self.mouse_listener = None # pynput 리스너 저장용
+        self.mouse_move_interval = 0.01 # 마우스 이동 이벤트 최소 간격 (초)
+        self.last_move_time = 0 # 마지막 마우스 이동 시간
+        # <<< 휠 이벤트 통합 관련 속성 추가 >>>
+        self.wheel_consolidation_threshold_ms = 500 # 통합 시간 임계값 (ms) - 100ms에서 500ms로 변경
     
     def start_recording(self):
-        """매크로 녹화 시작"""
+        """매크로 녹화 시작 (pynput 사용)"""
         if not self.recording:
             self.recording = True
             self.events = []
             self.start_time = time.time()
-            self.last_event_time = 0  # 첫 이벤트를 위해 0으로 초기화
-            
-            # 눌려있는 키 초기화
+            self.last_event_time = 0
             self.pressed_keys = {}
             
             # 키보드 이벤트 후크
             if self.record_keyboard:
                 keyboard.hook(self._keyboard_callback)
                 
-            # 마우스 이벤트 후크 (모든 마우스 이벤트를 후크하고 콜백 함수에서 필터링)
-            # 이렇게 하지 않으면 녹화 중에 마우스 이동 설정을 변경할 수 없음
-            mouse.hook(self._mouse_callback)
+            # --- pynput 마우스 리스너 시작 ---
+            if pynput_mouse:
+                try:
+                    # 이전 리스너 중지 (안전 장치)
+                    if self.mouse_listener and self.mouse_listener.is_alive():
+                        self.mouse_listener.stop()
+
+                    self.mouse_listener = pynput_mouse.Listener(
+                        on_move=self._on_move,
+                        on_click=self._on_click,
+                        on_scroll=self._on_scroll
+                    )
+                    self.mouse_listener.start()
+                    print("pynput 마우스 리스너 시작됨.")
+                except Exception as e:
+                    print(f"pynput 마우스 리스너 시작 오류: {e}")
+                    self.mouse_listener = None
+            else:
+                print("pynput 라이브러리가 없어 마우스 녹화를 시작할 수 없습니다.")
+            # --- 리스너 시작 끝 ---
             
             # --- 좌표 모드에 따른 초기 설정 --- 
-            current_pos = mouse.get_position()
+            current_pos_tuple = mouse.get_position()
             if self.recording_coord_mode == 'gesture_relative':
-                # 기존 'relative' 모드와 동일하게 동작
-                self.base_x, self.base_y = current_pos
-                self.last_mouse_pos = None # 사용 안 함
+                self.base_x, self.base_y = current_pos_tuple
+                self.last_mouse_pos = None
                 print(f"Gesture Relative 모드 시작. 기준 좌표: ({self.base_x}, {self.base_y})")
             elif self.recording_coord_mode == 'playback_relative':
-                # Mouse Relative 모드: 현재 위치를 마지막 위치로 저장
-                self.last_mouse_pos = current_pos
-                self.base_x, self.base_y = None, None # 사용 안 함
+                self.last_mouse_pos = current_pos_tuple
+                self.base_x, self.base_y = None, None
                 print(f"Mouse Relative 모드 시작. 첫 위치: {self.last_mouse_pos}")
             else: # 'absolute' 모드 (기본값)
-                self.base_x, self.base_y = None, None # 사용 안 함
-                self.last_mouse_pos = None # 사용 안 함
+                self.base_x, self.base_y = None, None
+                self.last_mouse_pos = None
                 print("Absolute 모드 시작.")
             # --- 초기 설정 끝 --- 
             
@@ -81,7 +109,7 @@ class MacroRecorder:
             print(f"매크로 녹화가 시작되었습니다. 녹화 설정: {settings_str}")
     
     def stop_recording(self):
-        """매크로 녹화 중지 및 이벤트 시간 재조정"""
+        """매크로 녹화 중지 (pynput 사용)"""
         if self.recording:
             # 특정 콜백만 해제
             try:
@@ -97,12 +125,18 @@ class MacroRecorder:
                 except Exception as e_all:
                     print(f"모든 키보드 훅 해제 오류: {e_all}")
 
-            # 마우스 훅 해제
-            try:
-                mouse.unhook_all()
-                print("마우스 녹화 콜백 해제")
-            except Exception as e:
-                print(f"마우스 콜백 해제 오류: {e}")
+            # --- pynput 마우스 리스너 중지 ---
+            if self.mouse_listener:
+                try:
+                    print("pynput 마우스 리스너 중지 시도...")
+                    self.mouse_listener.stop()
+                    # self.mouse_listener.join() # join은 리스너 스레드 종료까지 대기
+                    print("pynput 마우스 리스너 중지됨.")
+                except Exception as e:
+                    print(f"pynput 마우스 리스너 중지 오류: {e}")
+                finally:
+                    self.mouse_listener = None
+            # --- 리스너 중지 끝 ---
 
             # 상태 업데이트
             self.recording = False
@@ -247,110 +281,115 @@ class MacroRecorder:
                     }
                     self.events.append(event_data)
     
-    def _mouse_callback(self, event):
-        """마우스 이벤트 콜백 함수 (3가지 좌표 모드 지원)"""
-        # <<< 디버그 로그 제거 1 >>>
-        # print(f"[DEBUG] _mouse_callback called with event: {type(event)}")
+    # --- pynput 마우스 콜백 함수들 --- 
+    def _on_move(self, x, y):
+        """pynput 마우스 이동 콜백"""
+        if self.recording and self.record_mouse_move:
+            current_time = time.time() # 이벤트 발생 시간
+            event_time_relative = current_time - self.start_time # 녹화 시작 기준 시간
 
-        if not self.recording:
-            # <<< 디버그 로그 제거 >>>
-            # print("[DEBUG] Not recording, ignoring event.")
-            return
-
-        current_time = time.time() # 이벤트 발생 시간 기록
-        event_time_relative = current_time - self.start_time # 녹화 시작 기준 시간
-
-        event_data = None
-        current_pos = None # 현재 위치 저장용
-        
-        # --- 이벤트 타입별 처리 ---
-        if isinstance(event, mouse.ButtonEvent):
-            # 버튼/휠 이벤트는 딜레이 체크 먼저
-            self._add_delay_event_if_needed(event_time_relative) 
-            current_pos = mouse.get_position() # 버튼/휠 이벤트 발생 시 위치 가져오기
-            # print(f"Mouse Button: {event.event_type} {event.button} at {current_pos}") # 디버깅
-
-            # 좌표 계산
-            position_to_save, coord_mode_to_save = self._calculate_coordinates(current_pos)
-
-            event_data = {
-                'type': 'mouse',
-                'event_type': event.event_type,
-                'button': event.button,
-                'position': position_to_save, # 계산된 좌표
-                'coord_mode': coord_mode_to_save, # 저장된 모드
-                'time': event_time_relative
-            }
-
-        elif isinstance(event, mouse.MoveEvent):
-            if not self.record_mouse_move or (current_time - getattr(self, 'last_move_time', 0) < self.mouse_move_interval):
-                 return # 이동 녹화 비활성화 또는 너무 짧은 간격이면 무시
+            # 너무 짧은 간격 무시
+            if (current_time - self.last_move_time) < self.mouse_move_interval:
+                return
 
             # Move 이벤트는 딜레이 추가 안 함
-            current_pos = (event.x, event.y)
-            # print(f"Mouse Move to {current_pos}") # 디버깅
-
-            # 좌표 계산
-            position_to_save, coord_mode_to_save = self._calculate_coordinates(current_pos)
+            position_to_save, coord_mode_to_save = self._calculate_coordinates((x, y))
 
             event_data = {
                 'type': 'mouse',
                 'event_type': 'move',
-                'button': 'move', # 구분용
+                'button': 'move', # 기존 형식 유지
                 'position': position_to_save,
                 'coord_mode': coord_mode_to_save,
                 'time': event_time_relative
             }
-            self.last_move_time = current_time # 마지막 *이동* 시간 업데이트
+            self.events.append(event_data)
+            self.last_move_time = current_time # 마지막 이동 시간 업데이트
+            self.last_mouse_pos = (x, y) # 마지막 절대 위치 업데이트
 
-        elif isinstance(event, mouse.WheelEvent):
-            # <<< 디버그 로그 제거 2 >>>
-            # print(f"[DEBUG] WheelEvent detected: delta={event.delta}")
+    def _on_click(self, x, y, button, pressed):
+        """pynput 마우스 클릭 콜백"""
+        if self.recording:
+            current_time = time.time()
+            event_time_relative = current_time - self.start_time
 
-            # 버튼/휠 이벤트는 딜레이 체크 먼저
-            self._add_delay_event_if_needed(event_time_relative) 
-            current_pos = mouse.get_position()
-            # print(f"Mouse Wheel: Delta {event.delta} at {current_pos}") # 기존 디버깅 주석 유지
+            # 클릭 이벤트는 딜레이 체크 먼저
+            self._add_delay_event_if_needed(event_time_relative)
 
-            # 좌표 계산
-            position_to_save, coord_mode_to_save = self._calculate_coordinates(current_pos)
+            # 버튼 이름 변환 (pynput.mouse.Button.left -> 'left')
+            button_name = button.name
+            # 이벤트 타입 변환 (pressed=True -> 'down', False -> 'up')
+            event_type_str = 'down' if pressed else 'up'
+
+            position_to_save, coord_mode_to_save = self._calculate_coordinates((x, y))
 
             event_data = {
                 'type': 'mouse',
-                'event_type': 'wheel',
-                'delta': event.delta,
-                'position': position_to_save, # 계산된 좌표
-                'coord_mode': coord_mode_to_save, # 저장된 모드
+                'event_type': event_type_str,
+                'button': button_name,
+                'position': position_to_save,
+                'coord_mode': coord_mode_to_save,
                 'time': event_time_relative
             }
-            # <<< 디버그 로그 제거 3 >>>
-            # print(f"[DEBUG] Created wheel event_data: {event_data}")
-
-        # 이벤트 기록 및 상태 업데이트
-        if event_data:
-            # <<< 디버그 로그 제거 4 >>>
-            # if event_data.get('event_type') == 'wheel':
-            #     print(f"[DEBUG] Appending wheel event_data to self.events")
-            # else: # 다른 이벤트 타입 로그 (필요시 주석 해제)
-            #    print(f"[DEBUG] Appending {event_data.get('event_type')} event_data to self.events")
-
             self.events.append(event_data)
-            # 마지막 이벤트 시간 업데이트 (다음 Button/Wheel/Keyboard 딜레이 계산용)
-            self.last_event_time = event_time_relative
-            
-            # 현재 마우스 위치 업데이트 (Mouse Relative 다음 계산 및 다른 모드 시작 시 사용 위함)
-            if current_pos:
-                 self.last_mouse_pos = current_pos # 모든 마우스 이벤트 후 업데이트
-        # <<< 디버그 로그 제거 5 >>>
-        # else:
-        #     if not isinstance(event, mouse.MoveEvent) or self.record_mouse_move: # 이동 이벤트가 아니거나 이동 녹화가 켜져 있을 때만 로그
-        #         print(f"[DEBUG] No event_data created for event: {type(event)}")
+            self.last_event_time = event_time_relative # 마지막 이벤트 시간 업데이트
+            self.last_mouse_pos = (x, y) # 마지막 절대 위치 업데이트
+            print(f"Mouse Click: {button_name} {event_type_str} at ({x},{y})") # 로그 추가
+
+    def _on_scroll(self, x, y, dx, dy):
+        """pynput 마우스 스크롤 콜백 (이벤트 통합 로직 추가)"""
+        # <<< pynput 실제 반환 값 로깅은 제거 또는 유지 (현재는 제거) >>>
+        # print(f"[PYNPUT DEBUG] _on_scroll received: x={x}, y={y}, dx={dx}, dy={dy}")
+
+        if self.recording:
+            current_time = time.time()
+            event_time_relative = current_time - self.start_time
+
+            # 마지막 이벤트 확인 및 시간 차이 계산
+            consolidate = False
+            if self.events:
+                last_event = self.events[-1]
+                if last_event.get('type') == 'mouse' and last_event.get('event_type') == 'wheel':
+                    last_wheel_event_time_relative = last_event.get('time', 0)
+                    time_diff_ms = (event_time_relative - last_wheel_event_time_relative) * 1000
+                    if time_diff_ms < self.wheel_consolidation_threshold_ms:
+                        consolidate = True
+
+            if consolidate:
+                # <<< 이전 휠 이벤트와 통합 >>>
+                self.events[-1]['delta'] += dy
+                self.events[-1]['time'] = event_time_relative # 시간은 최신으로 갱신
+                print(f"Consolidated wheel event: new delta={self.events[-1]['delta']}")
+                # 통합 시에는 last_event_time을 업데이트하지 않음 (딜레이 계산 기준 유지)
+            else:
+                # <<< 새로운 휠 이벤트로 기록 >>>
+                # 새 이벤트 시작 전 딜레이 계산 및 추가
+                self._add_delay_event_if_needed(event_time_relative)
+
+                # 수직 스크롤(dy)만 delta로 사용
+                delta_value = dy
+                position_to_save, coord_mode_to_save = self._calculate_coordinates((x, y))
+
+                event_data = {
+                    'type': 'mouse',
+                    'event_type': 'wheel',
+                    'delta': delta_value,
+                    'position': position_to_save,
+                    'coord_mode': coord_mode_to_save,
+                    'time': event_time_relative
+                }
+                self.events.append(event_data)
+                # 새로운 이벤트 추가 시 last_event_time 업데이트
+                self.last_event_time = event_time_relative
+                print(f"Recorded new wheel event: delta={delta_value}")
+
+            # 마지막 절대 위치 업데이트 (스크롤 이벤트에서도 수행)
+            self.last_mouse_pos = (x, y)
 
     def _calculate_coordinates(self, current_pos):
         """현재 위치와 녹화 모드에 따라 저장할 좌표와 모드를 계산하여 반환"""
         position_to_save = [0, 0]
-        # 현재 설정된 녹화 모드를 가져옴 (이 함수 내에서 변경될 수 있음)
-        coord_mode_to_save = self.recording_coord_mode 
+        coord_mode_to_save = self.recording_coord_mode
 
         if coord_mode_to_save == 'absolute':
             position_to_save = list(current_pos)
@@ -358,27 +397,23 @@ class MacroRecorder:
             if self.base_x is not None and self.base_y is not None:
                  position_to_save = [current_pos[0] - self.base_x, current_pos[1] - self.base_y]
             else:
-                # 기준점 없으면 경고 후 절대 좌표로 저장
                 print("Warning: Gesture relative mode selected but base coords not set. Recording absolute for this event.")
                 position_to_save = list(current_pos)
-                coord_mode_to_save = 'absolute' # 이 이벤트만 모드 변경
+                coord_mode_to_save = 'absolute'
         elif coord_mode_to_save == 'playback_relative':
             if self.last_mouse_pos:
-                # 이전 위치와의 차이 계산
                 delta_x = current_pos[0] - self.last_mouse_pos[0]
                 delta_y = current_pos[1] - self.last_mouse_pos[1]
                 position_to_save = [delta_x, delta_y]
             else:
-                # 첫 이벤트면 이동량 (0,0) 또는 절대 좌표 기록 (여기선 절대 좌표 선택)
                 print("Warning: Mouse relative mode - first event? Recording absolute for this event.")
                 position_to_save = list(current_pos)
-                coord_mode_to_save = 'absolute' # 이 이벤트만 모드 변경
-        else: # 알 수 없는 모드
+                coord_mode_to_save = 'absolute'
+        else: 
             print(f"Warning: Unknown recording coord mode '{coord_mode_to_save}'. Recording absolute.")
             position_to_save = list(current_pos)
-            coord_mode_to_save = 'absolute' # 폴백
+            coord_mode_to_save = 'absolute'
 
-        # 계산된 좌표와 실제 저장될 모드 반환
         return position_to_save, coord_mode_to_save
 
     def get_recorded_events(self):
