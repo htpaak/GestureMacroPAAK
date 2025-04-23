@@ -111,7 +111,7 @@ class GuiEventListMixin:
                                 lambda: print("move_event_down not found"))
         
         # --- 두 번째 줄 버튼들 pack --- 
-        tk.Button(event_btn_frame2, text="Add Random Position",
+        tk.Button(event_btn_frame2, text="Random Position",
                  font=('Arial', btn_font_size),
                  bg='#e8e8e8',
                  relief=tk.RAISED,
@@ -120,7 +120,7 @@ class GuiEventListMixin:
                  width=btn_width, # 너비 설정
                  command=add_random_pos_cmd).pack(side=tk.LEFT, padx=btn_padx)
 
-        tk.Button(event_btn_frame2, text="Add Random Delay",
+        tk.Button(event_btn_frame2, text="Random Delay",
                  font=('Arial', btn_font_size),
                  bg='#e8e8e8',
                  relief=tk.RAISED,
