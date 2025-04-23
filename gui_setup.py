@@ -33,7 +33,7 @@ class GuiSetupMixin:
         # 구분선 스타일
         style.configure('TSeparator', background='#ccc')
 
-    def _setup_window(self, window_width=1200, window_height=1200, min_width=1000, min_height=800):
+    def _setup_window(self, window_width=1200, window_height=1200, min_width=1000, min_height=650):
         """윈도우 크기, 위치, 제목 설정"""
         self.root.title("MacroCraft")
 
@@ -56,17 +56,17 @@ class GuiSetupMixin:
 
         # 최상단 제스처 인식 제어 프레임
         self.gesture_control_frame = ttk.Frame(self.main_frame)
-        self.gesture_control_frame.pack(fill=tk.X, pady=(0, 15))
+        self.gesture_control_frame.pack(fill=tk.X, pady=(0, 5))
         title_label = ttk.Label(self.gesture_control_frame, text="MacroCraft", font=('Arial', 12))
-        title_label.pack(side=tk.TOP, pady=(0, 10))
+        title_label.pack(side=tk.TOP, pady=(0, 5))
 
         # 구분선
         separator = ttk.Separator(self.main_frame, orient='horizontal')
-        separator.pack(fill=tk.X, pady=10)
+        separator.pack(fill=tk.X, pady=3)
 
         # 상단 제어 프레임 (매크로 제어)
-        self.control_frame = ttk.LabelFrame(self.main_frame, text="Macro Control", padding=15)
-        self.control_frame.pack(fill=tk.X, pady=(0, 15))
+        self.control_frame = ttk.LabelFrame(self.main_frame, text="Macro Control", padding=5)
+        self.control_frame.pack(fill=tk.X, pady=(0, 5))
 
         # 메인 컨텐츠 영역 (좌우 분할)
         self.content_frame = ttk.Frame(self.main_frame)
@@ -82,7 +82,7 @@ class GuiSetupMixin:
         self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
         # 하단 상태 표시줄 프레임
-        self.status_frame = ttk.Frame(self.main_frame, padding=(5, 5))
+        self.status_frame = ttk.Frame(self.main_frame, padding=(3, 3))
         self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _create_status_bar(self):
@@ -99,22 +99,22 @@ class GuiSetupMixin:
         style.configure('Big.TButton', font=('Arial', 11, 'bold'), padding=10)
 
     def setup_ui(self):
-        """간소화된 GUI 구성 (추출된 코드)"""
-        # 메인 프레임
-        main_frame = ttk.Frame(self.root, padding=20)  # 패딩 증가
+        """간소화된 GUI 구성 (PanedWindow 사용) - 1366x768 크기 최적화"""
+        # 메인 프레임 (패딩 최소화)
+        main_frame = ttk.Frame(self.root, padding=3) # padding 5 -> 3
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # 윈도우 전체에 클릭 이벤트 바인딩 - 제스처 선택 유지
         if hasattr(self, 'ensure_gesture_selection'):
             self.root.bind('<Button-1>', lambda e: self.root.after(10, self.ensure_gesture_selection))
 
-        # 최상단 제스처 인식 제어 프레임 (전체 UI 위에 배치) - 고정 높이
+        # 최상단 제스처 인식 제어 프레임 (pady 최소화)
         gesture_control_frame = ttk.Frame(main_frame)
-        gesture_control_frame.pack(fill=tk.X, expand=False, pady=(0, 15))
+        gesture_control_frame.pack(fill=tk.X, expand=False, pady=(0, 3)) # pady (0, 5) -> (0, 3)
 
-        # 제목 레이블과 아이콘 추가
+        # 제목 레이블과 아이콘 추가 (pady 최소화)
         title_frame = ttk.Frame(gesture_control_frame)
-        title_frame.pack(side=tk.TOP, pady=(0, 10))
+        title_frame.pack(side=tk.TOP, pady=(0, 3)) # pady (0, 5) -> (0, 3)
         
         # 아이콘 로드 및 표시
         try:
@@ -135,171 +135,139 @@ class GuiSetupMixin:
                 icon_label.pack(side=tk.LEFT, padx=(0, 5))
                 
                 # 텍스트 레이블
-                text_label = ttk.Label(title_frame, text="MacroCraft", font=('Arial', 12))
+                text_label = ttk.Label(title_frame, text="MacroCraft", font=('Arial', 11)) # 12 -> 11 (Optional)
                 text_label.pack(side=tk.LEFT)
             else:
                 # 아이콘이 없으면 텍스트만 표시
-                text_label = ttk.Label(title_frame, text="MacroCraft", font=('Arial', 12))
+                text_label = ttk.Label(title_frame, text="MacroCraft", font=('Arial', 11))
                 text_label.pack(side=tk.LEFT)
                 print("Warning: Icon file not found at:", icon_path)
         except Exception as e:
             # 오류 발생 시 텍스트만 표시
-            text_label = ttk.Label(title_frame, text="MacroCraft", font=('Arial', 12))
+            text_label = ttk.Label(title_frame, text="MacroCraft", font=('Arial', 11))
             text_label.pack(side=tk.LEFT)
             print(f"Error loading icon: {e}")
 
-        # 제스처 인식 시작/중지 버튼
+        # 제스처 인식 시작/중지 버튼 (폰트, 높이, 테두리, padx 축소)
         if hasattr(self, 'gesture_manager'):
             gesture_button_frame = ttk.Frame(gesture_control_frame)
-            gesture_button_frame.pack(fill=tk.X)
-
+            gesture_button_frame.pack(fill=tk.X, pady=(2,0)) # 상단 버튼과의 간격 추가
             start_gesture_cmd = getattr(self, 'start_gesture_recognition', lambda: print("start_gesture_recognition not found"))
             stop_gesture_cmd = getattr(self, 'stop_gesture_recognition', lambda: print("stop_gesture_recognition not found"))
 
             self.gesture_start_btn = tk.Button(
                 gesture_button_frame, 
                 text="Start Recognition (F11)",
-                font=('Arial', 11),  # 볼드 스타일 제거
+                font=('Arial', 10),  # 11 -> 10
                 bg='#e8e8e8',  # 배경색
                 relief=tk.RAISED,  # 테두리 스타일
-                borderwidth=3,  # 테두리 두께 증가
+                borderwidth=2,  # 3 -> 2
                 command=start_gesture_cmd,
                 highlightthickness=0,  # 하이라이트 테두리 제거
-                height=2  # 버튼 높이 증가
+                height=1  # 2 -> 1
             )
-            self.gesture_start_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+            self.gesture_start_btn.pack(side=tk.LEFT, padx=3, fill=tk.X, expand=True) # padx 5 -> 3
 
             self.gesture_stop_btn = tk.Button(
                 gesture_button_frame, 
                 text="Stop Recognition (F12)",
-                font=('Arial', 11),  # 볼드 스타일 제거
+                font=('Arial', 10),  # 11 -> 10
                 bg='#e8e8e8',
                 relief=tk.RAISED,
-                borderwidth=3,  # 테두리 두께 증가
+                borderwidth=2,  # 3 -> 2
                 command=stop_gesture_cmd,
                 state=tk.DISABLED,
                 highlightthickness=0,
-                height=2  # 버튼 높이 증가
+                height=1  # 2 -> 1
             )
-            self.gesture_stop_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+            self.gesture_stop_btn.pack(side=tk.LEFT, padx=3, fill=tk.X, expand=True) # padx 5 -> 3
 
-        # 구분선 추가
+        # 구분선 추가 (pady 최소화)
         separator = ttk.Separator(main_frame, orient='horizontal')
-        separator.pack(fill=tk.X, pady=10)
+        separator.pack(fill=tk.X, pady=2) # pady 3 -> 2
 
-        # 상단 제어 프레임 (매크로 녹화 등) - 고정 높이
-        control_frame = ttk.LabelFrame(main_frame, text="Macro Control", padding=15) # UI 텍스트는 영어로
-        control_frame.pack(fill=tk.X, expand=False, pady=(0, 15))
+        # 상단 제어 프레임 (패딩, pady 최소화)
+        control_frame = ttk.LabelFrame(main_frame, text="Macro Control", padding=3) # padding 5 -> 3
+        control_frame.pack(fill=tk.X, expand=False, pady=(0, 3)) # pady (0, 5) -> (0, 3)
 
-        # 제어 버튼 프레임
-        button_frame = tk.Frame(control_frame, height=50, bg='#f0f0f0')
-        button_frame.pack(fill=tk.X, expand=True, pady=10)
-        # 프레임 크기 고정
-        button_frame.pack_propagate(False)
+        # 제어 버튼 프레임 (pady 최소화)
+        button_frame = tk.Frame(control_frame) # height, bg 제거
+        button_frame.pack(fill=tk.X, expand=True, pady=1) # pady 2 -> 1
 
         start_gesture_rec_cmd = getattr(self, 'start_gesture_recording', lambda: print("start_gesture_recording not found"))
         start_macro_rec_cmd = getattr(self, 'start_recording_for_selected_gesture', lambda: print("start_recording_for_selected_gesture not found"))
         toggle_rec_cmd = getattr(self, 'toggle_recording', lambda: print("Toggle Recording method not found"))
         save_macro_cmd = getattr(self, 'save_macro', lambda: print("save_macro not found"))
 
-        # 레이아웃 계산을 위한 변수
-        btn_count = 4 if hasattr(self, 'gesture_manager') and self.gesture_manager else 3
-        btn_width = 1.0 / btn_count  # 균등 분할
-        btn_idx = 0
-        
-        # 제스처 녹화 버튼
+        # 제어 버튼 (폰트, padx, pady 축소)
         if hasattr(self, 'gesture_manager'):
             self.record_gesture_btn = tk.Button(
                 button_frame, 
                 text="Start Recording Gesture",
-                font=('Arial', 9),
+                font=('Arial', 9), # 10 -> 9
                 bg='#e8e8e8',  # 배경색
                 relief=tk.RAISED,  # 테두리 스타일
                 borderwidth=2,  # 테두리 두께
                 command=lambda: self.gesture_manager.start_gesture_recording(), # gesture_manager의 start_gesture_recording 직접 호출
                 highlightthickness=0  # 하이라이트 테두리 제거
             )
-            # place로 절대 위치 지정
-            self.record_gesture_btn.place(
-                relx=btn_width * btn_idx + 0.01,  # 1% 여백
-                rely=0.5,
-                relwidth=btn_width - 0.02,  # 2% 여백
-                relheight=0.8,
-                anchor='w'
-            )
-            btn_idx += 1
+            self.record_gesture_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2, pady=2) # 3 -> 2
         
-        # 매크로 녹화 버튼
         self.record_btn = tk.Button(
             button_frame, 
             text="Start Recording Macro (F9)",
-            font=('Arial', 9),
+            font=('Arial', 9), # 10 -> 9
             bg='#e8e8e8',
             relief=tk.RAISED,
             borderwidth=2,
             command=toggle_rec_cmd,
             highlightthickness=0
         )
-        self.record_btn.place(
-            relx=btn_width * btn_idx + 0.01,
-            rely=0.5,
-            relwidth=btn_width - 0.02,
-            relheight=0.8,
-            anchor='w'
-        )
-        btn_idx += 1
-        
-        # 저장 버튼
-        self.save_btn = tk.Button(
-            button_frame, 
+        self.record_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2, pady=2) # 3 -> 2
+
+        self.save_macro_btn = tk.Button(
+            button_frame,
             text="Save Macro",
-            font=('Arial', 9),
+            font=('Arial', 9), # 10 -> 9
             bg='#e8e8e8',
             relief=tk.RAISED,
             borderwidth=2,
             command=save_macro_cmd,
             highlightthickness=0
         )
-        self.save_btn.place(
-            relx=btn_width * btn_idx + 0.01,
-            rely=0.5,
-            relwidth=btn_width - 0.02,
-            relheight=0.8,
-            anchor='w'
-        )
+        self.save_macro_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2, pady=2) # 3 -> 2
 
-        # 녹화 상태 표시
-        self.record_status = ttk.Label(control_frame, text="Ready", foreground="black")
-        self.record_status.pack(anchor=tk.W, pady=(5, 0))
+        # 녹화 상태 레이블 프레임 (pady 최소화, 높이 축소)
+        status_label_frame = tk.Frame(control_frame, height=25, bg='#f0f0f0') # height 30->25
+        status_label_frame.pack(fill=tk.X, expand=True, pady=(1, 0)) # pady (2, 0) -> (1, 0)
 
-        # 메인 컨텐츠 영역 - 좌우 분할 (이 부분만 세로로 확장되어야 함)
-        content_frame = ttk.Frame(main_frame)
-        content_frame.pack(fill=tk.BOTH, expand=True)
+        self.record_status = tk.Label(status_label_frame, text="Ready", bg='#f0f0f0', font=('Arial', 9))
+        self.record_status.place(relx=0.5, rely=0.5, anchor='center')
 
-        # 왼쪽 프레임 - 제스처 목록 (가로 크기 고정 -> 400으로 변경)
-        self.left_frame = ttk.Frame(content_frame, width=400) # width=350 -> 400으로 변경
-        self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5)) # expand=False 유지
-        self.left_frame.pack_propagate(False) # 프레임 크기가 자식 위젯에 따라 변하지 않도록 설정
+        # 구분선 추가 (pady 최소화)
+        separator2 = ttk.Separator(main_frame, orient='horizontal')
+        separator2.pack(fill=tk.X, pady=2) # pady 3 -> 2
 
-        # 오른쪽 프레임 - 이벤트 목록 (남은 공간 확장)
-        self.right_frame = ttk.Frame(content_frame) # Make right_frame an instance variable
-        self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        # PanedWindow 생성 (pady 최소화)
+        paned_window = ttk.PanedWindow(main_frame, orient=tk.HORIZONTAL)
+        paned_window.pack(fill=tk.BOTH, expand=True, pady=(0, 2)) # pady (0, 3) -> (0, 2)
 
-        # --- 각 영역 위젯 생성 호출 --- (다른 믹스인에서 구현)
-        if hasattr(self, '_create_gesture_list_widgets') and callable(self._create_gesture_list_widgets):
-            # print("DEBUG: Calling _create_gesture_list_widgets...") # 디버깅 제거
-            self._create_gesture_list_widgets(self.left_frame)
-        else:
-             print("Warning: _create_gesture_list_widgets method not found.")
+        # 왼쪽 프레임 (Frame -> LabelFrame 변경, text 복원)
+        left_frame = ttk.LabelFrame(paned_window, text="Gesture List", padding=2) # Frame -> LabelFrame, text 복원
+        paned_window.add(left_frame, weight=1) # weight 유지
+        if hasattr(self, '_create_gesture_list_widgets'):
+            self._create_gesture_list_widgets(left_frame) # 이 함수는 내부 LabelFrame을 만들지 않음
 
-        if hasattr(self, '_create_event_list_widgets') and callable(self._create_event_list_widgets):
-            self._create_event_list_widgets(self.right_frame)
-        else:
-             print("Warning: _create_event_list_widgets method not found.")
+        # 오른쪽 프레임 (Event List - LabelFrame 유지)
+        right_frame = ttk.LabelFrame(paned_window, text="Event List", padding=2) # padding 3 -> 2
+        paned_window.add(right_frame, weight=2) # weight 유지
+        if hasattr(self, '_create_event_list_widgets'):
+            self._create_event_list_widgets(right_frame)
 
-        # 상태 표시줄 - 바닥에 고정
-        self.status_label = ttk.Label(main_frame, text="Ready", relief=tk.SUNKEN, anchor=tk.W)
-        self.status_label.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0), expand=False)
+        # 하단 상태 표시줄 프레임 (패딩 최소화)
+        self.status_frame = ttk.Frame(main_frame, padding=(2, 2)) # padding (3, 3) -> (2, 2)
+        self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        self._create_status_bar() # 상태 표시줄 생성 호출
 
         # --- Add Gesture Manager Callbacks (extracted from backup) ---
         if hasattr(self, 'gesture_manager') and self.gesture_manager:

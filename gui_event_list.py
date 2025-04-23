@@ -11,19 +11,17 @@ class GuiEventListMixin:
     """GUI의 이벤트 목록(오른쪽 프레임) UI 요소 및 관련 설정 생성을 담당하는 믹스인 클래스"""
 
     def _create_event_list_widgets(self, parent_frame):
-        """이벤트 목록 관련 위젯 생성 (추출된 코드)"""
-        # 오른쪽 프레임을 LabelFrame으로 변경
-        event_list_frame = ttk.LabelFrame(
-            parent_frame, text="Event List", padding=10)
-        event_list_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        """이벤트 목록 관련 위젯 생성 - 구조 수정 및 1366x768 최적화"""
+        # 불필요한 내부 LabelFrame 생성 제거
+        # event_list_frame = ttk.LabelFrame(...) # 제거
 
-        # 이벤트 리스트박스 및 스크롤바
-        event_scrollbar = ttk.Scrollbar(event_list_frame)
-        event_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # 이벤트 리스트박스 및 스크롤바 (parent_frame에 직접 배치)
+        event_scrollbar = ttk.Scrollbar(parent_frame)
+        event_scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 5), pady=(5, 2)) # 하단 pady 줄임 5 -> 2
 
-        self.event_listbox = tk.Listbox(event_list_frame, font=('Consolas', 11), selectmode=tk.EXTENDED,
+        self.event_listbox = tk.Listbox(parent_frame, font=('Consolas', 10), selectmode=tk.EXTENDED,
                                         activestyle='dotbox', highlightthickness=2, exportselection=False)
-        self.event_listbox.pack(fill=tk.BOTH, expand=True)
+        self.event_listbox.pack(fill=tk.BOTH, expand=True, padx=(5, 0), pady=(5, 2)) # 하단 pady 줄임 5 -> 2
         self.event_listbox.config(yscrollcommand=event_scrollbar.set,
                                       selectbackground='#4a6cd4',
                                       selectforeground='white')
@@ -41,11 +39,13 @@ class GuiEventListMixin:
         if hasattr(self, 'setup_event_listbox_bindings') and callable(self.setup_event_listbox_bindings):
             self.setup_event_listbox_bindings()
         
-        # 이벤트 목록 아래 버튼 프레임
-        event_btn_frame = ttk.Frame(event_list_frame)
-        event_btn_frame.pack(fill=tk.X, pady=(5, 0))
+        # --- 버튼 프레임 및 옵션 프레임을 parent_frame에 직접 배치 ---
 
-        # 버튼 콜백 가져오기 (존재하지 않으면 경고 출력)
+        # 첫 번째 줄 버튼 프레임 (pady 최소화)
+        event_btn_frame = ttk.Frame(parent_frame)
+        event_btn_frame.pack(fill=tk.X, pady=(2, 1)) # pady (2, 0) -> (2, 1)
+
+        # 버튼 콜백 가져오기 (존재하지 않으면 경고 출력) - 순서 유지
         delete_selected_cmd = getattr(self, 'delete_selected_event', lambda: print(
             "delete_selected_event not found"))
         add_delay_cmd = getattr(self, 'add_delay_to_event', lambda: print(
@@ -54,6 +54,54 @@ class GuiEventListMixin:
             self, 'delete_delay_event', lambda: print("delete_delay_event not found"))
         modify_delay_cmd = getattr(
             self, 'modify_delay_time', lambda: print("modify_delay_time not found"))
+        
+        # 버튼 크기 및 패딩 축소
+        btn_width = 14 # 18 -> 14
+        btn_padx = 1   # 2 -> 1
+        btn_font_size = 8 # 9 -> 8
+
+        # --- 첫 번째 줄 버튼들 pack --- 
+        tk.Button(event_btn_frame, text="Delete",
+                 font=('Arial', btn_font_size), # 폰트 적용
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=btn_width, # 너비 설정
+                 command=delete_selected_cmd).pack(side=tk.LEFT, padx=btn_padx)
+
+        tk.Button(event_btn_frame, text="Add Delay",
+                 font=('Arial', btn_font_size),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=btn_width, # 너비 설정
+                 command=add_delay_cmd).pack(side=tk.LEFT, padx=btn_padx)
+
+        tk.Button(event_btn_frame, text="Delete Delay",
+                 font=('Arial', btn_font_size),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=btn_width, # 너비 설정
+                 command=delete_delay_cmd).pack(side=tk.LEFT, padx=btn_padx)
+
+        tk.Button(event_btn_frame, text="Modify Delay",
+                 font=('Arial', btn_font_size),
+                 bg='#e8e8e8',
+                 relief=tk.RAISED,
+                 borderwidth=2,
+                 highlightthickness=0,
+                 width=btn_width, # 너비 설정
+                 command=modify_delay_cmd).pack(side=tk.LEFT, padx=btn_padx)
+
+        # 두 번째 줄 버튼 프레임 (pady 최소화)
+        event_btn_frame2 = ttk.Frame(parent_frame) # parent_frame으로 변경
+        event_btn_frame2.pack(fill=tk.X, pady=(1, 1)) # pady (5, 0) -> (1, 1)
+
+        # 버튼 콜백 가져오기 (두 번째 줄 - 랜덤/마우스 이동)
         add_random_pos_cmd = getattr(self, 'add_random_position', lambda: print("add_random_position not found"))
         add_random_delay_cmd = getattr(self, 'add_random_delay', lambda: print("add_random_delay not found"))
         add_mouse_move_cmd = getattr(self, 'add_mouse_move_event', lambda: print("add_mouse_move_event not found"))
@@ -61,84 +109,39 @@ class GuiEventListMixin:
                               lambda: print("move_event_up not found"))
         move_down_cmd = getattr(self, 'move_event_down',
                                 lambda: print("move_event_down not found"))
-
-        # 버튼 크기 및 패딩 통일
-        btn_width = 18 # 너비 유지
-        btn_padx = 2
-
-        # --- 첫 번째 줄 버튼 --- 
-        tk.Button(event_btn_frame, text="Delete",
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 width=btn_width, # 너비 설정
-                 command=delete_selected_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
-
-        tk.Button(event_btn_frame, text="Add Delay",
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 width=btn_width, # 너비 설정
-                 command=add_delay_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
-
-        tk.Button(event_btn_frame, text="Delete Delay",
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 width=btn_width, # 너비 설정
-                 command=delete_delay_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
-
-        tk.Button(event_btn_frame, text="Modify Delay",
-                 font=('Arial', 9),
-                 bg='#e8e8e8',
-                 relief=tk.RAISED,
-                 borderwidth=2,
-                 highlightthickness=0,
-                 width=btn_width, # 너비 설정
-                 command=modify_delay_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
-
-        # --- 두 번째 줄 버튼 프레임 --- 
-        event_btn_frame2 = ttk.Frame(event_list_frame)
-        event_btn_frame2.pack(fill=tk.X, pady=(5, 0))
-
-        # 버튼 콜백 가져오기 (두 번째 줄 - 랜덤/마우스 이동)
+        
+        # --- 두 번째 줄 버튼들 pack --- 
         tk.Button(event_btn_frame2, text="Add Random Position",
-                 font=('Arial', 9),
+                 font=('Arial', btn_font_size),
                  bg='#e8e8e8',
                  relief=tk.RAISED,
                  borderwidth=2,
                  highlightthickness=0,
                  width=btn_width, # 너비 설정
-                 command=add_random_pos_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
+                 command=add_random_pos_cmd).pack(side=tk.LEFT, padx=btn_padx)
 
         tk.Button(event_btn_frame2, text="Add Random Delay",
-                 font=('Arial', 9),
+                 font=('Arial', btn_font_size),
                  bg='#e8e8e8',
                  relief=tk.RAISED,
                  borderwidth=2,
                  highlightthickness=0,
                  width=btn_width, # 너비 설정
-                 command=add_random_delay_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
+                 command=add_random_delay_cmd).pack(side=tk.LEFT, padx=btn_padx)
 
         tk.Button(event_btn_frame2, text="Add Mouse Move",
-                 font=('Arial', 9),
+                 font=('Arial', btn_font_size),
                  bg='#e8e8e8',
                  relief=tk.RAISED,
                  borderwidth=2,
                  highlightthickness=0,
                  width=btn_width, # 너비 설정
-                 command=add_mouse_move_cmd).pack(side=tk.LEFT, padx=btn_padx) # 패딩 설정
+                 command=add_mouse_move_cmd).pack(side=tk.LEFT, padx=btn_padx)
 
-        # --- 위/아래 이동 버튼을 두 번째 프레임 오른쪽에 추가 ---
+        # --- 위/아래 이동 버튼을 두 번째 프레임 오른쪽에 추가 --- 
         # ↓ 버튼 먼저 pack (오른쪽 끝에 위치)
         tk.Button(event_btn_frame2, text="↓",
-                 font=('Arial', 9),
+                 font=('Arial', btn_font_size), # 폰트 적용
                  bg='#e8e8e8',
                  relief=tk.RAISED,
                  borderwidth=2,
@@ -148,7 +151,7 @@ class GuiEventListMixin:
 
         # ↑ 버튼 다음에 pack (↓ 버튼 왼쪽에 위치)
         tk.Button(event_btn_frame2, text="↑",
-                 font=('Arial', 9),
+                 font=('Arial', btn_font_size), # 폰트 적용
                  bg='#e8e8e8',
                  relief=tk.RAISED,
                  borderwidth=2,
@@ -156,30 +159,30 @@ class GuiEventListMixin:
                  width=3, # 화살표 버튼 너비
                  command=move_up_cmd).pack(side=tk.RIGHT, padx=btn_padx)
 
-        # --- 녹화 옵션 프레임 추가 ---
-        options_frame = ttk.LabelFrame(event_list_frame, text="Recording Options", padding=10)
-        options_frame.pack(fill=tk.X, pady=(10, 0)) # 랜덤 버튼 아래에 배치
+        # 녹화 옵션 프레임 (pady 최소화)
+        options_frame = ttk.LabelFrame(parent_frame, text="Recording Options", padding=(5, 2))
+        options_frame.pack(fill=tk.X, pady=(1, 2)) # pady (3, 0) -> (1, 2)
 
-        # 옵션 체크박스들을 담을 내부 프레임
+        # 옵션 체크박스들을 담을 내부 프레임 (기존 코드 유지)
         options_inner_frame = ttk.Frame(options_frame)
-        options_inner_frame.pack(fill=tk.X)
+        options_inner_frame.pack(fill=tk.X, padx=0, pady=0) # padx/pady 추가
 
-        # 각 옵션을 위한 프레임 생성 (가로 정렬 용이)
+        # 각 옵션을 위한 프레임 생성 (내부 패딩 최소화)
         move_frame = ttk.Frame(options_inner_frame)
-        move_frame.pack(side=tk.LEFT, padx=10, pady=2)
+        move_frame.pack(side=tk.LEFT, padx=3, pady=0) # padx 5->3, pady 1->0
         # ttk.Checkbutton(move_frame, text="Record Mouse Move", variable=getattr(self, 'record_mouse_move', tk.BooleanVar(value=False))).pack(anchor=tk.W)
 
         delay_frame = ttk.Frame(options_inner_frame)
-        delay_frame.pack(side=tk.LEFT, padx=10, pady=2)
+        delay_frame.pack(side=tk.LEFT, padx=3, pady=0) # padx 5->3, pady 1->0
         ttk.Checkbutton(delay_frame, text="Record Delay", variable=getattr(self, 'record_delay', tk.BooleanVar(value=True))).pack(anchor=tk.W)
 
         keyboard_frame = ttk.Frame(options_inner_frame)
-        keyboard_frame.pack(side=tk.LEFT, padx=10, pady=2)
+        keyboard_frame.pack(side=tk.LEFT, padx=3, pady=0) # padx 5->3, pady 1->0
         ttk.Checkbutton(keyboard_frame, text="Record Keyboard", variable=getattr(self, 'record_keyboard', tk.BooleanVar(value=True))).pack(anchor=tk.W)
 
-        # 좌표 옵션 프레임 (3가지 모드 라디오 버튼)
+        # 좌표 옵션 프레임 (내부 패딩 조정)
         coord_frame = ttk.Frame(options_inner_frame)
-        coord_frame.pack(side=tk.LEFT, padx=10, pady=2)
+        coord_frame.pack(side=tk.LEFT, padx=3, pady=0) # padx 5->3, pady 1->0
 
         # 라디오 버튼 선택 시 recorder의 recording_coord_mode 업데이트하는 콜백
         def update_recorder_coord_mode():
