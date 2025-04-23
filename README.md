@@ -1,105 +1,94 @@
 # MacroCraft ⌨️🖱️✨
 
-MacroCraft는 키보드와 마우스 입력을 정밀하게 녹화하고 편집하여 반복적인 작업을 자동화할 수 있는 강력한 매크로 프로그램입니다. 🛠️ 직관적인 인터페이스를 통해 녹화된 이벤트를 관리하고 다양한 실행 옵션을 제공합니다.
+MacroCraft is a powerful macro program that allows you to automate repetitive tasks by precisely recording and editing keyboard and mouse inputs. 🛠️ It offers an intuitive interface to manage recorded events and provides various execution options.
 
 [![GitHub release](https://img.shields.io/github/release/htpaak/MacroCraft.svg?logo=github)](https://github.com/htpaak/MacroCraft/releases/latest)
 [![GitHub downloads](https://img.shields.io/github/downloads/htpaak/MacroCraft/latest/total.svg?logo=github)](https://github.com/htpaak/MacroCraft/releases/latest)
 [![GitHub downloads](https://img.shields.io/github/downloads/htpaak/MacroCraft/total.svg?logo=github)](https://github.com/htpaak/MacroCraft/releases)
 
-## 빠른 링크 🔗
+## Quick Links 🔗
 
-- [⬇️ 최신 릴리스 다운로드](https://github.com/htpaak/MacroCraft/releases/latest)
-- [⭐ GitHub 저장소](https://github.com/htpaak/MacroCraft)
-- [💬 피드백 & 토론](https://github.com/htpaak/MacroCraft/discussions)
+- [⬇️ Download Latest Release](https://github.com/htpaak/MacroCraft/releases/latest)
+- [⭐ GitHub Repository](https://github.com/htpaak/MacroCraft)
+- [💬 Feedback & Discussion](https://github.com/htpaak/MacroCraft/discussions)
 
-## 주요 기능 🌟
+## Key Features 🌟
 
-- **🖱️⌨️ 다양한 입력 녹화**: 키보드 입력(키 누름, 뗌), 마우스 클릭(좌, 우, 휠 클릭), 마우스 이동, 마우스 휠 스크롤 등 거의 모든 사용자 입력 이벤트를 녹화합니다.
-- **✏️ 강력한 편집 기능**: 녹화된 이벤트 목록에서 개별 이벤트를 선택하여 삭제, 복제하거나 원하는 위치에 딜레이(지연 시간)를 추가할 수 있습니다. 이벤트의 속성(예: 좌표, 키) 변경도 지원합니다.
-- **🎲 랜덤 좌표 및 딜레이 추가**: 매크로 실행 시 감지 패턴을 피하기 위해 마우스 클릭/이동 좌표나 이벤트 간 딜레이에 랜덤 값을 추가하는 기능을 지원합니다.
-- **🗺️ 절대/상대 좌표 지원**: 마우스 이동 및 클릭 이벤트를 화면 전체 기준의 절대 좌표 또는 현재 창 위치 기준의 상대 좌표로 녹화하도록 선택할 수 있어, 창 위치 변경에 유연하게 대응 가능합니다.
-- **⏯️ 실시간 녹화/재생 제어**: 단축키 또는 GUI 버튼으로 매크로 녹화 시작/중지 및 저장된 매크로 실행/중지를 즉시 제어할 수 있습니다.
-- **💾 매크로 저장 및 관리**: 생성한 매크로를 파일로 저장하고, 필요할 때 다시 불러와 사용할 수 있습니다. 여러 매크로를 목록으로 관리합니다.
-- **🔄 반복 실행 옵션**: 매크로 실행 시 원하는 횟수만큼 반복하거나, 중지할 때까지 무한 반복하도록 설정할 수 있습니다.
-- **👁️ 실시간 이벤트 모니터링**: 녹화 중 발생하는 이벤트를 GUI의 이벤트 목록에서 실시간으로 확인할 수 있습니다.
-- **⚙️ 녹화 설정 커스터마이징**: 마우스 이동 이벤트 녹화 여부, 키보드 입력 녹화 여부, 좌표 모드(절대/상대)를 사용자가 선택할 수 있습니다.
-- **🚀 시스템 트레이 연동**: 프로그램을 시스템 트레이 아이콘으로 최소화하여 백그라운드에서 실행할 수 있습니다.
-- **👆 (베타) 제스처 인식**: 마우스 제스처를 인식하여 특정 동작을 수행하는 기능을 포함하고 있습니다. (관련 모듈: `gesture_*.py`)
+- **🖱️⌨️ Versatile Input Recording**: Records almost all user input events, including keyboard inputs (key press, release), mouse clicks (left, right, wheel click), mouse movements, and mouse wheel scrolls.
+- **✏️ Powerful Editing Features**: Allows selecting individual events from the recorded event list to delete, duplicate, or add delays at desired positions. Also supports changing event properties (e.g., coordinates, keys).
+- **🎲 Random Coordinates and Delays**: Supports adding random values to mouse click/move coordinates or delays between events to avoid detection patterns during macro execution.
+- **🗺️ Absolute/Relative Coordinate Support**: Choose to record mouse move and click events using absolute coordinates (screen-wide) or relative coordinates (based on the current window position) for flexible response to window position changes.
+- **⏯️ Real-time Recording/Playback Control**: Instantly control macro recording start/stop and saved macro execution/stop using hotkeys or GUI buttons.
+- **🔄 Repeat Execution Options**: Set the macro to repeat a desired number of times or loop indefinitely until stopped.
+- **⚙️ Customizable Recording Settings**: Users can choose whether to record mouse movement events, keyboard inputs, and the coordinate mode (absolute/relative).
+- **🚀 System Tray Integration**: Minimize the program to a system tray icon to run in the background.
 
-## 데모 📸
+## Demo 📸
 
 ![MacroCraft Demo](assets/Demo_1.png)
-<!-- *(추후 추가 스크린샷)* -->
-<!-- ![MacroCraft 이벤트 편집](assets/Demo_Edit.png) -->
+<!-- *(Additional screenshots to be added later)* -->
+<!-- ![MacroCraft Event Editing](assets/Demo_Edit.png) -->
 
-## 시스템 요구사항 💻
+## System Requirements 💻
 
-- Windows 운영체제 (7/8/10/11)
-- Python 3.x 버전
-- 약간의 디스크 여유 공간 💾
+- Windows Operating System (7/8/10/11)
+- Some available disk space 💾
 
-## 설치 및 실행 🚀
+## Installation (Executable) 🚀
 
-1.  **필요 라이브러리 설치:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-    *(`requirements.txt` 파일에 필요한 라이브러리가 명시되어 있습니다. 예: `keyboard`, `mouse`, `PySimpleGUI` 등)*
-2.  **프로그램 실행:**
-    ```bash
-    python main.py
-    ```
-3.  MacroCraft 창이 나타나면 매크로 녹화 및 관리를 시작할 수 있습니다! 🎉
+1.  Go to the [Releases page](https://github.com/htpaak/MacroCraft/releases/latest).
+2.  Download the `MacroCraft_vX.Y.Z.exe` file (where X.Y.Z is the version number).
+3.  That's it! No installation needed. Simply run the downloaded `.exe` file.
+4.  Launch MacroCraft and start automating your tasks! 🎉
 
-## 사용 방법 📖
+## How to Use 📖
 
-1.  **매크로 녹화:**
-    *   '녹화 설정'에서 마우스 이동, 키보드 녹화 여부 및 좌표 모드를 설정합니다.
-    *   '녹화 시작' 버튼 (또는 `Ctrl+R`)을 눌러 녹화를 시작합니다.
-    *   자동화하려는 키보드 및 마우스 동작을 수행합니다.
-    *   '녹화 중지' 버튼 (또는 `Ctrl+R`)을 눌러 녹화를 종료합니다.
-2.  **이벤트 편집:**
-    *   중앙의 '이벤트 목록'에서 편집할 이벤트를 선택합니다.
-    *   오른쪽 '편집 도구' 또는 상단 메뉴의 '편집' 항목을 사용하여 이벤트를 삭제, 복제하거나 딜레이를 추가합니다.
-3.  **매크로 저장 및 불러오기:**
-    *   편집이 완료된 매크로는 '매크로 저장' 버튼 (또는 `Ctrl+S`)을 눌러 이름을 지정하고 저장합니다.
-    *   저장된 매크로는 왼쪽 '매크로 목록'에 표시됩니다.
-    *   '매크로 불러오기' 메뉴를 통해 저장된 매크로 파일을 열 수 있습니다.
-4.  **매크로 실행:**
-    *   왼쪽 '매크로 목록'에서 실행할 매크로를 선택합니다.
-    *   '반복 횟수'를 설정하거나 '무한 반복'을 체크합니다.
-    *   '실행' 버튼 (또는 `F5`)을 눌러 매크로를 실행합니다.
-    *   실행 중인 매크로는 '중지' 버튼 (또는 `F6`)으로 중단할 수 있습니다.
+1.  **Record Macro:**
+    *   In 'Recording Settings', configure whether to record mouse movement, keyboard input, and the coordinate mode.
+    *   Press the 'Start Recording' button (or `F9`) to begin recording.
+    *   Perform the keyboard and mouse actions you want to automate.
+    *   Press the 'Stop Recording' button (or `F9`) to end the recording.
+2.  **Edit Events:**
+    *   Select the event to edit from the 'Event List' in the center.
+    *   Use the 'Editing Tools' on the right or the 'Edit' menu at the top to delete, duplicate events, or add delays.
+3.  **Save and Load Macro:**
+    *   Once editing is complete, press the 'Save Macro' button, specify a name, and save.
+    *   Saved macros are displayed in the 'Macro List' on the right.
+4.  **Execute Macro:**
+    *   Set the 'Repeat Count' or check 'Infinite Repeat'.
+    *   Press the 'Execute' button (or `F11`) to run the macro.
+    *   A running macro can be stopped with the 'Stop' button (or `F12`).
+    *   You can also draw a registered gesture on the screen to execute the corresponding macro (when gesture functionality is enabled).
 
-## 주요 모듈 구성 📦
+## Main Module Structure 📦
 
--   `main.py`: 애플리케이션 진입점, 전체 모듈 초기화 및 GUI 실행
--   `gui.py`: Tkinter 기반 사용자 인터페이스 로직
--   `recorder.py`: 키보드/마우스 이벤트 녹화 담당
--   `player.py`: 녹화된 매크로 이벤트 재생 담당
--   `editor.py`: 매크로 이벤트 편집 기능 제공
--   `storage.py`: 매크로 파일 저장 및 불러오기 담당
--   `gesture_manager.py`: 마우스 제스처 인식 및 처리 관리 (베타)
--   `tray_manager.py`: 시스템 트레이 아이콘 및 메뉴 관리 (베타)
--   `*_list.py`, `*_editor.py` 등: GUI의 특정 섹션 관리
+-   `main.py`: Application entry point, initializes all modules and runs the GUI
+-   `gui.py`: Tkinter-based user interface logic
+-   `recorder.py`: Handles keyboard/mouse event recording
+-   `player.py`: Handles playback of recorded macro events
+-   `editor.py`: Provides macro event editing features
+-   `storage.py`: Handles saving and loading macro files
+-   `gesture_manager.py`: Manages mouse gesture recognition and processing (Beta)
+-   `tray_manager.py`: Manages system tray icon and menu (Beta)
+-   `*_list.py`, `*_editor.py`, etc.: Manage specific sections of the GUI
 
-## 개발 정보 👨‍💻
+## Development Information 👨‍💻
 
-사용된 주요 기술:
+Key technologies used:
 -   Python 3.x 🐍
 -   Tkinter (GUI) 🎨
--   keyboard 라이브러리 (키보드 이벤트 후킹/제어)
--   mouse 라이브러리 (마우스 이벤트 후킹/제어)
+-   keyboard library (Keyboard event hooking/control)
+-   mouse library (Mouse event hooking/control)
 
-## 라이선스 📜
+## License 📜
 
-MIT License (예상, `LICENSE` 파일 확인 필요)
+MIT License (Expected, check `LICENSE` file)
 
-## 기여하기 🙌
+## Contributing 🙌
 
-*(추후 기여 가이드라인 추가)*
+*(Contribution guidelines to be added later)*
 
-## 감사의 말 🙏
+## Acknowledgements 🙏
 
--   MacroCraft 개발에 도움을 주신 모든 분들께 감사합니다! 💖
--   이 프로젝트를 가능하게 한 오픈소스 라이브러리에 감사합니다!
+-   Thanks to everyone who helped develop MacroCraft! 💖
+-   Thanks to the open-source libraries that made this project possible!
