@@ -80,14 +80,6 @@ Key technologies used:
 -   keyboard library (Keyboard event hooking/control)
 -   mouse library (Mouse event hooking/control)
 
-## License 📜
-
-MIT License (Expected, check `LICENSE` file)
-
-## Contributing 🙌
-
-*(Contribution guidelines to be added later)*
-
 ## Acknowledgements 🙏
 
 -   Thanks to everyone who helped develop MacroCraft! 💖
