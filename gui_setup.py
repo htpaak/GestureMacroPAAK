@@ -5,6 +5,72 @@ from tkinter import messagebox
 import os
 import sys
 from PIL import Image, ImageTk  # PIL 추가 - 아이콘 로드용
+import webbrowser # 웹 브라우저 열기 위한 임포트 추가
+
+# --- ToolTip 클래스 추가 ---
+class ToolTip:
+    """ttk 위젯에 간단한 툴팁을 추가하는 클래스"""
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tip_window = None
+        self.id = None
+        self.x = self.y = 0
+        # tk.Button은 ttk 스타일과 다르게 동작할 수 있으므로, tk.Button/ttk.Button 모두 고려
+        self.widget.bind("<Enter>", self.enter)
+        self.widget.bind("<Leave>", self.leave)
+        # 키보드 포커스 이동 시에도 툴팁 숨기기 (선택적)
+        self.widget.bind("<FocusOut>", self.leave)
+
+    def enter(self, event=None):
+        self.schedule()
+
+    def leave(self, event=None):
+        self.unschedule()
+        self.hidetip()
+
+    def schedule(self):
+        self.unschedule()
+        # 500ms 후에 showtip 호출
+        self.id = self.widget.after(500, self.showtip)
+
+    def unschedule(self):
+        id = self.id
+        self.id = None
+        if id:
+            self.widget.after_cancel(id)
+
+    def showtip(self):
+        if self.tip_window or not self.text:
+            return
+        # 위젯의 현재 위치 가져오기
+        try:
+            x, y, _, _ = self.widget.bbox("insert")
+            x += self.widget.winfo_rootx() + 25
+            y += self.widget.winfo_rooty() + 20 # y 오프셋 조정
+        except: # 위젯이 아직 그려지지 않았거나 오류 발생 시
+             x = self.widget.winfo_rootx() + self.widget.winfo_width() // 2
+             y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+
+        # Toplevel 윈도우 생성
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True) # 창 테두리 제거
+        tw.wm_geometry(f"+{int(x)}+{int(y)}") # 정수 좌표 사용
+
+        label = tk.Label(tw, text=self.text, justify=tk.LEFT,
+                         background="#ffffe0", relief=tk.SOLID, borderwidth=1,
+                         font=("tahoma", "8", "normal"))
+        label.pack(ipadx=1)
+
+    def hidetip(self):
+        tw = self.tip_window
+        self.tip_window = None
+        if tw:
+            try:
+                tw.destroy()
+            except tk.TclError: # 이미 파괴된 경우 무시
+                 pass
+# --- ToolTip 클래스 끝 ---
 
 class GuiSetupMixin:
     """GUI의 기본 설정 및 레이아웃 구성을 담당하는 믹스인 클래스"""
@@ -85,10 +151,51 @@ class GuiSetupMixin:
         self.status_frame = ttk.Frame(self.main_frame, padding=(3, 3))
         self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
+    def _open_feedback_link(self):
+        """피드백 링크 열기"""
+        feedback_url = "https://github.com/htpaak/GestureMacroPAAK/discussions"
+        try:
+            webbrowser.open_new_tab(feedback_url)
+        except Exception as e:
+            print(f"Error opening feedback link: {e}")
+            messagebox.showerror("Error", f"Could not open the feedback page:\n{feedback_url}")
+
     def _create_status_bar(self):
-        """하단 상태 표시줄 생성"""
+        """하단 상태 표시줄 생성 (피드백 버튼 아이콘 및 툴팁 적용)"""
+        # 기존 상태 레이블 생성
         self.status_label = ttk.Label(self.status_frame, text="Ready", anchor=tk.W)
-        self.status_label.pack(fill=tk.X)
+        self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True) # 왼쪽 정렬 및 확장
+
+        # 피드백 버튼 (텍스트를 이모지로 변경, 폰트 크기 증가 시도)
+        feedback_button = ttk.Button(
+            self.status_frame,
+            text="💬", # 텍스트를 이모지로 변경
+            command=self._open_feedback_link,
+            width=2 # 너비 조정 (폰트 커짐에 따라)
+            # style='Emoji.TButton' # 필요 시 스타일 사용
+        )
+        # ttk.Button에 font 직접 설정 시도 (동작 안 할 수 있음)
+        try:
+            feedback_button_font = ('Segoe UI Emoji', 12) # 폰트 및 크기
+            # ttk.Button은 .config(font=...) 지원 안 함. 스타일 사용해야 함.
+            # feedback_button.config(font=feedback_button_font) # 이 줄은 효과 없을 가능성 높음
+            
+            # 대신 ttk 스타일 사용
+            style = ttk.Style()
+            # 버튼에 고유 스타일 이름 부여 (예: Feedback.TButton)
+            feedback_button.configure(style='Feedback.TButton')
+            # 해당 스타일에 폰트 설정
+            style.configure('Feedback.TButton', font=('Segoe UI Emoji', 12), padding=1) # padding 조정 가능
+
+        except tk.TclError as e:
+            print(f"Warning: Could not apply custom font style to feedback button: {e}")
+            # 폰트 설정 실패 시 기본 스타일 유지
+            pass
+            
+        feedback_button.pack(side=tk.RIGHT, padx=(5, 0)) # 오른쪽에 배치
+
+        # 버튼에 툴팁 추가
+        ToolTip(feedback_button, "Feedback")
 
     def setup_styles(self):
         """버튼 스타일 설정 (추출된 코드)"""
