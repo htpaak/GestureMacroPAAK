@@ -165,24 +165,29 @@ def main():
         screen_height = root_window.winfo_screenheight()
         logging.info(f"Screen resolution: {screen_width}x{screen_height}")
 
-        # 창 크기를 화면의 가로 35%, 세로 50%로 설정
-        window_width = int(screen_width * 0.33) # 55% -> 35%    
-        window_height = int(screen_height * 0.6)
-        logging.info(f"Initial window size set to 33% width, 60% height of screen: {window_width}x{window_height}")
+        # 최소 창 크기 설정값
+        min_width = 800
+        min_height = 600
+        root_window.minsize(min_width, min_height) # minsize 먼저 설정
+        logging.info(f"Minimum window size set to: {min_width}x{min_height}")
 
-        # 창을 화면 중앙에 배치하기 위한 x, y 좌표 계산
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
+        # 목표 창 크기 계산 (화면 비율 기준)
+        target_width = int(screen_width * 0.33)
+        target_height = int(screen_height * 0.6)
+        logging.info(f"Target window size based on screen ratio: {target_width}x{target_height}")
+
+        # 실제 적용될 창 크기 결정 (최소 크기 이상)
+        actual_width = max(target_width, min_width)
+        actual_height = max(target_height, min_height)
+        logging.info(f"Actual window size (considering minsize): {actual_width}x{actual_height}")
+
+        # 실제 적용될 창 크기를 기준으로 중앙 좌표 계산
+        x = (screen_width - actual_width) // 2
+        y = (screen_height - actual_height) // 2
         logging.info(f"Window centered at: x={x}, y={y}")
 
         # 창 크기와 위치 설정
-        root_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
-        # 최소 창 크기 설정 (기존 로직 유지)
-        min_width = 800 # 예시: 최소 너비
-        min_height = 600 # 예시: 최소 높이
-        root_window.minsize(min_width, min_height)
-        logging.info(f"Minimum window size set to: {min_width}x{min_height}")
+        root_window.geometry(f"{actual_width}x{actual_height}+{x}+{y}")
         # --- 설정 끝 --- 
 
     except Exception as e:
