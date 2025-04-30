@@ -203,14 +203,14 @@ class GuiEventListMixin:
                 print("Warning: Recorder object not found to update settings.")
 
         # GuiBase의 coord_mode_var 사용 (StringVar)
-        ttk.Radiobutton(coord_frame, text="Absolute",
+        ttk.Radiobutton(coord_frame, text="Absolute Coordinate",
                         variable=self.coord_mode_var, value="absolute",
                         command=update_recorder_coord_mode).pack(anchor=tk.W)
-        ttk.Radiobutton(coord_frame, text="Relative",
-                        variable=self.coord_mode_var, value="relative",
+        ttk.Radiobutton(coord_frame, text="Mouse Relative Coordinate",
+                        variable=self.coord_mode_var, value="playback_relative",
                         command=update_recorder_coord_mode).pack(anchor=tk.W)
-        ttk.Radiobutton(coord_frame, text="Monitor Center",
-                        variable=self.coord_mode_var, value="monitor_center",
+        ttk.Radiobutton(coord_frame, text="Gesture Relative Coordinate",
+                        variable=self.coord_mode_var, value="gesture_relative",
                         command=update_recorder_coord_mode).pack(anchor=tk.W)
 
     def update_event_list(self):
