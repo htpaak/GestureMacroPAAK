@@ -349,48 +349,56 @@ class GuiEventListMixin:
                 # <<< 디버그 로그 제거 5 >>>
                 # logging.debug(f"[GUI DEBUG] Processing mouse event in display_event: {event}")
                 event_type_str = event.get('event_type', 'unknown')
+                coord_mode = event.get('coord_mode', 'absolute') # <-- 좌표 모드 가져오기
+                pos_x, pos_y = event.get('position', (0, 0))
+
+                # 좌표 모드 접두사 설정
+                mode_prefix = "Abs:" # 기본값
+                if coord_mode == 'playback_relative':
+                    mode_prefix = "MRel:"
+                elif coord_mode == 'gesture_relative':
+                    mode_prefix = "GRel:"
+
+                # 좌표 문자열 생성 (기존 로직 활용하되, is_relative 대신 coord_mode 사용)
+                pos_str = ""
+                if coord_mode == 'absolute':
+                    monitor = monitor_utils.get_monitor_from_point(pos_x, pos_y)
+                    if monitor:
+                        rel_x, rel_y = monitor_utils.absolute_to_relative(pos_x, pos_y, monitor)
+                        monitor_index = monitor_utils.get_monitors().index(monitor)
+                        # mode_prefix는 이미 "Abs:" 이므로 여기서는 M 번호만 추가
+                        pos_str = f"M{monitor_index}:({rel_x:>4}, {rel_y:>4})"
+                    else:
+                        pos_str = f"M?:({pos_x:>4}, {pos_y:>4})" # 모니터 못 찾으면 M?
+                else: # playback_relative 또는 gesture_relative
+                    # mode_prefix는 위에서 설정됨 (MRel: 또는 GRel:)
+                    pos_str = f"({pos_x:>4}, {pos_y:>4})"
+
+                # 최종 좌표 표시 문자열 (접두사 + 좌표)
+                coord_display = f"{mode_prefix}{pos_str}"
 
                 if event_type_str == 'move':
-                    pos_x, pos_y = event.get('position', (0, 0))
-                    is_relative = event.get('is_relative', False)
-                    if is_relative:
-                        pos_str = f"Rel:({pos_x:>4}, {pos_y:>4})"
-                    else:
-                        monitor = monitor_utils.get_monitor_from_point(pos_x, pos_y)
-                        if monitor:
-                            rel_x, rel_y = monitor_utils.absolute_to_relative(pos_x, pos_y, monitor)
-                            monitor_index = monitor_utils.get_monitors().index(monitor)
-                            pos_str = f"M{monitor_index}:({rel_x:>4}, {rel_y:>4})"
-                        else:
-                            pos_str = f"M?:({pos_x:>4}, {pos_y:>4})"
-                    display_str += f"Move     {pos_str}"
+                    # is_relative = event.get('is_relative', False) # 더 이상 사용 안 함
+                    # 기존 pos_str 생성 로직 제거
+                    display_str += f"Move     {coord_display}" # coord_display 사용
                     if 'random_range' in event:
                         range_px = event.get('random_range', 0)
                         display_str += f" +/-{range_px:<3}px"
                 elif event_type_str in ['up', 'down', 'double']:
                     button = event.get('button', '')
-                    pos_x, pos_y = event.get('position', (0, 0))
-                    is_relative = event.get('is_relative', False)
-                    if is_relative:
-                        pos_str = f"Rel:({pos_x:>4}, {pos_y:>4})"
-                    else:
-                        monitor = monitor_utils.get_monitor_from_point(pos_x, pos_y)
-                        if monitor:
-                            rel_x, rel_y = monitor_utils.absolute_to_relative(pos_x, pos_y, monitor)
-                            monitor_index = monitor_utils.get_monitors().index(monitor)
-                            pos_str = f"M{monitor_index}:({rel_x:>4}, {rel_y:>4})"
-                        else:
-                            pos_str = f"M?:({pos_x:>4}, {pos_y:>4})"
+                    # is_relative = event.get('is_relative', False) # 더 이상 사용 안 함
+                    # 기존 pos_str 생성 로직 제거
                     # 버튼 값 부분을 특정 길이로 맞추고 UP/DOWN 정렬
                     button_part = f"Mouse: {button}"
                     action_str = f"{event_type_str.upper()}"
-                    display_str += f"{button_part.ljust(20)} {action_str.ljust(6)} {pos_str}"
+                    display_str += f"{button_part.ljust(20)} {action_str.ljust(6)} {coord_display}" # coord_display 사용
                     if 'random_range' in event:
                         range_px = event.get('random_range', 0)
                         display_str += f" +/-{range_px:<3}px"
                 elif event_type_str == 'wheel':
                      # <<< 디버그 로그 제거 6 >>>
                      # logging.debug(f"[GUI DEBUG] >>> Handling 'wheel' event type string in display_event")
+                     # 휠 이벤트는 좌표 표시 로직 변경 없음 (필요 시 coord_display 추가 가능)
                      delta = event.get('delta', 0)
                      direction_str = "up" if delta > 0 else "down" if delta < 0 else ""
                      wheel_part = "Mouse: wheel"
