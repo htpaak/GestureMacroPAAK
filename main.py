@@ -26,7 +26,7 @@ setup_logging()
 # Windows 작업표시줄 아이콘 설정 (프로그램 시작 전에 수행)
 if sys.platform == 'win32':
     try:
-        myappid = "MacroCraft.App.1.0"  # 고유 애플리케이션 ID
+        myappid = "GestureMacroPAAK.App.1.0"  # 고유 애플리케이션 ID
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         logging.info(f"AppUserModelID set to: {myappid}")
     except Exception as e:
@@ -193,7 +193,7 @@ def main():
     try:
         base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
         icon_path_global = os.path.join(base_path, 'assets', 'icon.ico')
-        app_name = "MacroCraft"
+        app_name = "GestureMacroPAAK"
         logging.info(f"Icon path set to: {icon_path_global}")
         if not os.path.exists(icon_path_global):
              logging.warning(f"Icon file not found at: {icon_path_global}")

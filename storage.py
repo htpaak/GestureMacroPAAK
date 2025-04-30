@@ -4,12 +4,12 @@ import shutil
 from datetime import datetime
 import copy # deepcopy를 위해 추가
 
-APP_NAME = "MacroCraft" # 프로그램 이름 정의
+APP_NAME = "GestureMacroPAAK" # 프로그램 이름 정의
 
 class MacroStorage:
     def __init__(self, base_dir_name=APP_NAME, order_file="gesture_order.json"):
         """매크로 스토리지 초기화 (개별 파일 + 순서 파일 방식)"""
-        # 저장 경로 설정: %LOCALAPPDATA%/MacroCraft
+        # 저장 경로 설정: %LOCALAPPDATA%/GestureMacroPAAK
         local_appdata = os.getenv('LOCALAPPDATA')
         if not local_appdata:
             print("경고: LOCALAPPDATA 환경 변수를 찾을 수 없습니다. 현재 디렉토리에 저장합니다.")

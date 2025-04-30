@@ -1,16 +1,16 @@
-# MacroCraft ⌨️🖱️✨
+# GestureMacroPAAK ⌨️🖱️✨
 
-MacroCraft is a powerful macro program that allows you to automate repetitive tasks by precisely recording and editing keyboard and mouse inputs. 🛠️ It offers an intuitive interface to manage recorded events and provides various execution options.
+GestureMacroPAAK is a powerful macro program that allows you to automate repetitive tasks by precisely recording and editing keyboard and mouse inputs. 🛠️ It offers an intuitive interface to manage recorded events and provides various execution options.
 
-[![GitHub release](https://img.shields.io/github/release/htpaak/MacroCraft.svg?logo=github)](https://github.com/htpaak/MacroCraft/releases/latest)
-[![GitHub downloads](https://img.shields.io/github/downloads/htpaak/MacroCraft/latest/total.svg?logo=github)](https://github.com/htpaak/MacroCraft/releases/latest)
-[![GitHub downloads](https://img.shields.io/github/downloads/htpaak/MacroCraft/total.svg?logo=github)](https://github.com/htpaak/MacroCraft/releases)
+[![GitHub release](https://img.shields.io/github/release/htpaak/GestureMacroPAAK.svg?logo=github)](https://github.com/htpaak/GestureMacroPAAK/releases/latest)
+[![GitHub downloads](https://img.shields.io/github/downloads/htpaak/GestureMacroPAAK/latest/total.svg?logo=github)](https://github.com/htpaak/GestureMacroPAAK/releases/latest)
+[![GitHub downloads](https://img.shields.io/github/downloads/htpaak/GestureMacroPAAK/total.svg?logo=github)](https://github.com/htpaak/GestureMacroPAAK/releases)
 
 ## Quick Links 🔗
 
-- [⬇️ Download Latest Release](https://github.com/htpaak/MacroCraft/releases/latest)
-- [⭐ GitHub Repository](https://github.com/htpaak/MacroCraft)
-- [💬 Feedback & Discussion](https://github.com/htpaak/MacroCraft/discussions)
+- [⬇️ Download Latest Release](https://github.com/htpaak/GestureMacroPAAK/releases/latest)
+- [⭐ GitHub Repository](https://github.com/htpaak/GestureMacroPAAK)
+- [💬 Feedback & Discussion](https://github.com/htpaak/GestureMacroPAAK/discussions)
 
 ## Key Features 🌟
 
@@ -25,9 +25,9 @@ MacroCraft is a powerful macro program that allows you to automate repetitive ta
 
 ## Demo 📸
 
-![MacroCraft Demo](assets/Demo_1.png)
+![GestureMacroPAAK Demo](assets/Demo_1.png)
 <!-- *(Additional screenshots to be added later)* -->
-<!-- ![MacroCraft Event Editing](assets/Demo_Edit.png) -->
+<!-- ![GestureMacroPAAK Event Editing](assets/Demo_Edit.png) -->
 
 ## System Requirements 💻
 
@@ -36,10 +36,10 @@ MacroCraft is a powerful macro program that allows you to automate repetitive ta
 
 ## Installation (Executable) 🚀
 
-1.  Go to the [Releases page](https://github.com/htpaak/MacroCraft/releases/latest).
-2.  Download the `MacroCraft_vX.Y.Z.exe` file (where X.Y.Z is the version number).
+1.  Go to the [Releases page](https://github.com/htpaak/GestureMacroPAAK/releases/latest).
+2.  Download the `GestureMacroPAAK_vX.Y.Z.exe` file (where X.Y.Z is the version number).
 3.  That's it! No installation needed. Simply run the downloaded `.exe` file.
-4.  Launch MacroCraft and start automating your tasks! 🎉
+4.  Launch GestureMacroPAAK and start automating your tasks! 🎉
 
 ## How to Use 📖
 
@@ -82,5 +82,5 @@ Key technologies used:
 
 ## Acknowledgements 🙏
 
--   Thanks to everyone who helped develop MacroCraft! 💖
+-   Thanks to everyone who helped develop GestureMacroPAAK! 💖
 -   Thanks to the open-source libraries that made this project possible!

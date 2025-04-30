@@ -35,7 +35,7 @@ class GuiSetupMixin:
 
     def _setup_window(self, window_width=1200, window_height=1200, min_width=1000, min_height=650):
         """윈도우 크기, 위치, 제목 설정"""
-        self.root.title("MacroCraft")
+        self.root.title("GestureMacroPAAK")
 
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -57,7 +57,7 @@ class GuiSetupMixin:
         # 최상단 제스처 인식 제어 프레임
         self.gesture_control_frame = ttk.Frame(self.main_frame)
         self.gesture_control_frame.pack(fill=tk.X, pady=(0, 5))
-        title_label = ttk.Label(self.gesture_control_frame, text="MacroCraft", font=('Arial', 12))
+        title_label = ttk.Label(self.gesture_control_frame, text="GestureMacroPAAK", font=('Arial', 12))
         title_label.pack(side=tk.TOP, pady=(0, 5))
 
         # 구분선
@@ -135,16 +135,16 @@ class GuiSetupMixin:
                 icon_label.pack(side=tk.LEFT, padx=(0, 5))
                 
                 # 텍스트 레이블
-                text_label = ttk.Label(title_frame, text="MacroCraft", font=('Arial', 11)) # 12 -> 11 (Optional)
+                text_label = ttk.Label(title_frame, text="GestureMacroPAAK", font=('Arial', 11)) # 12 -> 11 (Optional)
                 text_label.pack(side=tk.LEFT)
             else:
                 # 아이콘이 없으면 텍스트만 표시
-                text_label = ttk.Label(title_frame, text="MacroCraft", font=('Arial', 11))
+                text_label = ttk.Label(title_frame, text="GestureMacroPAAK", font=('Arial', 11))
                 text_label.pack(side=tk.LEFT)
                 print("Warning: Icon file not found at:", icon_path)
         except Exception as e:
             # 오류 발생 시 텍스트만 표시
-            text_label = ttk.Label(title_frame, text="MacroCraft", font=('Arial', 11))
+            text_label = ttk.Label(title_frame, text="GestureMacroPAAK", font=('Arial', 11))
             text_label.pack(side=tk.LEFT)
             print(f"Error loading icon: {e}")
 
