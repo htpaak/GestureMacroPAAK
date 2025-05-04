@@ -172,20 +172,25 @@ class GuiBase(
             return False # 기타 오류 발생 시
 
     def _add_to_startup(self):
-        """애플리케이션을 시작 프로그램에 추가 (Windows 전용)"""
+        """애플리케이션을 시작 프로그램에 추가 (Windows 전용, --tray 인자 포함)"""
         if platform.system() != "Windows":
             messagebox.showwarning("Unsupported OS", "Auto-start feature is only available on Windows.")
             return False
 
         import winreg
         app_name = "GestureMacroPAAK"
-        exe_path = self._get_executable_path()
+        # 실행 경로 가져오기 (인자 없이)
+        base_exe_path = self._get_executable_path()
+        # 시작 프로그램에 등록할 최종 명령어 (기본 경로 + " --tray")
+        startup_command = f'{base_exe_path} --tray'
+
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_WRITE) as key:
-                winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, exe_path)
-            print(f"Added '{app_name}' to startup: {exe_path}")
+                # 수정: startup_command 사용
+                winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, startup_command)
+            print(f"Added '{app_name}' to startup: {startup_command}") # 로그에 명령어 출력
             return True
         except Exception as e:
             print(f"Error adding to startup registry: {e}")

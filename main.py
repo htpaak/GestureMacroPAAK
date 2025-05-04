@@ -143,6 +143,13 @@ def main():
     # 전역 변수 사용 선언
     global root_window, gui, recorder, player, editor, storage, gesture_manager, tray_manager, icon_path_global
 
+    # --- 명령줄 인자 확인 --- 
+    start_in_tray = False
+    if "--tray" in sys.argv:
+        start_in_tray = True
+        logging.info("'--tray' argument detected. Starting minimized to tray.")
+    # --- 확인 끝 ---
+
     # --- Tkinter 생성 전 모니터 정보 미리 로드 --- 
     monitors = None
     try:
@@ -265,10 +272,16 @@ def main():
         return
     # --- 주석 해제 끝 ---
 
-    # 윈도우 표시
+    # --- 조건부 윈도우 표시 --- 
     if root_window:
-        root_window.deiconify()
-        logging.info("Root window shown.")
+        if start_in_tray:
+            logging.info("Starting in tray mode. Window remains hidden.")
+            # 창을 숨긴 상태로 유지 (deiconify 호출 안 함)
+            # 트레이 아이콘은 TrayManager에서 이미 생성됨
+        else:
+            root_window.deiconify()
+            logging.info("Root window shown.")
+    # --- 표시 끝 ---
 
     # --- 닫기(X) 버튼 클릭 시 동작 설정 주석 해제 ---
     if root_window:
