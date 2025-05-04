@@ -4,6 +4,7 @@ from tkinter import ttk
 from tkinter import messagebox
 import os
 import sys
+import platform # platform 모듈 임포트 추가
 from PIL import Image, ImageTk  # PIL 추가 - 아이콘 로드용
 import webbrowser # 웹 브라우저 열기 위한 임포트 추가
 
@@ -148,7 +149,7 @@ class GuiSetupMixin:
         self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
         # 하단 상태 표시줄 프레임
-        self.status_frame = ttk.Frame(self.main_frame, padding=(3, 3))
+        self.status_frame = ttk.Frame(self.main_frame, padding=(2, 2)) # padding (3, 3) -> (2, 2)
         self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _open_feedback_link(self):
@@ -159,43 +160,6 @@ class GuiSetupMixin:
         except Exception as e:
             print(f"Error opening feedback link: {e}")
             messagebox.showerror("Error", f"Could not open the feedback page:\n{feedback_url}")
-
-    def _create_status_bar(self):
-        """하단 상태 표시줄 생성 (피드백 버튼 아이콘 및 툴팁 적용)"""
-        # 기존 상태 레이블 생성
-        self.status_label = ttk.Label(self.status_frame, text="Ready", anchor=tk.W)
-        self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True) # 왼쪽 정렬 및 확장
-
-        # 피드백 버튼 (텍스트를 이모지로 변경, 폰트 크기 증가 시도)
-        feedback_button = ttk.Button(
-            self.status_frame,
-            text="💬", # 텍스트를 이모지로 변경
-            command=self._open_feedback_link,
-            width=2 # 너비 조정 (폰트 커짐에 따라)
-            # style='Emoji.TButton' # 필요 시 스타일 사용
-        )
-        # ttk.Button에 font 직접 설정 시도 (동작 안 할 수 있음)
-        try:
-            feedback_button_font = ('Segoe UI Emoji', 12) # 폰트 및 크기
-            # ttk.Button은 .config(font=...) 지원 안 함. 스타일 사용해야 함.
-            # feedback_button.config(font=feedback_button_font) # 이 줄은 효과 없을 가능성 높음
-            
-            # 대신 ttk 스타일 사용
-            style = ttk.Style()
-            # 버튼에 고유 스타일 이름 부여 (예: Feedback.TButton)
-            feedback_button.configure(style='Feedback.TButton')
-            # 해당 스타일에 폰트 설정
-            style.configure('Feedback.TButton', font=('Segoe UI Emoji', 12), padding=1) # padding 조정 가능
-
-        except tk.TclError as e:
-            print(f"Warning: Could not apply custom font style to feedback button: {e}")
-            # 폰트 설정 실패 시 기본 스타일 유지
-            pass
-            
-        feedback_button.pack(side=tk.RIGHT, padx=(5, 0)) # 오른쪽에 배치
-
-        # 버튼에 툴팁 추가
-        ToolTip(feedback_button, "Feedback")
 
     def setup_styles(self):
         """버튼 스타일 설정 (추출된 코드)"""
@@ -371,10 +335,48 @@ class GuiSetupMixin:
         if hasattr(self, '_create_event_list_widgets'):
             self._create_event_list_widgets(right_frame)
 
-        # 하단 상태 표시줄 프레임 (패딩 최소화)
-        self.status_frame = ttk.Frame(main_frame, padding=(2, 2)) # padding (3, 3) -> (2, 2)
+        # --- 하단 상태 표시줄 프레임 생성 추가 ---
+        self.status_frame = ttk.Frame(main_frame, padding=(2, 2))
         self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        self._create_status_bar() # 상태 표시줄 생성 호출
+        # --- 생성 추가 끝 ---
+
+        # --- 상태 표시줄 구성 요소 직접 배치 (기존 _create_status_bar 로직 통합) ---
+        # 상태 레이블 생성
+        self.status_label = ttk.Label(self.status_frame, text="Ready", anchor=tk.W)
+        self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # --- 위젯 배치 순서 변경: 피드백 버튼을 먼저 오른쪽에 배치 ---
+        # 피드백 버튼 생성 및 배치 (가장 오른쪽)
+        feedback_button = ttk.Button(
+            self.status_frame,
+            text="💬", # 텍스트를 이모지로 변경
+            command=self._open_feedback_link,
+            width=2
+        )
+        # 피드백 버튼 스타일 적용 (기존 로직)
+        try:
+            style = ttk.Style()
+            feedback_button.configure(style='Feedback.TButton')
+            style.configure('Feedback.TButton', font=('Segoe UI Emoji', 12), padding=1)
+        except tk.TclError as e:
+            print(f"Warning: Could not apply custom font style to feedback button: {e}")
+        feedback_button.pack(side=tk.RIGHT, padx=(0, 0)) # 가장 오른쪽에 배치, 오른쪽 패딩 0
+        ToolTip(feedback_button, "Feedback")
+
+        # 부팅 시 자동 실행 체크박스 (Windows 에서만 표시, 피드백 버튼 왼쪽에)
+        if platform.system() == "Windows":
+            if hasattr(self, 'start_on_boot_var') and hasattr(self, '_toggle_start_on_boot'):
+                self.start_on_boot_checkbox = ttk.Checkbutton(
+                    self.status_frame,
+                    text="Start on Boot",
+                    variable=self.start_on_boot_var,
+                    command=self._toggle_start_on_boot
+                )
+                # 피드백 버튼 왼쪽에 배치되도록 padx 조정 (오른쪽 패딩 추가)
+                self.start_on_boot_checkbox.pack(side=tk.RIGHT, padx=(5, 5))
+            else:
+                print("Warning: start_on_boot_var or _toggle_start_on_boot method not found in GUI instance.")
+        # --- 위젯 배치 순서 변경 끝 ---
 
         # --- Add Gesture Manager Callbacks (extracted from backup) ---
         if hasattr(self, 'gesture_manager') and self.gesture_manager:
