@@ -86,6 +86,30 @@ class GuiBase(
         self.setup_styles() # 스타일 설정 (gui_setup 가정)
         self.setup_ui()     # 기본 UI 구성 (gui_setup 가정)
 
+        # --- 설정 로드 및 적용 --- (기존 초기화 로직 이후에 추가)
+        loaded_settings = self.storage.load_settings()
+        default_gesture_color = "red" # 기본 색상 정의
+        gesture_color_to_apply = loaded_settings.get("gesture_path_color", default_gesture_color)
+        
+        if self.gesture_manager and hasattr(self.gesture_manager, 'overlay_canvas') and self.gesture_manager.overlay_canvas:
+            # GestureManager에 set_overlay_line_color가 있으므로 이를 사용하거나, 직접 overlay_canvas에 접근
+            # self.gesture_manager.overlay_canvas.set_line_color(gesture_color_to_apply)
+            # 혹은 GestureManager에 해당 책임 위임
+            if hasattr(self.gesture_manager, 'set_overlay_line_color'):
+                self.gesture_manager.set_overlay_line_color(gesture_color_to_apply)
+                print(f"Applied gesture path color from settings: {gesture_color_to_apply}")
+            else:
+                print("Warning: GestureManager does not have set_overlay_line_color method.")
+        elif self.gesture_manager : # gesture_manager는 있지만 overlay_canvas가 아직 없을 수 있음
+             # 이 경우 GestureManager가 overlay_canvas를 생성할 때 이 색상을 사용하도록 전달 필요
+             # 또는 GuiBase가 직접 GestureManager의 기본 색상 속성을 설정 (예: self.gesture_manager.default_line_color = gesture_color_to_apply)
+             # 현재 구조에서는 GestureManager가 overlay_canvas 생성 시 색상을 받으므로, GuiBase에서 바로 적용 시도.
+             # 만약 실패하면, GestureManager 초기화 시 이 값을 넘겨주거나, GestureManager가 스스로 로드하도록 변경 필요.
+             print(f"GestureManager or overlay_canvas not ready for initial color apply: {gesture_color_to_apply}")
+             # 임시로 gesture_manager에 저장해두고, canvas 생성 시 사용하도록 할 수 있음
+             if hasattr(self.gesture_manager, 'set_pending_line_color'): # 이런 메서드가 있다면
+                 self.gesture_manager.set_pending_line_color(gesture_color_to_apply)
+
         # 부팅 시 자동 실행 초기 상태 설정
         self._update_start_on_boot_checkbox_state()
 
@@ -102,21 +126,29 @@ class GuiBase(
             messagebox.showwarning("Warning", "Gesture manager is not available.")
             return
 
-        # 현재 색상을 가져올 수 있다면 초기값으로 설정 (선택 사항)
-        # initial_color = self.gesture_manager.get_overlay_line_color() # 이런 메서드가 GestureManager에 있다고 가정
-        # result = colorchooser.askcolor(initialcolor=initial_color, title="Choose Gesture Path Color")
+        current_settings = self.storage.load_settings()
+        initial_color = current_settings.get("gesture_path_color", "red") # 저장된 값 또는 기본값으로 초기 색상 설정
         
-        result = colorchooser.askcolor(title="Choose Gesture Path Color")
+        result = colorchooser.askcolor(initialcolor=initial_color, title="Choose Gesture Path Color")
         
         if result and result[1]: # result[1]은 HEX 색상 코드
             selected_color_hex = result[1]
             if self.gesture_manager:
-                self.gesture_manager.set_overlay_line_color(selected_color_hex)
-                # 사용자에게 피드백 (선택 사항)
-                # self.update_status(f"Gesture path color set to {selected_color_hex}")
-                print(f"Gesture path color set to {selected_color_hex}") # 로그로 확인
+                # 1. 오버레이 캔버스에 즉시 적용
+                if hasattr(self.gesture_manager, 'set_overlay_line_color'):
+                    self.gesture_manager.set_overlay_line_color(selected_color_hex)
+                else:
+                    # 대체: self.gesture_manager.overlay_canvas.set_line_color(selected_color_hex)
+                    print("Warning: GestureManager.set_overlay_line_color not found, trying direct canvas access or skipping immediate apply.")
+                
+                # 2. 설정 파일에 저장
+                # current_settings 는 위에서 이미 로드함
+                current_settings["gesture_path_color"] = selected_color_hex
+                if self.storage.save_settings(current_settings):
+                    print(f"Gesture path color set to {selected_color_hex} and saved to settings.")
+                else:
+                    messagebox.showerror("Error", "Failed to save gesture path color to settings.")
             else:
-                # 이 경우는 위에서 이미 처리되었어야 함
                 messagebox.showerror("Error", "Gesture manager not found after color selection.")
 
     def update_status(self, message):

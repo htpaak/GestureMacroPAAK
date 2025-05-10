@@ -5,10 +5,11 @@ from datetime import datetime
 import copy # deepcopy를 위해 추가
 
 APP_NAME = "GestureMacroPAAK" # 프로그램 이름 정의
+DEFAULT_SETTINGS_FILE_NAME = "settings.json" # 설정 파일 이름 상수 추가
 
 class MacroStorage:
-    def __init__(self, base_dir_name=APP_NAME, order_file="gesture_order.json"):
-        """매크로 스토리지 초기화 (개별 파일 + 순서 파일 방식)"""
+    def __init__(self, base_dir_name=APP_NAME, order_file="gesture_order.json", settings_file=DEFAULT_SETTINGS_FILE_NAME): # settings_file 인자 추가
+        """매크로 스토리지 초기화 (개별 파일 + 순서 파일 + 설정 파일 방식)"""
         # 저장 경로 설정: %LOCALAPPDATA%/GestureMacroPAAK
         local_appdata = os.getenv('LOCALAPPDATA')
         if not local_appdata:
@@ -18,8 +19,10 @@ class MacroStorage:
             self.app_data_dir = os.path.join(local_appdata, base_dir_name)
 
         self.order_file_path = os.path.join(self.app_data_dir, order_file)
+        self.settings_file_path = os.path.join(self.app_data_dir, settings_file) # 설정 파일 경로 초기화
         print(f"매크로 저장 디렉토리: {self.app_data_dir}")
         print(f"제스처 순서 파일: {self.order_file_path}")
+        print(f"설정 파일: {self.settings_file_path}") # 설정 파일 경로 로그 추가
 
         # 앱 데이터 디렉토리 생성
         try:
@@ -234,6 +237,41 @@ class MacroStorage:
         except Exception as e:
             print(f"매크로 목록(파일) 가져오기 중 오류 발생: {e}")
             return []
+
+    def load_settings(self):
+        """설정 파일(settings.json)에서 설정을 로드합니다."""
+        if not os.path.exists(self.settings_file_path):
+            print(f"설정 파일 없음: {self.settings_file_path}. 기본 설정을 반환합니다.")
+            return {} # 파일 없으면 빈 딕셔너리
+
+        try:
+            with open(self.settings_file_path, 'r', encoding='utf-8') as f:
+                settings_data = json.load(f)
+            if not isinstance(settings_data, dict):
+                print(f"경고: 설정 파일 형식이 잘못됨 ({self.settings_file_path}). 딕셔너리가 아님. 기본 설정을 반환합니다.")
+                return {}
+            print(f"설정 로드 성공: {self.settings_file_path}")
+            return settings_data
+        except json.JSONDecodeError as e:
+            print(f"오류: 설정 파일 JSON 파싱 실패 ({self.settings_file_path}): {e}. 기본 설정을 반환합니다.")
+            return {}
+        except Exception as e:
+            print(f"설정 파일 로드 중 오류 발생 ({self.settings_file_path}): {e}. 기본 설정을 반환합니다.")
+            return {}
+
+    def save_settings(self, settings_data):
+        """설정 데이터를 설정 파일(settings.json)에 저장합니다."""
+        if not isinstance(settings_data, dict):
+            print(f"오류: 저장하려는 설정 데이터가 딕셔너리가 아님 ({type(settings_data)}). 저장하지 않습니다.")
+            return False
+        try:
+            with open(self.settings_file_path, 'w', encoding='utf-8') as f:
+                json.dump(settings_data, f, ensure_ascii=False, indent=4)
+            print(f"설정 저장 성공: {self.settings_file_path}")
+            return True
+        except Exception as e:
+            print(f"설정 저장 중 오류 발생 ({self.settings_file_path}): {e}")
+            return False
 
     # _make_safe_filename 메서드는 더 이상 필요 없음
     # update_macro 메서드는 save_macro 와 동일하게 동작하므로 별도 구현 불필요 
