@@ -23,8 +23,8 @@ class GestureManager:
         self.macro_player = macro_player
         self.storage = storage # 이제 MacroStorage는 macros.json을 관리
         self.recorder = recorder
-        self.gesture_start_x = 0 # 제스처 시작 시 절대 X 좌표
-        self.gesture_start_y = 0 # 제스처 시작 시 절대 Y 좌표
+        # self.gesture_start_x = 0 # abs_pos 에서 직접 사용하므로 제거 또는 유지 (디버깅용)
+        # self.gesture_start_y = 0 # abs_pos 에서 직접 사용하므로 제거 또는 유지 (디버깅용)
         self.timer_log_callback = timer_log_callback # 콜백 저장
         
         # 콜백 함수
@@ -44,18 +44,24 @@ class GestureManager:
         # GlobalGestureListener 초기화 (monitors 전달)
         self.gesture_listener = GlobalGestureListener(monitors)
         
-        # 콜백 설정
+        # 콜백 설정 (변경된 시그니처에 맞게 GestureManager의 메서드들이 호출됨)
         self.gesture_listener.set_callbacks(
-            self.on_gesture_started,
-            self.on_gesture_moved,
+            self.on_gesture_started, # 이제 (abs_pos, rel_pos, monitor, modifiers) 형태
+            self.on_gesture_moved,   # 이제 (abs_pos, rel_pos, monitor) 형태
             self.on_gesture_ended
         )
-        print(f"콜백 설정 완료: {self.on_gesture_started}, {self.on_gesture_moved}, {self.on_gesture_ended}")
+        # print(f"콜백 설정 완료: {self.on_gesture_started}, {self.on_gesture_moved}, {self.on_gesture_ended}") # 로그 메시지 유지 또는 수정
         
-        # 제스처 시각화 캔버스
-        self.gesture_canvas = None
-        self.canvas_window = None
+        # --- 제스처 경로 시각화를 위한 오버레이 캔버스 ---
+        self.overlay_canvas = GestureCanvas(parent=None, is_overlay=True, line_color="red") # 오버레이 모드로 생성
+        self.overlay_canvas.create() # 캔버스 및 창 생성
+        self.overlay_canvas.hide()   # 처음에는 숨김
+        # --- 오버레이 캔버스 끝 ---
         
+        # 기존 제스처 시각화 캔버스 (녹화용)
+        self.gesture_canvas = None # 기존 Canvas 인스턴스 (녹화 시 사용)
+        self.canvas_window = None  # 기존 Canvas의 Toplevel 창 (녹화 시 사용)
+            
     def start(self):
         """제스처 인식 시작 (키보드 리스너 시작 포함)"""
         # self.gesture_listener.start() # 기존 호출은 키보드 리스너를 시작하지 않음
@@ -76,19 +82,12 @@ class GestureManager:
         logging.info("Stopping gesture recognition and keyboard listener...")
         # 키보드 리스너 중지 요청
         stopped_kb = self.gesture_listener.stop_keyboard_listener()
-        # 마우스 리스너도 확실히 중지 (stop 내부 로직 재확인) -> 멀티프로세싱으로 변경되어 제거
-        # stopped_mouse = True
-        # if self.gesture_listener.mouse_listener and self.gesture_listener.mouse_listener.is_alive():
-        #      try:
-        #          logging.info("Stopping mouse listener from GestureManager.stop...")
-        #          self.gesture_listener.mouse_listener.stop()
-        #          self.gesture_listener.mouse_listener.join()
-        #          logging.info("Mouse listener stopped and joined from GestureManager.stop.")
-        #          self.gesture_listener.mouse_listener = None
-        #      except Exception as e_mouse:
-        #          logging.error(f"Error stopping mouse listener from GestureManager.stop: {e_mouse}", exc_info=True)
-        #          stopped_mouse = False
         
+        # 오버레이 캔버스도 숨김 처리 추가
+        if self.overlay_canvas:
+            self.overlay_canvas.hide()
+            logging.info("Overlay canvas hidden during gesture stop.")
+
         # is_running 플래그 업데이트 (GlobalGestureListener 내부에서 처리되도록 변경 고려)
         if hasattr(self.gesture_listener, 'is_running'): self.gesture_listener.is_running = False
         
@@ -98,48 +97,68 @@ class GestureManager:
         else:
              logging.warning("Gesture recognition stopped, but there might have been issues stopping keyboard listener.")
 
-    def on_gesture_started(self, rel_pos, monitor, modifiers):
-        """제스처 시작 콜백 - 시작 시 절대 좌표 저장"""
-        print(f"GestureManager 시작: 상대좌표 {rel_pos}, 모니터 {monitor.name}, 모디파이어 {modifiers}")
+    def on_gesture_started(self, abs_pos, rel_pos, monitor, modifiers):
+        """제스처 시작 콜백 - 오버레이 표시 및 절대/상대 좌표 처리"""
+        # print(f"GestureManager 시작: Abs{abs_pos} Rel{rel_pos}, Monitor {monitor.name if monitor else 'N/A'}, Modifiers {modifiers}")
+        logging.info(f"GestureManager 시작: Abs{abs_pos} Rel{rel_pos}, Monitor {monitor.name if monitor else 'N/A'}, Modifiers {modifiers}")
 
-        # --- 제스처 시작 시 절대 마우스 좌표 저장 ---
         try:
-            abs_x, abs_y = mouse.get_position()
-            self.gesture_start_x = abs_x
-            self.gesture_start_y = abs_y
-            print(f"제스처 시작 절대 좌표 저장: ({self.gesture_start_x}, {self.gesture_start_y})")
-        except Exception as e:
-             print(f"Error getting absolute mouse position: {e}")
-             # 기본값 유지 또는 오류 처리
-             self.gesture_start_x = 0
-             self.gesture_start_y = 0
-        # --- 좌표 저장 끝 ---
+            # 전달받은 절대 좌표 사용
+            self.gesture_start_x = abs_pos[0]
+            self.gesture_start_y = abs_pos[1]
+            # print(f"제스처 시작 절대 좌표 저장 (from callback): ({self.gesture_start_x}, {self.gesture_start_y})")
+            logging.debug(f"제스처 시작 절대 좌표 저장 (from callback): ({self.gesture_start_x}, {self.gesture_start_y})")
 
+            # 오버레이 캔버스 준비 및 표시
+            self.overlay_canvas.clear()
+            # self.overlay_canvas.set_line_color("red") # 필요시 색상 변경 (초기화 시 설정됨)
+            self.overlay_canvas.show()
+            self.overlay_canvas.add_point(abs_pos[0], abs_pos[1]) # 첫 점 추가 (절대 좌표)
+
+        except Exception as e:
+             # print(f"Error processing gesture start or starting overlay: {e}")
+             logging.error(f"Error processing gesture start or starting overlay: {e}", exc_info=True)
+             # 기본값 유지 또는 오류 처리
+             self.gesture_start_x = 0 # 오류 시 초기화
+             self.gesture_start_y = 0 # 오류 시 초기화
+        
+        # 제스처 인식기 시작 (상대 좌표 사용)
         self.gesture_recognizer.start_recording(rel_pos, modifiers)
         
-        # 제스처 시각화 캔버스가 있는 경우 점 추가
-        if self.gesture_canvas:
-            self.gesture_canvas.create_oval(
-                rel_pos[0]-3, rel_pos[1]-3, rel_pos[0]+3, rel_pos[1]+3, 
-                fill="blue", outline="blue", tags="gesture"
+        # 기존 녹화용 제스처 시각화 캔버스 (recording_mode일 때만, 상대 좌표 사용)
+        if self.gesture_canvas and self.recording_mode:
+            self.gesture_canvas.add_point( 
+                rel_pos[0], rel_pos[1], color="blue" 
             )
         
-    def on_gesture_moved(self, rel_pos, monitor):
-        """제스처 이동 콜백"""
+    def on_gesture_moved(self, abs_pos, rel_pos, monitor):
+        """제스처 이동 콜백 - 오버레이 경로 추가 (절대 좌표), 인식기 (상대 좌표)"""
+        # 제스처 인식기에 점 추가 (상대 좌표)
         self.gesture_recognizer.add_point(rel_pos)
         
-        # 제스처 시각화 캔버스가 있는 경우 선 추가
-        if self.gesture_canvas and len(self.gesture_recognizer.points) > 1:
-            prev_point = self.gesture_recognizer.points[-2]
-            self.gesture_canvas.create_line(
-                prev_point[0], prev_point[1], rel_pos[0], rel_pos[1],
-                fill="red", width=2, tags="gesture"
+        try:
+            # 오버레이 캔버스에 점 추가 (절대 좌표)
+            self.overlay_canvas.add_point(abs_pos[0], abs_pos[1])
+        except Exception as e:
+            # print(f"Error drawing on overlay: {e}")
+            logging.error(f"Error drawing on overlay: {e}", exc_info=True)
+
+        # 기존 녹화용 제스처 시각화 캔버스 (recording_mode일 때만, 상대 좌표 사용)
+        if self.gesture_canvas and self.recording_mode and len(self.gesture_recognizer.points) > 1:
+            prev_point_rel = self.gesture_recognizer.points[-2] # 상대 좌표
+            self.gesture_canvas.add_line(
+                prev_point_rel[0], prev_point_rel[1], rel_pos[0], rel_pos[1],
+                color="red", width=2
             )
         
     def on_gesture_ended(self):
         log_memory_usage("Gesture Ended - Start Processing") # 메모리 로그 추가
         gesture_end_time = time.time()
         print(f"[TimeLog] Gesture ended at: {gesture_end_time:.3f}")
+
+        # 오버레이 캔버스 숨기기
+        if self.overlay_canvas:
+            self.overlay_canvas.hide() # 경로 그린 후 숨김
 
         recognition_start_time = time.time()
         gesture = self.gesture_recognizer.stop_recording()
@@ -195,15 +214,26 @@ class GestureManager:
         self.create_gesture_canvas()
         
     def create_gesture_canvas(self):
-        """제스처 시각화를 위한 캔버스 창 생성"""
-        if self.canvas_window:
+        """제스처 녹화를 위한 캔버스 창 생성 (기존 로직 유지)"""
+        if self.canvas_window: # 이미 있으면 파괴
             self.canvas_window.destroy()
             self.canvas_window = None
             self.gesture_canvas = None
-            
-        canvas_manager = GestureCanvas(on_cancel=self.cancel_recording)
-        self.gesture_canvas = canvas_manager.create()
-        self.canvas_window = canvas_manager.window
+
+        # GestureCanvas를 일반 녹화 모드(오버레이 아님)로 생성
+        # parent=None으로 하여 Toplevel로 만듬
+        self.gesture_canvas = GestureCanvas(parent=None, on_cancel=self.cancel_recording, is_overlay=False)
+        self.canvas_window = self.gesture_canvas.window # GestureCanvas가 생성한 window 참조
+        
+        # create 메서드를 호출하여 캔버스를 실제로 생성하고 표시
+        # create 메서드는 내부적으로 window.deiconify() 등을 호출할 수 있음 (GestureCanvas 구현에 따라 다름)
+        if self.gesture_canvas.create(): # create가 성공하면
+             print("녹화용 제스처 캔버스 생성됨")
+        else:
+             print("녹화용 제스처 캔버스 생성 실패")
+             self.gesture_canvas = None # 실패 시 참조 제거
+             self.canvas_window = None
+        # 이전에 여기서 직접 Toplevel 만들던 로직은 GestureCanvas 내부로 이동됨
         
     def cancel_recording(self):
         """제스처 녹화 취소"""

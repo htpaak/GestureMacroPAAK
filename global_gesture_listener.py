@@ -79,9 +79,9 @@ class GlobalGestureListener:
         self.shift_pressed = False
         self.alt_pressed = False
         
-        # 콜백 함수 (시그니처 변경됨)
-        self.on_gesture_started = None # (rel_pos, monitor, modifiers)
-        self.on_gesture_moved = None   # (rel_pos, monitor)
+        # 콜백 함수 (시그니처 변경됨) - abs_pos 추가
+        self.on_gesture_started = None # (abs_pos, rel_pos, monitor, modifiers)
+        self.on_gesture_moved = None   # (abs_pos, rel_pos, monitor)
         self.on_gesture_ended = None   # ()
         
         # 키보드 리스너
@@ -218,14 +218,15 @@ class GlobalGestureListener:
                         self.is_recording = True 
                         self.start_monitor = current_monitor 
                         rel_x, rel_y = monitor_utils.absolute_to_relative(abs_x, abs_y, current_monitor)
-                        logging.info(f"Gesture started: Monitor {self._cached_monitors.index(current_monitor)} Rel({rel_x}, {rel_y}) ...")
+                        logging.info(f"Gesture started: Monitor {self._cached_monitors.index(current_monitor)} Abs({abs_x},{abs_y}) Rel({rel_x}, {rel_y}) ...") # 로그에 절대좌표 추가
                         
                         # --- pynput 마우스 리스너 시작 ---
-                        self._start_mouse_listener_if_inactive()
+                        self._start_mouse_listener_if_inactive() 
                         # --- 시작 끝 ---
 
                         if self.on_gesture_started:
-                            self.on_gesture_started((rel_x, rel_y), current_monitor, self.current_modifiers)
+                            # 콜백에 절대 좌표 (abs_x, abs_y)도 전달
+                            self.on_gesture_started((abs_x, abs_y), (rel_x, rel_y), current_monitor, self.current_modifiers)
                     else:
                         logging.warning(f"Mouse ({abs_x}, {abs_y}) outside monitors.")
                         self.reset_modifiers()
@@ -396,6 +397,6 @@ class GlobalGestureListener:
             if current_monitor == self.start_monitor:
                 rel_x, rel_y = monitor_utils.absolute_to_relative(x, y, current_monitor) 
                 if self.on_gesture_moved:
-                    self.on_gesture_moved((rel_x, rel_y), current_monitor) 
+                    self.on_gesture_moved((x, y), (rel_x, rel_y), current_monitor) 
         except Exception as e:
             logging.error(f"Error processing throttled pynput move: {e}", exc_info=True)
