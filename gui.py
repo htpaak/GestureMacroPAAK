@@ -1,16 +1,17 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import ttk, messagebox, simpledialog, colorchooser
 import time
 import mouse
 import keyboard
 
 class MacroGUI:
-    def __init__(self, root, recorder, player, editor, storage):
+    def __init__(self, root, recorder, player, editor, storage, gesture_manager=None):
         self.root = root
         self.recorder = recorder
         self.player = player
         self.editor = editor
         self.storage = storage
+        self.gesture_manager = gesture_manager
         
         # 윈도우 설정
         self.root.title("고급 매크로 프로그램")
@@ -121,6 +122,8 @@ class MacroGUI:
                                      command=self.update_record_settings)
         settings_menu.add_checkbutton(label="키보드 녹화", variable=self.record_keyboard,
                                      command=self.update_record_settings)
+        settings_menu.add_separator()
+        settings_menu.add_command(label="Set Gesture Path Color...", command=self.select_gesture_path_color)
         menubar.add_cascade(label="설정", menu=settings_menu)
         
         # 도움말 메뉴
@@ -1278,4 +1281,27 @@ class MacroGUI:
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 창이 화면에 맞게 표시되도록 업데이트 호출
-        self.root.update_idletasks() 
+        self.root.update_idletasks()
+
+    def select_gesture_path_color(self):
+        """제스처 경로 표시 색상을 선택하는 대화상자를 엽니다."""
+        if not self.gesture_manager:
+            messagebox.showwarning("Warning", "Gesture manager is not available.")
+            return
+
+        # 현재 색상을 가져올 수 있다면 초기값으로 설정 (선택 사항)
+        # initial_color = self.gesture_manager.get_overlay_line_color() # 이런 메서드가 GestureManager에 있다고 가정
+        # result = colorchooser.askcolor(initialcolor=initial_color, title="Choose Gesture Path Color")
+        
+        result = colorchooser.askcolor(title="Choose Gesture Path Color")
+        
+        if result and result[1]: # result[1]은 HEX 색상 코드
+            selected_color_hex = result[1]
+            if self.gesture_manager:
+                self.gesture_manager.set_overlay_line_color(selected_color_hex)
+                # 사용자에게 피드백 (선택 사항)
+                # self.update_status(f"Gesture path color set to {selected_color_hex}")
+                print(f"Gesture path color set to {selected_color_hex}") # 로그로 확인
+            else:
+                # 이 경우는 위에서 이미 처리되었어야 함
+                messagebox.showerror("Error", "Gesture manager not found after color selection.") 

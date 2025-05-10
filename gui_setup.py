@@ -76,6 +76,58 @@ class ToolTip:
 class GuiSetupMixin:
     """GUI의 기본 설정 및 레이아웃 구성을 담당하는 믹스인 클래스"""
 
+    def _create_menu_bar(self):
+        """메뉴바 생성 (기존 gui.py의 MacroGUI.create_menu 내용을 기반으로 수정)"""
+        menubar = tk.Menu(self.root)
+        
+        # 파일 메뉴
+        file_menu = tk.Menu(menubar, tearoff=0)
+        # 콜백들은 self (GuiBase 인스턴스)의 메서드를 호출하도록 수정
+        file_menu.add_command(label="New Macro Recording (Ctrl+R)", command=lambda: self.start_recording() if hasattr(self, 'start_recording') else None) # 예시: start_recording 콜백
+        file_menu.add_command(label="Save Macro (Ctrl+S)", command=lambda: self.save_macro() if hasattr(self, 'save_macro') else None) # 예시: save_macro 콜백
+        file_menu.add_command(label="Load Macro", command=lambda: self.load_macro() if hasattr(self, 'load_macro') else None) # 예시: load_macro 콜백
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit)
+        menubar.add_cascade(label="File", menu=file_menu)
+        
+        # 편집 메뉴
+        edit_menu = tk.Menu(menubar, tearoff=0)
+        edit_menu.add_command(label="Select All (Ctrl+A)", command=lambda: self.select_all_events() if hasattr(self, 'select_all_events') else None)
+        edit_menu.add_command(label="Delete Selected", command=lambda: self.delete_selected_event() if hasattr(self, 'delete_selected_event') else None)
+        edit_menu.add_command(label="Add Delay", command=lambda: self.add_delay_to_event() if hasattr(self, 'add_delay_to_event') else None)
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Duplicate Selected", command=lambda: self.duplicate_selected_events() if hasattr(self, 'duplicate_selected_events') else None)
+        menubar.add_cascade(label="Edit", menu=edit_menu)
+        
+        # 실행 메뉴
+        play_menu = tk.Menu(menubar, tearoff=0)
+        play_menu.add_command(label="Play Macro (F5)", command=lambda: self.play_macro() if hasattr(self, 'play_macro') else None)
+        play_menu.add_command(label="Stop Macro (F6)", command=lambda: self.stop_macro() if hasattr(self, 'stop_macro') else None)
+        play_menu.add_separator()
+        play_menu.add_command(label="Configure Hotkeys", command=lambda: self.configure_hotkeys() if hasattr(self, 'configure_hotkeys') else None)
+        menubar.add_cascade(label="Play", menu=play_menu)
+        
+        # 설정 메뉴
+        settings_menu = tk.Menu(menubar, tearoff=0)
+        # record_mouse_move, use_relative_coords 등은 GuiBase의 BooleanVar를 사용
+        settings_menu.add_checkbutton(label="Record Mouse Movement", variable=self.record_mouse_move, 
+                                     command=lambda: self.update_record_settings() if hasattr(self, 'update_record_settings') else None)
+        settings_menu.add_checkbutton(label="Use Relative Coordinates", variable=self.use_relative_coords,
+                                     command=lambda: self.update_record_settings() if hasattr(self, 'update_record_settings') else None)
+        settings_menu.add_checkbutton(label="Record Keyboard", variable=self.record_keyboard,
+                                     command=lambda: self.update_record_settings() if hasattr(self, 'update_record_settings') else None)
+        settings_menu.add_separator()
+        settings_menu.add_command(label="Set Gesture Path Color...", command=self.select_gesture_path_color) # GuiBase에 정의된 메서드 직접 호출
+        menubar.add_cascade(label="Settings", menu=settings_menu)
+        
+        # 도움말 메뉴
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="How to Use", command=lambda: self.show_help() if hasattr(self, 'show_help') else None)
+        help_menu.add_command(label="About", command=lambda: self.show_about() if hasattr(self, 'show_about') else None)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        
+        self.root.config(menu=menubar)
+
     def _setup_styles(self):
         """애플리케이션 전체에 적용될 스타일 설정"""
         style = ttk.Style()
@@ -171,6 +223,7 @@ class GuiSetupMixin:
 
     def setup_ui(self):
         """간소화된 GUI 구성 (PanedWindow 사용) - 1366x768 크기 최적화"""
+        self._create_menu_bar() # 메뉴 바 생성 호출 추가
         # 메인 프레임 (패딩 최소화)
         main_frame = ttk.Frame(self.root, padding=3) # padding 5 -> 3
         main_frame.pack(fill=tk.BOTH, expand=True)

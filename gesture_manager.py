@@ -360,6 +360,14 @@ class GestureManager:
         print(f"GUI 인스턴스 콜백 설정: {gui_instance}")
         self.gui_callback = gui_instance
 
+    def set_overlay_line_color(self, color_hex):
+        """오버레이 캔버스의 선 색상을 설정합니다."""
+        if self.overlay_canvas:
+            self.overlay_canvas.set_line_color(color_hex)
+            logging.info(f"Overlay canvas line color set to: {color_hex}")
+        else:
+            logging.warning("Overlay canvas not available to set line color.")
+
     def save_gesture_only(self, gesture):
         """제스처만 저장 (빈 매크로 이벤트 리스트 저장) """
         # storage에 이미 해당 제스처 키가 있는지 확인

@@ -1,6 +1,6 @@
 # gui_base.py
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, colorchooser
 import platform # 시스템 정보 확인을 위해 추가
 import os       # 파일 경로 확인을 위해 추가
 import sys      # 실행 파일 경로 확인을 위해 추가
@@ -33,7 +33,7 @@ class GuiBase(
 ):
     """모든 GUI 믹스인을 통합하고 애플리케이션 GUI의 기반을 형성하는 클래스"""
 
-    def __init__(self, root, recorder, player, editor, storage, gesture_manager=None):
+    def __init__(self, root, recorder, player, editor, storage, gesture_manager=None, tray_manager=None):
         """GUI 초기화"""
         self.root = root
         self.recorder = recorder
@@ -41,6 +41,7 @@ class GuiBase(
         self.editor = editor
         self.storage = storage
         self.gesture_manager = gesture_manager
+        self.tray_manager = tray_manager
 
         # --- 내부 상태 변수 초기화 (simple_gui.py __init__ 참조) ---
         # 제스처 인식 상태
@@ -94,6 +95,29 @@ class GuiBase(
         # 초기 상태 업데이트 (필요시)
         self.update_gesture_list() # 제스처 목록 로드 (gui_gesture_manager 가정)
         self.update_status("Ready.")
+
+    def select_gesture_path_color(self):
+        """제스처 경로 표시 색상을 선택하는 대화상자를 엽니다."""
+        if not self.gesture_manager:
+            messagebox.showwarning("Warning", "Gesture manager is not available.")
+            return
+
+        # 현재 색상을 가져올 수 있다면 초기값으로 설정 (선택 사항)
+        # initial_color = self.gesture_manager.get_overlay_line_color() # 이런 메서드가 GestureManager에 있다고 가정
+        # result = colorchooser.askcolor(initialcolor=initial_color, title="Choose Gesture Path Color")
+        
+        result = colorchooser.askcolor(title="Choose Gesture Path Color")
+        
+        if result and result[1]: # result[1]은 HEX 색상 코드
+            selected_color_hex = result[1]
+            if self.gesture_manager:
+                self.gesture_manager.set_overlay_line_color(selected_color_hex)
+                # 사용자에게 피드백 (선택 사항)
+                # self.update_status(f"Gesture path color set to {selected_color_hex}")
+                print(f"Gesture path color set to {selected_color_hex}") # 로그로 확인
+            else:
+                # 이 경우는 위에서 이미 처리되었어야 함
+                messagebox.showerror("Error", "Gesture manager not found after color selection.")
 
     def update_status(self, message):
         """하단 상태 표시줄 메시지 업데이트"""

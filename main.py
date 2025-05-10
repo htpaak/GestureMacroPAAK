@@ -253,13 +253,13 @@ def main():
     try:
         storage = MacroStorage()
         player = MacroPlayer()
-        editor = MacroEditor(storage)
+        editor = MacroEditor(None) # 초기에는 콜백 없음
         recorder = MacroRecorder()
         # GestureManager 생성 시 monitors 전달
-        gesture_manager = GestureManager(player, storage, recorder, timer_log_callback=log_timer_delay, monitors=monitors)
+        gesture_manager = GestureManager(player, storage, recorder, monitors=monitors, timer_log_callback=log_timer_delay)
         
         # GUI 생성
-        gui = GuiBase(root_window, recorder, player, editor, storage, gesture_manager)
+        gui = GuiBase(root_window, recorder, player, editor, storage, gesture_manager, tray_manager)
         recorder.parent = gui
         
         # --- 디버깅 코드 확인 (이미 주석 해제됨) ---
