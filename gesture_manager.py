@@ -38,6 +38,9 @@ class GestureManager:
         # 녹화 상태
         self.recording_mode = False
         
+        # 제스처 경로 표시 여부 (기본값 True)
+        self.is_path_drawing_enabled = True 
+        
         # 제스처 인식기 초기화
         self.gesture_recognizer = GestureRecognizer()
         
@@ -80,11 +83,10 @@ class GestureManager:
         """제스처 인식 중지 (키보드 리스너 중지 포함)"""
         # self.gesture_listener.stop() # 기존 stop은 이제 키보드 리스너만 중지하지 않음
         logging.info("Stopping gesture recognition and keyboard listener...")
-        # 키보드 리스너 중지 요청
         stopped_kb = self.gesture_listener.stop_keyboard_listener()
         
-        # 오버레이 캔버스도 숨김 처리 추가
-        if self.overlay_canvas:
+        # 오버레이 캔버스도 숨김 처리 추가 (경로 표시가 활성화된 경우에만)
+        if self.is_path_drawing_enabled and self.overlay_canvas:
             self.overlay_canvas.hide()
             logging.info("Overlay canvas hidden during gesture stop.")
 
@@ -109,11 +111,12 @@ class GestureManager:
             # print(f"제스처 시작 절대 좌표 저장 (from callback): ({self.gesture_start_x}, {self.gesture_start_y})")
             logging.debug(f"제스처 시작 절대 좌표 저장 (from callback): ({self.gesture_start_x}, {self.gesture_start_y})")
 
-            # 오버레이 캔버스 준비 및 표시
-            self.overlay_canvas.clear()
-            # self.overlay_canvas.set_line_color("red") # 필요시 색상 변경 (초기화 시 설정됨)
-            self.overlay_canvas.show()
-            self.overlay_canvas.add_point(abs_pos[0], abs_pos[1]) # 첫 점 추가 (절대 좌표)
+            # 오버레이 캔버스 준비 및 표시 (경로 표시가 활성화된 경우)
+            if self.is_path_drawing_enabled and self.overlay_canvas:
+                self.overlay_canvas.clear()
+                # self.overlay_canvas.set_line_color("red") # 필요시 색상 변경 (초기화 시 설정됨)
+                self.overlay_canvas.show()
+                self.overlay_canvas.add_point(abs_pos[0], abs_pos[1]) # 첫 점 추가 (절대 좌표)
 
         except Exception as e:
              # print(f"Error processing gesture start or starting overlay: {e}")
@@ -137,8 +140,9 @@ class GestureManager:
         self.gesture_recognizer.add_point(rel_pos)
         
         try:
-            # 오버레이 캔버스에 점 추가 (절대 좌표)
-            self.overlay_canvas.add_point(abs_pos[0], abs_pos[1])
+            # 오버레이 캔버스에 점 추가 (경로 표시가 활성화된 경우)
+            if self.is_path_drawing_enabled and self.overlay_canvas:
+                self.overlay_canvas.add_point(abs_pos[0], abs_pos[1])
         except Exception as e:
             # print(f"Error drawing on overlay: {e}")
             logging.error(f"Error drawing on overlay: {e}", exc_info=True)
@@ -156,8 +160,8 @@ class GestureManager:
         gesture_end_time = time.time()
         print(f"[TimeLog] Gesture ended at: {gesture_end_time:.3f}")
 
-        # 오버레이 캔버스 숨기기
-        if self.overlay_canvas:
+        # 오버레이 캔버스 숨기기 (경로 표시가 활성화된 경우)
+        if self.is_path_drawing_enabled and self.overlay_canvas:
             self.overlay_canvas.hide() # 경로 그린 후 숨김
 
         recognition_start_time = time.time()
@@ -359,6 +363,14 @@ class GestureManager:
         """GUI 인스턴스 참조 설정"""
         print(f"GUI 인스턴스 콜백 설정: {gui_instance}")
         self.gui_callback = gui_instance
+
+    def set_path_visibility(self, is_visible: bool):
+        """제스처 경로 표시 여부를 설정합니다."""
+        self.is_path_drawing_enabled = is_visible
+        logging.info(f"Gesture path drawing set to: {is_visible}")
+        if not is_visible and self.overlay_canvas:
+            self.overlay_canvas.hide() # 즉시 숨김
+            self.overlay_canvas.clear() # 경로도 지움
 
     def set_overlay_line_color(self, color_hex):
         """오버레이 캔버스의 선 색상을 설정합니다."""

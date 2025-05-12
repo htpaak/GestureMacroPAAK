@@ -50,6 +50,9 @@ class GuiBase(
         # 부팅 시 자동 실행 상태 변수 추가
         self.start_on_boot_var = tk.BooleanVar(value=False)
 
+        # 제스처 경로 표시 여부
+        self.show_gesture_path_var = tk.BooleanVar(value=True) # 기본값 True
+
         # 녹화 설정
         self.record_mouse_move = tk.BooleanVar(value=False)
         self.record_delay = tk.BooleanVar(value=True)
@@ -88,27 +91,23 @@ class GuiBase(
 
         # --- 설정 로드 및 적용 --- (기존 초기화 로직 이후에 추가)
         loaded_settings = self.storage.load_settings()
+        
+        # 제스처 경로 색상 적용
         default_gesture_color = "red" # 기본 색상 정의
         gesture_color_to_apply = loaded_settings.get("gesture_path_color", default_gesture_color)
         
-        if self.gesture_manager and hasattr(self.gesture_manager, 'overlay_canvas') and self.gesture_manager.overlay_canvas:
-            # GestureManager에 set_overlay_line_color가 있으므로 이를 사용하거나, 직접 overlay_canvas에 접근
-            # self.gesture_manager.overlay_canvas.set_line_color(gesture_color_to_apply)
-            # 혹은 GestureManager에 해당 책임 위임
+        if self.gesture_manager:
             if hasattr(self.gesture_manager, 'set_overlay_line_color'):
                 self.gesture_manager.set_overlay_line_color(gesture_color_to_apply)
                 print(f"Applied gesture path color from settings: {gesture_color_to_apply}")
-            else:
-                print("Warning: GestureManager does not have set_overlay_line_color method.")
-        elif self.gesture_manager : # gesture_manager는 있지만 overlay_canvas가 아직 없을 수 있음
-             # 이 경우 GestureManager가 overlay_canvas를 생성할 때 이 색상을 사용하도록 전달 필요
-             # 또는 GuiBase가 직접 GestureManager의 기본 색상 속성을 설정 (예: self.gesture_manager.default_line_color = gesture_color_to_apply)
-             # 현재 구조에서는 GestureManager가 overlay_canvas 생성 시 색상을 받으므로, GuiBase에서 바로 적용 시도.
-             # 만약 실패하면, GestureManager 초기화 시 이 값을 넘겨주거나, GestureManager가 스스로 로드하도록 변경 필요.
-             print(f"GestureManager or overlay_canvas not ready for initial color apply: {gesture_color_to_apply}")
-             # 임시로 gesture_manager에 저장해두고, canvas 생성 시 사용하도록 할 수 있음
-             if hasattr(self.gesture_manager, 'set_pending_line_color'): # 이런 메서드가 있다면
-                 self.gesture_manager.set_pending_line_color(gesture_color_to_apply)
+            # 임시로 gesture_manager에 저장해두고, canvas 생성 시 사용하도록 할 수 있음 (set_pending_line_color 등)
+
+        # 제스처 경로 표시 여부 적용
+        show_path = loaded_settings.get("show_gesture_path", True) # 기본값 True
+        self.show_gesture_path_var.set(show_path)
+        if self.gesture_manager and hasattr(self.gesture_manager, 'set_path_visibility'):
+            self.gesture_manager.set_path_visibility(show_path)
+            print(f"Applied gesture path visibility from settings: {show_path}")
 
         # 부팅 시 자동 실행 초기 상태 설정
         self._update_start_on_boot_checkbox_state()
@@ -119,6 +118,20 @@ class GuiBase(
         # 초기 상태 업데이트 (필요시)
         self.update_gesture_list() # 제스처 목록 로드 (gui_gesture_manager 가정)
         self.update_status("Ready.")
+
+    def toggle_show_gesture_path(self):
+        """제스처 경로 표시 여부를 토글하고 설정을 저장합니다."""
+        is_visible = self.show_gesture_path_var.get()
+        if self.gesture_manager and hasattr(self.gesture_manager, 'set_path_visibility'):
+            self.gesture_manager.set_path_visibility(is_visible)
+        
+        current_settings = self.storage.load_settings()
+        current_settings["show_gesture_path"] = is_visible
+        if self.storage.save_settings(current_settings):
+            print(f"Gesture path visibility set to {is_visible} and saved to settings.")
+            self.update_status(f"Gesture path drawing {'enabled' if is_visible else 'disabled'}.")
+        else:
+            messagebox.showerror("Error", "Failed to save gesture path visibility setting.")
 
     def select_gesture_path_color(self):
         """제스처 경로 표시 색상을 선택하는 대화상자를 엽니다."""

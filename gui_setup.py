@@ -82,6 +82,15 @@ class GuiSetupMixin:
         
         # 설정 메뉴
         settings_menu = tk.Menu(menubar, tearoff=0)
+        
+        # 제스처 경로 표시 여부 체크박스 추가
+        # self.show_gesture_path_var와 self.toggle_show_gesture_path는 GuiBase에 정의되어 있어야 함
+        if hasattr(self, 'show_gesture_path_var') and hasattr(self, 'toggle_show_gesture_path'):
+            settings_menu.add_checkbutton(label="Show Gesture Path", 
+                                         variable=self.show_gesture_path_var, 
+                                         command=self.toggle_show_gesture_path)
+            settings_menu.add_separator() # 구분선 추가
+
         # "Set Gesture Path Color..."만 남김
         settings_menu.add_command(label="Set Gesture Path Color...", command=self.select_gesture_path_color) # GuiBase에 정의된 메서드 직접 호출
         menubar.add_cascade(label="Settings", menu=settings_menu)
