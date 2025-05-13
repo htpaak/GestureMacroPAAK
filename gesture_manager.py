@@ -156,64 +156,153 @@ class GestureManager:
             )
         
     def on_gesture_ended(self):
+        """
+        제스처 종료 콜백 - 오버레이 숨김, 제스처 인식 수행, 녹화 모드 시 매크로 저장 처리
+        키보드 키를 떼면 이 메서드가 호출되어 캔버스를 종료해야 함
+        """
         log_memory_usage("Gesture Ended - Start Processing") # 메모리 로그 추가
         gesture_end_time = time.time()
         print(f"[TimeLog] Gesture ended at: {gesture_end_time:.3f}")
+
+        # 녹화 상태 확인 로그 출력
+        print(f"제스처 종료 시점 녹화 모드: {self.recording_mode}")
 
         # 오버레이 캔버스 숨기기 (경로 표시가 활성화된 경우) - 녹화 모드가 아닐 때만
         if self.is_path_drawing_enabled and self.overlay_canvas and not self.recording_mode:
             self.overlay_canvas.hide() # 경로 그린 후 숨김
 
+        # 종료 직전에 녹화 모드 상태 저장
+        was_recording = self.recording_mode
+        
+        # *** 즉시 창 종료 시도 (1차) ***
+        # 인식 전에 일단 창부터 닫기 시도 (지연 없이)
+        self._force_close_canvas_window()
+        
+        # 인식 로직 실행
         recognition_start_time = time.time()
         gesture = self.gesture_recognizer.stop_recording()
         recognition_end_time = time.time()
         print(f"[TimeLog] Gesture recognition finished at: {recognition_end_time:.3f} (took {recognition_end_time - recognition_start_time:.3f}s)")
+        print(f"인식된 제스처: {gesture}")
         
-        # 캔버스 창 닫기
-        if self.canvas_window:
-            self.canvas_window.destroy()
-            self.canvas_window = None
-            self.gesture_canvas = None
+        # *** 다시 창 종료 시도 (2차) ***
+        # 인식 후 또 닫기 시도 (지연 없이)
+        self._force_close_canvas_window()
         
-        # 너무 짧은 제스처이거나 취소된 경우는 저장하지 않음
+        # 캔버스 창 참조 저장 (비동기 종료를 위해)
+        canvas_window_ref = self.canvas_window
+        gesture_canvas_ref = self.gesture_canvas
+        
+        # 너무 짧은 제스처이거나 취소된 경우
         if "tooShort" in gesture or "unknown" in gesture:
             print("제스처가 너무 짧거나 취소됨: 저장하지 않음")
+            # 상태 초기화
             self.recording_mode = False
-            # 녹화 모드 종료 시 오버레이 캔버스 상태 복원
             self._restore_overlay_after_recording()
+        
+            # *** 3차 종료 시도 (비동기) ***
+            # 캔버스 창을 비동기적으로 종료
+            if self.gui_callback and canvas_window_ref:
+                print("Tkinter after 메서드로 캔버스 창 종료 예약 (짧은 제스처)")
+                self.gui_callback.root.after(10, self._force_close_canvas_window)
+                self.gui_callback.root.after(50, self._force_close_canvas_window)
+                self.gui_callback.root.after(100, self._force_close_canvas_window)
+            
             return
         
-        # 녹화 모드인 경우 제스처 임시 저장
-        if self.recording_mode:
+        # 녹화 모드였을 경우 제스처 저장 또는 매크로 녹화 요청
+        if was_recording:
+            print("제스처 녹화 모드 종료 처리")
+            # 유효한 제스처가 인식됨
             self.temp_gesture = gesture
-            print(f"제스처 임시 저장: {self.temp_gesture}")
+            print(f"유효한 제스처 감지됨: {gesture}")
             
-            # 녹화 종료
+            # 자동으로 제스처 저장
+            print("제스처 자동 저장 시도")
+            success = self.save_gesture_only(gesture)
+            print(f"제스처 자동 저장 결과: {success}")
+            
+            # 매크로 녹화 콜백 호출 (필요한 경우)
+            if self.on_macro_record_request:
+                print("매크로 녹화 요청 콜백 호출")
+                self.on_macro_record_request(self.temp_gesture)
+            
+            # 녹화 모드 종료
             self.recording_mode = False
-            
-            # 녹화 모드 종료 시 오버레이 캔버스 상태 복원
+            # 오버레이 캔버스 상태 복원
             self._restore_overlay_after_recording()
-            
-            # GUI에서 편집 모드가 활성화된 경우 편집 완료 콜백 호출
-            if self.gui_callback and hasattr(self.gui_callback, 'editing_gesture') and self.gui_callback.editing_gesture:
-                print(f"제스처 편집 완료 콜백 호출: {gesture}")
-                self.gui_callback.on_gesture_edit_complete(gesture)
-                return
-            
-            # 일반 녹화 모드: 제스처만 저장 (매크로 없이)
-            self.save_gesture_only(gesture)
-            
-            return
         
-        # 일반 모드인 경우 매크로 실행
-        print(f"제스처 실행 시도: {gesture}")
-        execution_start_time = time.time()
-        log_memory_usage("Before Execute Action") # 메모리 로그 추가
-        print(f"[TimeLog] Starting gesture action execution at: {execution_start_time:.3f}")
-        self.execute_gesture_action(gesture, self.gesture_start_x, self.gesture_start_y)
-        # execution_end_time = time.time() # 이 로그는 execute_gesture_action 내부로 이동
-        # print(f"[TimeLog] Called execute_gesture_action at: {execution_end_time:.3f} (call overhead: {execution_end_time - execution_start_time:.3f}s)")
+        # *** 4차 종료 시도 (비동기) ***
+        # 캔버스 창을 여러 타이밍에 비동기적으로 종료하는 시도
+        if self.gui_callback:
+            print("여러 시점에 캔버스 창 종료 예약")
+            self.gui_callback.root.after(10, self._force_close_canvas_window)
+            self.gui_callback.root.after(50, self._force_close_canvas_window)
+            self.gui_callback.root.after(100, self._force_close_canvas_window)
+            self.gui_callback.root.after(250, self._force_close_canvas_window)
         
+        # 캔버스 참조 정리 (비동기 종료 예약 후에도 바로 참조는 정리)
+        self.canvas_window = None
+        self.gesture_canvas = None
+        
+        # 녹화 모드가 아니었을 경우 매크로 실행
+        if not was_recording:
+            print(f"제스처 실행 시도: {gesture}")
+            execution_start_time = time.time()
+            log_memory_usage("Before Execute Action") # 메모리 로그 추가
+            print(f"[TimeLog] Starting gesture action execution at: {execution_start_time:.3f}")
+            self.execute_gesture_action(gesture, self.gesture_start_x, self.gesture_start_y)
+    
+    def _force_close_canvas_window(self):
+        """강제로 캔버스 창을 종료하는 고급 메서드"""
+        print("강제 창 종료 시도")
+        
+        # 1. GestureCanvas 객체를 통한 종료
+        if self.gesture_canvas:
+            try:
+                print("객체를 통한 창 종료 시도")
+                self.gesture_canvas.destroy()
+                print("객체를 통한 창 종료 성공")
+            except Exception as e:
+                print(f"객체를 통한 창 종료 실패: {e}")
+        
+        # 2. 직접 창 종료
+        if self.canvas_window:
+            try:
+                print("직접 창 종료 시도")
+                self.canvas_window.withdraw()  # 먼저 숨김
+                self.canvas_window.destroy()
+                print("직접 창 종료 성공")
+            except Exception as e:
+                print(f"직접 창 종료 실패: {e}")
+        
+        # 3. 다른 방법으로 시도 - tkinter의 모든 창 찾기
+        try:
+            import tkinter as tk
+            root = None
+            
+            # GUI 콜백을 통해 root 얻기
+            if self.gui_callback and hasattr(self.gui_callback, 'root'):
+                root = self.gui_callback.root
+            else:
+                # 기본 root 얻기
+                root = tk._default_root
+            
+            if root:
+                print("tkinter root에서 창 찾기 시도")
+                for widget in root.winfo_children():
+                    if widget.winfo_class() == 'Toplevel':
+                        try:
+                            if hasattr(widget, 'title') and widget.title() == "제스처 녹화":
+                                print("제스처 녹화 창 발견 - 종료 시도")
+                                widget.withdraw()  # 먼저 화면에서 숨김
+                                widget.destroy()
+                                print("제스처 녹화 창 직접 종료 성공")
+                        except Exception as e2:
+                            print(f"창 직접 종료 실패: {e2}")
+        except Exception as e3:
+            print(f"tkinter 창 찾기 실패: {e3}")
+
     def start_gesture_recording(self):
         """새 제스처 녹화 시작"""
         self.recording_mode = True
@@ -227,28 +316,43 @@ class GestureManager:
         if self.is_path_drawing_enabled and self.overlay_canvas:
             self.overlay_canvas.hide()
             print("녹화 모드에서는 오버레이 캔버스를 일시적으로 비활성화합니다.")
-
+            
+        # 제스처 인식기 상태 확인
+        print(f"제스처 인식기 상태 - 녹화 중: {self.gesture_recognizer.is_recording}")
+        
+        # 상태 초기화
+        self.temp_gesture = None
+        self.gesture_recognizer.points = []
+        
+        print(f"녹화 모드 설정 완료: {self.recording_mode}")
+        
     def create_gesture_canvas(self):
         """제스처 녹화를 위한 캔버스 창 생성 (기존 로직 유지)"""
         if self.canvas_window: # 이미 있으면 파괴
+            print("기존 캔버스 창이 있어 먼저 종료합니다.")
             self.canvas_window.destroy()
             self.canvas_window = None
             self.gesture_canvas = None
 
         # GestureCanvas를 일반 녹화 모드(오버레이 아님)로 생성
         # parent=None으로 하여 Toplevel로 만듬
+        print("새 제스처 녹화 캔버스 생성 시작")
         self.gesture_canvas = GestureCanvas(parent=None, on_cancel=self.cancel_recording, is_overlay=False)
         self.canvas_window = self.gesture_canvas.window # GestureCanvas가 생성한 window 참조
         
         # create 메서드를 호출하여 캔버스를 실제로 생성하고 표시
         # create 메서드는 내부적으로 window.deiconify() 등을 호출할 수 있음 (GestureCanvas 구현에 따라 다름)
-        if self.gesture_canvas.create(): # create가 성공하면
-             print("녹화용 제스처 캔버스 생성됨")
-        else:
-             print("녹화용 제스처 캔버스 생성 실패")
-             self.gesture_canvas = None # 실패 시 참조 제거
-             self.canvas_window = None
-        # 이전에 여기서 직접 Toplevel 만들던 로직은 GestureCanvas 내부로 이동됨
+        try:
+            if self.gesture_canvas.create(): # create가 성공하면
+                 print("녹화용 제스처 캔버스 생성됨")
+            else:
+                 print("녹화용 제스처 캔버스 생성 실패")
+                 self.gesture_canvas = None # 실패 시 참조 제거
+                 self.canvas_window = None
+        except Exception as e:
+            print(f"캔버스 생성 중 오류 발생: {e}")
+            self.gesture_canvas = None
+            self.canvas_window = None
         
     def cancel_recording(self):
         """제스처 녹화 취소"""
@@ -259,14 +363,28 @@ class GestureManager:
         # 녹화 모드 종료 시 오버레이 캔버스 상태 복원
         self._restore_overlay_after_recording()
         
-        if self.canvas_window:
-            self.canvas_window.destroy()
-            self.canvas_window = None
-            self.gesture_canvas = None
-            
+        # 캔버스 창 참조 저장 (비동기 종료를 위해)
+        canvas_window_ref = self.canvas_window
+        gesture_canvas_ref = self.gesture_canvas
+        
+        # 참조 미리 정리 (비동기 종료 예약 후에도 바로 참조는 정리)
+        self.canvas_window = None
+        self.gesture_canvas = None
+        
+        # 캔버스 창을 비동기적으로 종료
+        if self.gui_callback and canvas_window_ref:
+            print("Tkinter after 메서드로 캔버스 창 종료 예약 (취소 처리)")
+            self.gui_callback.root.after(100, self._force_close_canvas_window)
+        else:
+            # GUI 콜백이 없거나 canvas_window가 없는 경우 직접 종료 시도
+            self._force_close_canvas_window()
+        
+        # 제스처 인식기 상태 초기화
         self.gesture_recognizer.is_recording = False
         self.gesture_recognizer.points = []
         self.gesture_recognizer.modifiers = 0
+        
+        print("제스처 녹화 취소 처리 완료")
         
     def save_macro_for_gesture(self, gesture, events):
         """제스처에 매크로 저장 (이제 gesture를 key로 사용) """
@@ -396,29 +514,60 @@ class GestureManager:
 
     def save_gesture_only(self, gesture):
         """제스처만 저장 (빈 매크로 이벤트 리스트 저장) """
-        # storage에 이미 해당 제스처 키가 있는지 확인
-        if self.storage.load_macro(gesture) is not None:
-            messagebox.showwarning("이미 존재하는 제스처",
-                                 f"제스처 '{gesture}'는 이미 매크로와 연결되어 있습니다.\n"
-                                 f"기존 제스처를 삭제하거나 다른 제스처를 녹화하세요.")
+        if not gesture or gesture == "unknown" or "tooShort" in gesture:
+            print(f"유효하지 않은 제스처는 저장하지 않음: {gesture}")
             return False
-
-        print(f"빈 매크로 저장: 제스처 '{gesture}'")
-
-        # 빈 이벤트 리스트로 저장
-        if self.storage.save_macro([], gesture): # gesture 를 key로 사용
-            # 제스처 목록 업데이트 콜백 호출
-            if self.on_update_gesture_list:
-                print("제스처 목록 업데이트 콜백 호출")
-                self.on_update_gesture_list()
+            
+        try:
+            # storage에 이미 해당 제스처 키가 있는지 확인
+            existing = self.storage.load_macro(gesture)
+            if existing is not None:
+                print(f"이미 존재하는 제스처: '{gesture}'")
+                
+                # GUI 모드에서는 메시지 박스 표시
+                try:
+                    messagebox.showwarning("이미 존재하는 제스처",
+                                     f"제스처 '{gesture}'는 이미 매크로와 연결되어 있습니다.\n"
+                                     f"기존 제스처를 삭제하거나 다른 제스처를 녹화하세요.")
+                except Exception as e:
+                    print(f"메시지 박스 표시 중 오류: {e}")
+                    
+                return False
+    
+            print(f"빈 매크로 저장: 제스처 '{gesture}'")
+    
+            # 빈 이벤트 리스트로 저장
+            success = self.storage.save_macro([], gesture) # gesture 를 key로 사용
+            if success:
+                print(f"제스처 '{gesture}' 성공적으로 저장됨")
+                
+                # 제스처 목록 업데이트 콜백 호출
+                if self.on_update_gesture_list:
+                    try:
+                        print("제스처 목록 업데이트 콜백 호출")
+                        self.on_update_gesture_list()
+                    except Exception as e:
+                        print(f"제스처 목록 업데이트 콜백 호출 중 오류: {e}")
+                else:
+                    print("경고: 제스처 목록 업데이트 콜백이 설정되지 않았습니다.")
+    
+                # GUI 모드에서는 메시지 박스 표시
+                try:
+                    messagebox.showinfo("제스처 저장됨", 
+                                     f"제스처 '{gesture}'가 저장되었습니다. 매크로를 녹화하려면 '매크로 녹화 시작' 버튼을 클릭하세요.")
+                except Exception as e:
+                    print(f"성공 메시지 박스 표시 중 오류: {e}")
+                    
+                return True
             else:
-                print("경고: 제스처 목록 업데이트 콜백이 설정되지 않았습니다.")
-
-            messagebox.showinfo("제스처 저장됨", f"제스처 '{gesture}'가 저장되었습니다. 매크로를 녹화하려면 '매크로 녹화 시작' 버튼을 클릭하세요.")
-            return True
-
-        print("제스처 저장 실패!")
-        return False 
+                print(f"제스처 '{gesture}' 저장 실패!")
+                return False
+                
+        except Exception as e:
+            print(f"제스처 저장 중 예외 발생: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     # 오버레이 캔버스 상태 복원 헬퍼 메서드 추가
     def _restore_overlay_after_recording(self):

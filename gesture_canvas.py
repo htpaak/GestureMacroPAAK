@@ -61,6 +61,7 @@ class GestureCanvas:
                     justify=tk.CENTER
                 )
 
+            # 키보드 이벤트 처리 (ESC 및 기타 키 해제 처리)
             self.window.bind('<Escape>', lambda e: self.cancel())
             self.window.protocol("WM_DELETE_WINDOW", self.cancel)
         else:
@@ -114,22 +115,145 @@ class GestureCanvas:
     def destroy(self):
         """캔버스 창 닫기"""
         if self.window:
-            self.window.destroy()
-            self.window = None
-            self.canvas = None
+            try:
+                print("GestureCanvas.destroy() 메서드 호출됨")
+                
+                # 창을 닫기 전에 가능한 모든 에러 방지 조치
+                try:
+                    # 기존 이벤트 바인딩 제거
+                    self.window.unbind('<Escape>')
+                    self.window.unbind('<KeyPress>')
+                    self.window.unbind('<KeyRelease>')
+                    self.window.unbind('<Button>')
+                    self.window.unbind('<Motion>')
+                    
+                    # 프로토콜 핸들러 제거
+                    self.window.protocol("WM_DELETE_WINDOW", lambda: None)
+                except Exception as bind_err:
+                    print(f"바인딩 제거 중 오류(무시됨): {bind_err}")
+                    pass
+                
+                # 캔버스의 모든 항목 제거
+                if self.canvas:
+                    try:
+                        self.canvas.delete("all")
+                    except Exception as canvas_err:
+                        print(f"캔버스 내용 제거 중 오류(무시됨): {canvas_err}")
+                        pass
+                
+                # 창 숨기기 (destroy 전 창을 보이지 않게 함)
+                try:
+                    self.window.withdraw()
+                except Exception as withdraw_err:
+                    print(f"창 숨기기 중 오류(무시됨): {withdraw_err}")
+                    pass
+                
+                # 모든 자식 위젯 제거
+                try:
+                    for widget in self.window.winfo_children():
+                        widget.destroy()
+                except Exception as children_err:
+                    print(f"자식 위젯 제거 중 오류(무시됨): {children_err}")
+                    pass
+                
+                # Tkinter destroy 호출
+                try:
+                    self.window.destroy()
+                    print("GestureCanvas 창 destroy() 호출 성공")
+                except Exception as destroy_err:
+                    print(f"창 destroy() 호출 중 오류: {destroy_err}")
+                    
+                    # 대체 방법 시도 - update 호출 후 다시 시도
+                    try:
+                        import tkinter as tk
+                        tk._default_root.update()
+                        self.window.destroy()
+                        print("update 후 destroy 재시도 성공")
+                    except Exception as update_err:
+                        print(f"update 후 destroy 재시도 실패: {update_err}")
+                
+                print("GestureCanvas 창이 성공적으로 닫힘")
+            except Exception as e:
+                print(f"GestureCanvas 창 닫기 오류: {e}")
+                import traceback
+                traceback.print_exc()
+            finally:
+                # 참조 정리
+                self.window = None
+                self.canvas = None
+                print("GestureCanvas 참조가 모두 초기화됨")
     
     def cancel(self):
         """녹화 취소"""
-        if self.on_cancel:
-            self.on_cancel()
+        print("GestureCanvas.cancel() 메서드 호출됨 - ESC 키 또는 창 닫기로 취소")
         
-        # 캔버스 내용도 지움
+        # 콜백 호출 전에 참조 저장 (객체 정리 후에도 호출 가능하도록)
+        callback = self.on_cancel
+        
+        # 캔버스 내용 지우기
         self.clear()
         
+        # 창 종료하기
         if self.window:
-            self.window.destroy()
+            # 이벤트 모두 해제 (처리 중 문제를 방지하기 위해)
+            for binding in ['<Escape>', '<KeyPress>', '<KeyRelease>', '<Button>', '<Motion>', '<Configure>']:
+                try:
+                    self.window.unbind(binding)
+                except Exception as e:
+                    print(f"바인딩 해제 오류(무시됨): {e}")
+            
+            # 프로토콜 핸들러도 제거
+            try:
+                self.window.protocol("WM_DELETE_WINDOW", lambda: None)
+            except Exception as e:
+                print(f"프로토콜 핸들러 제거 오류(무시됨): {e}")
+            
+            # 모든 자식 위젯 제거
+            try:
+                for widget in self.window.winfo_children():
+                    widget.destroy()
+            except Exception as e:
+                print(f"자식 위젯 제거 오류(무시됨): {e}")
+            
+            # 먼저 창 숨기기
+            try:
+                self.window.withdraw()
+                print("창 성공적으로 숨김")
+            except Exception as e:
+                print(f"창 숨기기 오류(무시됨): {e}")
+            
+            # 창 종료
+            try:
+                self.window.destroy()
+                print("창 성공적으로 종료됨")
+            except Exception as e:
+                print(f"창 종료 오류: {e}")
+                
+                # 대체 방법 시도 - 메인 루프 처리 후 다시 시도
+                try:
+                    import tkinter as tk
+                    if tk._default_root:
+                        tk._default_root.update()
+                        self.window.destroy()
+                        print("update 후 창 종료 성공")
+                except Exception as e2:
+                    print(f"대체 종료 방법 오류: {e2}")
+            
+            # 모든 참조 제거
             self.window = None
             self.canvas = None
+            print("모든 창 참조 제거 완료")
+        
+        # 객체 정리 후 취소 콜백 호출
+        if callback:
+            print("취소 콜백 함수 호출")
+            try:
+                callback()
+                print("취소 콜백 함수 호출 완료")
+            except Exception as e:
+                print(f"취소 콜백 함수 호출 중 오류: {e}")
+                import traceback
+                traceback.print_exc()
     
     def set_line_color(self, color):
         """선 색상을 설정합니다."""

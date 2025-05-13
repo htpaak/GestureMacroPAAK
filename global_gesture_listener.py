@@ -177,6 +177,8 @@ class GlobalGestureListener:
                     logging.info("Gesture cancelled (ESC).") 
                     self.reset_modifiers()
                     if self.on_gesture_ended:
+                        # ESC 키 눌렀을 때도 제스처 종료 콜백 호출
+                        logging.info("ESC 키 눌렀을 때 제스처 종료 콜백 호출")
                         self.on_gesture_ended()
                 return
                 
@@ -253,14 +255,45 @@ class GlobalGestureListener:
             if modifier_released:
                 self._update_modifiers()
                 if not self._any_modifier_pressed() and was_recording: 
+                    logging.info("모디파이어 키가 모두 떼어짐: 제스처 종료 처리 시작")
                     self.is_recording = False
                     self.start_monitor = None 
                     logging.info("Gesture ended - All modifiers released.")
                     # --- pynput 마우스 리스너 종료 ---
                     self._stop_mouse_listener_if_active()
                     # --- 종료 끝 ---
+                    
+                    # 제스처 종료 콜백 호출
                     if self.on_gesture_ended:
-                        self.on_gesture_ended()
+                        logging.info("제스처 종료 콜백 호출 시작")
+                        try:
+                            # 제스처 종료 콜백을 직접 호출하고 결과 확인
+                            self.on_gesture_ended()
+                            logging.info("제스처 종료 콜백 호출 완료")
+                            
+                            # 하드 강제 종료 - Tkinter 창을 직접 찾아서 종료 시도
+                            # 이는 메인 스레드에서 실행되지 않아 위험할 수 있으나, 
+                            # 다른 방법이 모두 실패했을 때의 마지막 수단으로 시도
+                            try:
+                                import tkinter as tk
+                                for widget in tk._default_root.winfo_children():
+                                    if widget.winfo_class() == 'Toplevel' and widget.title() == "제스처 녹화":
+                                        logging.info("제스처 녹화 창을 직접 찾아 종료 시도")
+                                        # 먼저 화면에서 숨김
+                                        widget.withdraw()
+                                        # 이벤트 최대한 제거
+                                        widget.unbind_all('<KeyPress>')
+                                        widget.unbind_all('<KeyRelease>')
+                                        # 강제 종료
+                                        widget.destroy()
+                                        logging.info("제스처 녹화 창 직접 종료 완료")
+                            except Exception as te:
+                                logging.warning(f"직접 창 종료 시도 중 오류(무시됨): {te}")
+                            
+                        except Exception as e:
+                            logging.error(f"제스처 종료 콜백 호출 중 오류 발생: {e}", exc_info=True)
+                    else:
+                        logging.warning("제스처 종료 콜백이 설정되지 않음")
         except Exception as e:
             logging.error(f"Error in on_key_release: {e}", exc_info=True)
     
