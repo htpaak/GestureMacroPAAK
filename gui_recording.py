@@ -352,6 +352,6 @@ class GuiRecordingMixin:
         """녹화 버튼 텍스트 변경"""
         if hasattr(self, 'record_btn'):
             if is_recording:
-                self.record_btn.config(text="Stop Recording Macro (Ctrl+F9)") # <--- 텍스트 수정
+                self.record_btn.config(text="Stop Recording Macro (F9)")
             else:
-                self.record_btn.config(text="Start Recording Macro (Ctrl+F9)") # <--- 텍스트 수정
+                self.record_btn.config(text="Start Recording Macro (F9)")

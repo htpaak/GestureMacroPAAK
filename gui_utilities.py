@@ -279,7 +279,7 @@ class GuiUtilitiesMixin:
             # 일반 문자 키는 그냥 'a', 'b' 등
             # 함수 키는 '<f1>', '<f9>' 등
             shortcuts = {
-                '<ctrl>+<f9>': getattr(self, 'toggle_recording', None),
+                '<f9>': getattr(self, 'toggle_recording', None),  # Ctrl+F9 대신 F9만 사용
                 '<ctrl>+<f11>': getattr(self, 'start_gesture_recognition', None),
                 '<ctrl>+<f12>': getattr(self, 'stop_gesture_recognition', None),
                 '<delete>': getattr(self, 'handle_delete_key', None), # delete 키 핸들러 확인 필요

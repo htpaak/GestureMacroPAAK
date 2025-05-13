@@ -243,14 +243,14 @@ class MacroGUI:
         record_btn_frame.pack(fill=tk.X, padx=5, pady=5)
         
         # 녹화 시작/중지 버튼
-        self.record_btn = ttk.Button(record_btn_frame, text="녹화 시작 (Ctrl+R)", command=self.start_recording)
+        self.record_btn = ttk.Button(record_btn_frame, text="녹화 시작 (F9)", command=self.start_recording)
         self.record_btn.pack(fill=tk.X, padx=5, pady=5)
         
         # 녹화 이어서 시작 버튼 추가
         self.continue_btn = ttk.Button(record_btn_frame, text="녹화 이어서 시작 (Ctrl+E)", command=self.continue_recording)
         self.continue_btn.pack(fill=tk.X, padx=5, pady=5)
         
-        self.stop_btn = ttk.Button(record_btn_frame, text="녹화 중지 (Ctrl+R)", command=self.stop_recording, state=tk.DISABLED)
+        self.stop_btn = ttk.Button(record_btn_frame, text="녹화 중지 (F9)", command=self.stop_recording, state=tk.DISABLED)
         self.stop_btn.pack(fill=tk.X, padx=5, pady=5)
         
         # 녹화 저장 버튼
@@ -283,7 +283,7 @@ class MacroGUI:
         # 단축키 가이드 업데이트
         keyboard_shortcuts_text = """
 기본 단축키:
-Ctrl+F9        - 매크로 녹화 시작/중지
+F9             - 매크로 녹화 시작/중지
 Ctrl+F11       - 제스처 인식 시작
 Ctrl+F12       - 제스처 인식 중지
 Ctrl+M         - 현재 마우스 위치 가져오기
@@ -877,7 +877,7 @@ Delete         - 선택한 이벤트/제스처 삭제
         """단축키 목록 표시"""
         hotkey_info = """
 기본 단축키:
-Ctrl+F9        - 매크로 녹화 시작/중지
+F9             - 매크로 녹화 시작/중지
 Ctrl+F11       - 제스처 인식 시작
 Ctrl+F12       - 제스처 인식 중지
 Ctrl+M         - 현재 마우스 위치 가져오기
@@ -1106,8 +1106,8 @@ Delete         - 선택한 이벤트/제스처 삭제
         # F6 키: 매크로 실행 중지
         self.root.bind("<F6>", lambda event: self.stop_macro())
         
-        # Ctrl+R: 녹화 시작/중지 토글
-        self.root.bind("<Control-r>", self.toggle_recording)
+        # F9: 녹화 시작/중지 토글
+        self.root.bind("<F9>", self.toggle_recording)
         
         # Ctrl+E: 녹화 이어서 시작
         self.root.bind("<Control-e>", lambda event: self.continue_recording())
@@ -1129,8 +1129,14 @@ Delete         - 선택한 이벤트/제스처 삭제
         # 현재 녹화 중이면 중지, 아니면 시작
         if self.recorder.recording:
             self.stop_recording()
+            # 버튼 텍스트 업데이트
+            if hasattr(self, 'record_btn'):
+                self.record_btn.config(text="녹화 시작 (F9)")
         else:
             self.start_recording()
+            # 버튼 텍스트 업데이트
+            if hasattr(self, 'record_btn'):
+                self.record_btn.config(text="녹화 중지 (F9)")
 
     def continue_recording(self, event=None):
         """녹화 이어서 시작 - 기존 이벤트를 유지하고 녹화 시작"""

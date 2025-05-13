@@ -137,7 +137,25 @@ class MacroRecorder:
                 finally:
                     self.mouse_listener = None
             # --- 리스너 중지 끝 ---
-
+            
+            # 매크로 종료 시 F9 키 이벤트 필터링
+            if self.events:
+                # F9 키 이벤트 필터링
+                filtered_events = []
+                
+                for event in self.events:
+                    if event['type'] == 'keyboard' and event.get('key', '') == 'f9':
+                        print(f"F9 키 이벤트 필터링")
+                        continue
+                    
+                    # F9 키가 아닌 이벤트는 모두 유지
+                    filtered_events.append(event)
+                
+                # 필터링된 이벤트로 업데이트
+                if len(filtered_events) != len(self.events):
+                    print(f"총 {len(self.events) - len(filtered_events)}개의 F9 키 이벤트가 필터링됨")
+                    self.events = filtered_events
+            
             # 상태 업데이트
             self.recording = False
             print("매크로 녹화가 중지되었습니다.")
@@ -203,11 +221,11 @@ class MacroRecorder:
     def _keyboard_callback(self, event):
         """키보드 이벤트 콜백"""
         if self.recording and self.record_keyboard:
-            # F9와 F10 키는 무시 (단축키로 사용되기 때문에 녹화되지 않아야 함)
-            if event.name in ['f9', 'f10']:
-                print(f"{event.name} 키는 단축키로 사용되므로 녹화하지 않음")
+            # F9 키만 녹화에서 제외 (매크로 시작/중지 단축키로 사용)
+            if event.name == 'f9':
+                print(f"녹화 단축키로 사용되는 F9 키는 녹화하지 않음")
                 return
-                
+            
             current_time = time.time() - self.start_time
             
             # 키다운 이벤트 처리

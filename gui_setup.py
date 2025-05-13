@@ -308,7 +308,7 @@ class GuiSetupMixin:
         
         self.record_btn = tk.Button(
             button_frame, 
-            text="Start Recording Macro (Ctrl+F9)",
+            text="Start Recording Macro (F9)",
             font=('Arial', 9), # 10 -> 9
             bg='#e8e8e8',
             relief=tk.RAISED,

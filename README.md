@@ -45,9 +45,9 @@ GestureMacroPAAK is a powerful macro program that allows you to automate repetit
 
 1.  **Record Macro:**
     *   In 'Recording Settings', configure whether to record mouse movement, keyboard input, and the coordinate mode.
-    *   Press the 'Start Recording' button (or `Ctrl+F9`) to begin recording.
+    *   Press the 'Start Recording' button (or `F9`) to begin recording.
     *   Perform the keyboard and mouse actions you want to automate.
-    *   Press the 'Stop Recording' button (or `Ctrl+F9`) to end the recording.
+    *   Press the 'Stop Recording' button (or `F9`) to end the recording.
 2.  **Edit Events:**
     *   Select the event to edit from the 'Event List' in the center.
     *   Use the 'Editing Tools' on the right or the 'Edit' menu at the top to delete, duplicate events, or add delays.

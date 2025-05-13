@@ -88,7 +88,7 @@ class GuiControlsMixin:
         # 매크로 녹화 버튼
         self.record_btn = ttk.Button(
             button_frame, 
-            text="Start Recording Macro (Ctrl+F9)",
+            text="Start Recording Macro (F9)",
             width=20,
             command=toggle_rec_cmd,
             style='Big.TButton'
