@@ -250,7 +250,7 @@ class GuiSetupMixin:
 
             self.gesture_start_btn = tk.Button(
                 gesture_button_frame, 
-                text="Start Recognition (F11)",
+                text="Start Recognition (Ctrl+F11)",
                 font=('Arial', 10),  # 11 -> 10
                 bg='#e8e8e8',  # 배경색
                 relief=tk.RAISED,  # 테두리 스타일
@@ -263,7 +263,7 @@ class GuiSetupMixin:
 
             self.gesture_stop_btn = tk.Button(
                 gesture_button_frame, 
-                text="Stop Recognition (F12)",
+                text="Stop Recognition (Ctrl+F12)",
                 font=('Arial', 10),  # 11 -> 10
                 bg='#e8e8e8',
                 relief=tk.RAISED,
@@ -308,7 +308,7 @@ class GuiSetupMixin:
         
         self.record_btn = tk.Button(
             button_frame, 
-            text="Start Recording Macro (F9)",
+            text="Start Recording Macro (Ctrl+F9)",
             font=('Arial', 9), # 10 -> 9
             bg='#e8e8e8',
             relief=tk.RAISED,

@@ -279,9 +279,9 @@ class GuiUtilitiesMixin:
             # 일반 문자 키는 그냥 'a', 'b' 등
             # 함수 키는 '<f1>', '<f9>' 등
             shortcuts = {
-                '<f9>': getattr(self, 'toggle_recording', None),
-                '<f11>': getattr(self, 'start_gesture_recognition', None),
-                '<f12>': getattr(self, 'stop_gesture_recognition', None),
+                '<ctrl>+<f9>': getattr(self, 'toggle_recording', None),
+                '<ctrl>+<f11>': getattr(self, 'start_gesture_recognition', None),
+                '<ctrl>+<f12>': getattr(self, 'stop_gesture_recognition', None),
                 '<delete>': getattr(self, 'handle_delete_key', None), # delete 키 핸들러 확인 필요
                 '<ctrl>+a': getattr(self, 'select_all_events', None),
                 # '<f1>': self.setup_keyboard_shortcuts # F1으로 재등록 기능 제거
@@ -292,7 +292,7 @@ class GuiUtilitiesMixin:
             for hotkey, func in shortcuts.items():
                 if func and callable(func):
                     # 제스처 관련 핫키는 gesture_manager 확인
-                    if hotkey in ['<f11>', '<f12>'] and not hasattr(self, 'gesture_manager'):
+                    if hotkey in ['<ctrl>+<f11>', '<ctrl>+<f12>'] and not hasattr(self, 'gesture_manager'):
                         logging.warning(f"Gesture manager not found, skipping hotkey '{hotkey}'.")
                         continue
                     valid_shortcuts[hotkey] = func

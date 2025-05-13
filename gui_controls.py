@@ -22,13 +22,13 @@ class GuiControlsMixin:
             start_cmd = getattr(self, 'start_gesture_recognition', lambda: print("Start Recognition method not found"))
             stop_cmd = getattr(self, 'stop_gesture_recognition', lambda: print("Stop Recognition method not found"))
 
-            self.gesture_start_btn = ttk.Button(gesture_button_frame, text="Start Recognition (F11)", width=20,
+            self.gesture_start_btn = ttk.Button(gesture_button_frame, text="Start Recognition (Ctrl+F11)", width=20,
                                command=start_cmd, style='Big.TButton')
-            self.gesture_start_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+            self.gesture_start_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
-            self.gesture_stop_btn = ttk.Button(gesture_button_frame, text="Stop Recognition (F12)", width=20,
+            self.gesture_stop_btn = ttk.Button(gesture_button_frame, text="Stop Recognition (Ctrl+F12)", width=20,
                                command=stop_cmd, state=tk.DISABLED, style='Big.TButton')
-            self.gesture_stop_btn.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+            self.gesture_stop_btn.pack(side=tk.LEFT, padx=5, pady=5)
         else:
             # 제스처 매니저가 없을 경우
             no_gesture_label = ttk.Label(self.gesture_control_frame, text="Gesture Manager not available.")
@@ -86,23 +86,14 @@ class GuiControlsMixin:
             btn_idx += 1
         
         # 매크로 녹화 버튼
-        self.record_btn = tk.Button(
+        self.record_btn = ttk.Button(
             button_frame, 
-            text="Start Recording Macro (F9)",
-            font=('Arial', 9),
-            bg='#e8e8e8',
-            relief=tk.RAISED,
-            borderwidth=2,
+            text="Start Recording Macro (Ctrl+F9)",
+            width=20,
             command=toggle_rec_cmd,
-            highlightthickness=0
+            style='Big.TButton'
         )
-        self.record_btn.place(
-            relx=btn_width * btn_idx + 0.01,
-            rely=0.5,
-            relwidth=btn_width - 0.02,
-            relheight=0.8,
-            anchor='w'
-        )
+        self.record_btn.pack(side=tk.LEFT, padx=5, pady=5)
         btn_idx += 1
         
         # 저장 버튼

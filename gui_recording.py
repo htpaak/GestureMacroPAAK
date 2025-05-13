@@ -326,7 +326,7 @@ class GuiRecordingMixin:
                 self.stop_recording()
                 # --- 버튼 텍스트 업데이트 --- 
                 if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
-                    self.record_btn.config(text="Start Recording Macro (F9)") # <--- 텍스트 수정
+                    self.record_btn.config(text="Start Recording Macro (Ctrl+F9)") # <--- 텍스트 수정
                     # stop_recording에서 이미 state=NORMAL 로 설정됨
                 # --- 업데이트 끝 --- 
             else:
@@ -337,7 +337,7 @@ class GuiRecordingMixin:
                         self.start_recording_for_selected_gesture() 
                         # --- 버튼 텍스트 업데이트 --- 
                         if hasattr(self, 'record_btn') and self.record_btn.winfo_exists():
-                            self.record_btn.config(text="Stop Recording Macro (F9)") # <--- 텍스트 수정
+                            self.record_btn.config(text="Stop Recording Macro (Ctrl+F9)") # <--- 텍스트 수정
                         # --- 업데이트 끝 --- 
                     except Exception as start_error:
                          print(f"Error during start_recording_for_selected_gesture: {start_error}")
@@ -347,3 +347,11 @@ class GuiRecordingMixin:
             logging.exception(f"!!! Exception in toggle_recording callback: {e}") # 예외 발생 시 로그 기록
         finally:
             logging.info("toggle_recording callback finished.") # 콜백 종료 로그
+
+    def toggle_recording_text(self, is_recording):
+        """녹화 버튼 텍스트 변경"""
+        if hasattr(self, 'record_btn'):
+            if is_recording:
+                self.record_btn.config(text="Stop Recording Macro (Ctrl+F9)") # <--- 텍스트 수정
+            else:
+                self.record_btn.config(text="Start Recording Macro (Ctrl+F9)") # <--- 텍스트 수정

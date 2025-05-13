@@ -273,13 +273,26 @@ class MacroGUI:
         button_frame = ttk.Frame(mouse_pos_frame)
         button_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        # 마우스 위치 업데이트 버튼
-        ttk.Button(button_frame, text="현재 위치 가져오기 (F9)", 
-                 command=self.update_mouse_position).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+        # 위치 관련 버튼 추가 (박스에 넣기)
+        position_frame = ttk.LabelFrame(button_frame, text="Mouse Position Tool", padding=(10, 5))
+        position_frame.pack(side=tk.LEFT, padx=10, pady=5, fill=tk.X, expand=True)
         
-        # 현재 위치 이벤트 추가 버튼
-        ttk.Button(button_frame, text="현재 위치 이벤트 추가 (F10)", 
-                 command=self.add_current_position).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+        ttk.Button(position_frame, text="현재 위치 가져오기 (Ctrl+M)",
+                  command=self.update_mouse_position).pack(side=tk.LEFT, padx=5)
+                  
+        # 단축키 가이드 업데이트
+        keyboard_shortcuts_text = """
+기본 단축키:
+Ctrl+F9        - 매크로 녹화 시작/중지
+Ctrl+F11       - 제스처 인식 시작
+Ctrl+F12       - 제스처 인식 중지
+Ctrl+M         - 현재 마우스 위치 가져오기
+Ctrl+A         - 이벤트 전체 선택
+Delete         - 선택한 이벤트/제스처 삭제
+"""
+        
+        # 단축키 바인딩 업데이트
+        self.root.bind("<Control-m>", lambda event: self.update_mouse_position())
         
         # 중앙 프레임 구성 - 이벤트 목록
         event_frame = ttk.LabelFrame(center_event_frame, text="이벤트 목록")
@@ -863,17 +876,14 @@ class MacroGUI:
     def show_hotkeys(self):
         """단축키 목록 표시"""
         hotkey_info = """
-        단축키 목록:
-        
-        F5              - 매크로 실행 (매크로 목록에서)
-        F6              - 매크로 실행 중지
-        F9              - 현재 마우스 위치 가져오기
-        F10             - 현재 마우스 위치 이벤트 추가
-        Ctrl+R          - 녹화 시작/중지 토글
-        Ctrl+E          - 녹화 이어서 시작
-        Ctrl+S          - 매크로 저장
-        Ctrl+A          - 전체 선택
-        """
+기본 단축키:
+Ctrl+F9        - 매크로 녹화 시작/중지
+Ctrl+F11       - 제스처 인식 시작
+Ctrl+F12       - 제스처 인식 중지
+Ctrl+M         - 현재 마우스 위치 가져오기
+Ctrl+A         - 이벤트 전체 선택
+Delete         - 선택한 이벤트/제스처 삭제
+"""
         
         messagebox.showinfo("단축키 목록", hotkey_info)
 
@@ -1108,8 +1118,8 @@ class MacroGUI:
         # Ctrl+A: 전체 선택
         self.root.bind("<Control-a>", lambda event: self.select_all_events())
         
-        # F9: 현재 마우스 위치 가져오기
-        self.root.bind("<F9>", lambda event: self.update_mouse_position())
+        # Ctrl+M: 현재 마우스 위치 가져오기
+        self.root.bind("<Control-m>", lambda event: self.update_mouse_position())
         
         # F10: 현재 마우스 위치 이벤트 추가
         self.root.bind("<F10>", lambda event: self.add_current_position())
