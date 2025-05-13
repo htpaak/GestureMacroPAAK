@@ -111,8 +111,8 @@ class GestureManager:
             # print(f"제스처 시작 절대 좌표 저장 (from callback): ({self.gesture_start_x}, {self.gesture_start_y})")
             logging.debug(f"제스처 시작 절대 좌표 저장 (from callback): ({self.gesture_start_x}, {self.gesture_start_y})")
 
-            # 오버레이 캔버스 준비 및 표시 (경로 표시가 활성화된 경우)
-            if self.is_path_drawing_enabled and self.overlay_canvas:
+            # 오버레이 캔버스 준비 및 표시 (경로 표시가 활성화된 경우) - 녹화 모드가 아닐 때만
+            if self.is_path_drawing_enabled and self.overlay_canvas and not self.recording_mode:
                 self.overlay_canvas.clear()
                 # self.overlay_canvas.set_line_color("red") # 필요시 색상 변경 (초기화 시 설정됨)
                 self.overlay_canvas.show()
@@ -140,8 +140,8 @@ class GestureManager:
         self.gesture_recognizer.add_point(rel_pos)
         
         try:
-            # 오버레이 캔버스에 점 추가 (경로 표시가 활성화된 경우)
-            if self.is_path_drawing_enabled and self.overlay_canvas:
+            # 오버레이 캔버스에 점 추가 (경로 표시가 활성화된 경우) - 녹화 모드가 아닐 때만
+            if self.is_path_drawing_enabled and self.overlay_canvas and not self.recording_mode:
                 self.overlay_canvas.add_point(abs_pos[0], abs_pos[1])
         except Exception as e:
             # print(f"Error drawing on overlay: {e}")
@@ -160,8 +160,8 @@ class GestureManager:
         gesture_end_time = time.time()
         print(f"[TimeLog] Gesture ended at: {gesture_end_time:.3f}")
 
-        # 오버레이 캔버스 숨기기 (경로 표시가 활성화된 경우)
-        if self.is_path_drawing_enabled and self.overlay_canvas:
+        # 오버레이 캔버스 숨기기 (경로 표시가 활성화된 경우) - 녹화 모드가 아닐 때만
+        if self.is_path_drawing_enabled and self.overlay_canvas and not self.recording_mode:
             self.overlay_canvas.hide() # 경로 그린 후 숨김
 
         recognition_start_time = time.time()
@@ -179,6 +179,8 @@ class GestureManager:
         if "tooShort" in gesture or "unknown" in gesture:
             print("제스처가 너무 짧거나 취소됨: 저장하지 않음")
             self.recording_mode = False
+            # 녹화 모드 종료 시 오버레이 캔버스 상태 복원
+            self._restore_overlay_after_recording()
             return
         
         # 녹화 모드인 경우 제스처 임시 저장
@@ -188,6 +190,9 @@ class GestureManager:
             
             # 녹화 종료
             self.recording_mode = False
+            
+            # 녹화 모드 종료 시 오버레이 캔버스 상태 복원
+            self._restore_overlay_after_recording()
             
             # GUI에서 편집 모드가 활성화된 경우 편집 완료 콜백 호출
             if self.gui_callback and hasattr(self.gui_callback, 'editing_gesture') and self.gui_callback.editing_gesture:
@@ -217,6 +222,12 @@ class GestureManager:
         # 제스처 시각화 창 생성
         self.create_gesture_canvas()
         
+        # 녹화 모드에서는 오버레이 캔버스를 일시적으로 비활성화
+        self.is_overlay_enabled_before_recording = self.is_path_drawing_enabled
+        if self.is_path_drawing_enabled and self.overlay_canvas:
+            self.overlay_canvas.hide()
+            print("녹화 모드에서는 오버레이 캔버스를 일시적으로 비활성화합니다.")
+
     def create_gesture_canvas(self):
         """제스처 녹화를 위한 캔버스 창 생성 (기존 로직 유지)"""
         if self.canvas_window: # 이미 있으면 파괴
@@ -244,6 +255,9 @@ class GestureManager:
         print("제스처 녹화 취소됨")
         self.recording_mode = False
         self.temp_gesture = None
+        
+        # 녹화 모드 종료 시 오버레이 캔버스 상태 복원
+        self._restore_overlay_after_recording()
         
         if self.canvas_window:
             self.canvas_window.destroy()
@@ -405,3 +419,10 @@ class GestureManager:
 
         print("제스처 저장 실패!")
         return False 
+
+    # 오버레이 캔버스 상태 복원 헬퍼 메서드 추가
+    def _restore_overlay_after_recording(self):
+        """녹화 모드 종료 후 오버레이 캔버스 상태 복원"""
+        if hasattr(self, 'is_overlay_enabled_before_recording') and self.is_overlay_enabled_before_recording:
+            self.is_path_drawing_enabled = self.is_overlay_enabled_before_recording
+            print("녹화 모드 종료: 오버레이 캔버스 상태를 복원합니다.") 
